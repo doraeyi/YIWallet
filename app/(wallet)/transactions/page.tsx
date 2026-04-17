@@ -30,11 +30,11 @@ export default function TransactionsPage() {
   const expense = sumByType(byMonth, 'expense')
 
   function prevMonth() {
-    if (month === 1) { setYear(y => y - 1); setMonth(12) }
+    if (month === 1) { setYear(year - 1); setMonth(12) }
     else setMonth(m => m - 1)
   }
   function nextMonth() {
-    if (month === 12) { setYear(y => y + 1); setMonth(1) }
+    if (month === 12) { setYear(year + 1); setMonth(1) }
     else setMonth(m => m + 1)
   }
 
