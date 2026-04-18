@@ -32,6 +32,9 @@ export default function DashboardPage() {
     else setMonth(m => m + 1)
   }
 
+  const hour = now.getHours()
+  const greeting = hour < 12 ? '早安 ☀️' : hour < 18 ? '午安 🌤️' : '晚安 🌙'
+
   if (!isLoaded) {
     return <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
   }
@@ -40,11 +43,14 @@ export default function DashboardPage() {
     <div className="flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold">{year} / {String(month).padStart(2, '0')}</span>
-          <div className="flex gap-0.5 text-muted-foreground">
-            <button onClick={prevMonth} className="px-1 hover:text-foreground">‹</button>
-            <button onClick={nextMonth} className="px-1 hover:text-foreground">›</button>
+        <div className="flex flex-col">
+          <span className="text-xs text-muted-foreground">{greeting}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold">{year} / {String(month).padStart(2, '0')}</span>
+            <div className="flex gap-0.5 text-muted-foreground">
+              <button onClick={prevMonth} className="px-1 hover:text-foreground">‹</button>
+              <button onClick={nextMonth} className="px-1 hover:text-foreground">›</button>
+            </div>
           </div>
         </div>
         <Link href="/settings" className="lg:hidden">
