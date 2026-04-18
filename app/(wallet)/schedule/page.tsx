@@ -22,6 +22,7 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [addingJob, setAddingJob] = useState<string | null>(null)
+  const [holidays, setHolidays] = useState<Set<string>>(new Set())
   const isDesktop = useIsDesktop()
   const { transactions, addTransaction, deleteTransaction } = useTransactions()
 
@@ -37,6 +38,17 @@ export default function SchedulePage() {
   }, [year, month])
 
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    fetch(`https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`)
+      .then(r => r.json())
+      .then((data: { date: string; isHoliday: boolean; description: string }[]) => {
+        setHolidays(new Set(
+          data.filter(d => d.isHoliday && d.description !== '').map(d => `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`)
+        ))
+      })
+      .catch(() => {})
+  }, [year])
 
   function salaryNote(job: Job) { return `${job.name} ${year}年${month}月薪資` }
   function advancePrefix(job: Job) { return `${job.name} ${year}年${month}月領現` }
@@ -116,8 +128,12 @@ export default function SchedulePage() {
     return transactions.find(t => t.type === 'income' && t.note === advanceNoteForDate(job, date))
   }
 
-  function shiftAmount(job: Job) {
-    return job.pay_type === 'hourly' ? Math.round(job.rate * 8) : Math.round(job.rate / 30)
+  function shiftAmount(job: Job, date: string) {
+    if (job.pay_type === 'hourly') {
+      const multiplier = holidays.has(date) ? 2 : 1
+      return Math.round(job.rate * 8 * multiplier)
+    }
+    return Math.round(job.rate / 30)
   }
 
   async function handleToggleAdvance(job: Job, date: string) {
@@ -130,7 +146,7 @@ export default function SchedulePage() {
       } else {
         await addTransaction({
           type: 'income',
-          amount: shiftAmount(job),
+          amount: shiftAmount(job, date),
           category: 'salary',
           note: advanceNoteForDate(job, date),
           date,
@@ -171,6 +187,9 @@ export default function SchedulePage() {
           <p className="text-center text-base font-semibold">
             {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日
           </p>
+          {holidays.has(selectedDate) && (
+            <p className="mt-1 text-center text-xs font-medium text-rose-500">國定假日・時薪雙倍</p>
+          )}
         </div>
         <div className="flex flex-col gap-3 p-4">
           {jobs.length === 0 ? (
@@ -227,7 +246,7 @@ export default function SchedulePage() {
                           : 'bg-muted text-muted-foreground hover:bg-amber-50 hover:text-amber-600'
                       )}
                     >
-                      {advanceTx ? '✓ 已領現　點擊取消' : `+ 領現　${formatCurrency(shiftAmount(job))}`}
+                      {advanceTx ? '✓ 已領現　點擊取消' : `+ 領現　${formatCurrency(shiftAmount(job, selectedDate))}`}
                     </button>
                   )}
                 </div>
@@ -298,6 +317,7 @@ export default function SchedulePage() {
                 const dayShifts = shiftsByDate[dateStr] ?? []
                 const isToday = dateStr === todayStr
                 const col = (firstDayOfWeek + day - 1) % 7
+                const isHolidayDate = holidays.has(dateStr)
                 return (
                   <div
                     key={day}
@@ -313,6 +333,11 @@ export default function SchedulePage() {
                       {day}
                     </span>
                     <div className="mt-0.5 flex flex-col gap-0.5">
+                      {isHolidayDate && (
+                        <span className="rounded bg-orange-100 px-1 py-0.5 text-[10px] font-semibold leading-none text-orange-600 dark:bg-orange-400/20 dark:text-orange-400">
+                          假
+                        </span>
+                      )}
                       {dayShifts.map(s => (
                         <span
                           key={s.id}
@@ -341,7 +366,10 @@ export default function SchedulePage() {
               {jobs.map(job => {
                 const jobShifts = shifts.filter(s => s.job_id === job.id)
                 const gross = job.pay_type === 'hourly'
-                  ? jobShifts.length * 8 * job.rate
+                  ? jobShifts.reduce((sum, s) => {
+                      const multiplier = holidays.has(s.date.slice(0, 10)) ? 2 : 1
+                      return sum + job.rate * 8 * multiplier
+                    }, 0)
                   : job.rate
                 const deduction = job.labor_insurance + job.health_insurance
                 const net = gross - deduction
