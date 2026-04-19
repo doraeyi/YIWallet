@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, ReceiptIcon, BotIcon, CopyIcon } from 'lucide-react'
 import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/actions/auth'
+import { InvoiceSyncSheet } from '@/components/wallet/invoice-sync-sheet'
 
 const JOB_COLORS = [
   '#6366F1', '#F59E0B', '#10B981', '#EF4444',
@@ -24,6 +25,20 @@ const EMPTY_FORM = {
   health_insurance: '',
 }
 
+const CARRIER_KEY = 'yiwallet_carrier_code'
+const CARRIER_VERIFY_KEY = 'yiwallet_carrier_verify'
+
+function getMonthRange(): { startDate: string; endDate: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
+  return {
+    startDate: `${y}-${m}-01`,
+    endDate: `${y}-${m}-${String(lastDay).padStart(2, '0')}`,
+  }
+}
+
 export default function SettingsPage() {
   const { budget, setBudget } = useTransactions()
   const [input, setInput] = useState(budget > 0 ? String(budget) : '')
@@ -35,9 +50,107 @@ export default function SettingsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
 
+  // LINE Bot 綁定
+  const [lineLinked, setLineLinked] = useState<boolean | null>(null)
+  const [linkCode, setLinkCode] = useState<string | null>(null)
+  const [linkExpiry, setLinkExpiry] = useState<number>(0)
+  const [linkSecondsLeft, setLinkSecondsLeft] = useState(0)
+  const [linkLoading, setLinkLoading] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/line/link')
+      .then(r => r.json())
+      .then(d => setLineLinked(d.linked))
+      .catch(() => setLineLinked(false))
+  }, [])
+
+  useEffect(() => {
+    if (!linkExpiry) return
+    const id = setInterval(async () => {
+      const left = Math.max(0, Math.ceil((linkExpiry - Date.now()) / 1000))
+      setLinkSecondsLeft(left)
+      if (left === 0) { setLinkCode(null); setLinkExpiry(0); clearInterval(id); return }
+
+      // 每 3 秒檢查一次是否已綁定
+      if (left % 3 === 0) {
+        const res = await fetch('/api/line/link').catch(() => null)
+        if (res?.ok) {
+          const data = await res.json()
+          if (data.linked) {
+            setLineLinked(true)
+            setLinkCode(null)
+            setLinkExpiry(0)
+            clearInterval(id)
+          }
+        }
+      }
+    }, 1000)
+    return () => clearInterval(id)
+  }, [linkExpiry])
+
+  async function handleGenerateCode() {
+    setLinkLoading(true)
+    try {
+      const res = await fetch('/api/line/link', { method: 'POST' })
+      const data = await res.json()
+      setLinkCode(data.code)
+      setLinkExpiry(Date.now() + 10 * 60 * 1000)
+      setLinkSecondsLeft(600)
+    } catch {
+      alert('產生失敗，請重試')
+    } finally {
+      setLinkLoading(false)
+    }
+  }
+
+  async function handleUnlink() {
+    await fetch('/api/line/link', { method: 'DELETE' })
+    setLineLinked(false)
+    setLinkCode(null)
+  }
+
+  async function handleCopyCode() {
+    if (!linkCode) return
+    await navigator.clipboard.writeText(`/link ${linkCode}`)
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  // 電子發票載具
+  const [carrierCode, setCarrierCode] = useState('')
+  const [carrierVerify, setCarrierVerify] = useState('')
+  const [carrierSaved, setCarrierSaved] = useState(false)
+  const [carrierError, setCarrierError] = useState('')
+  const [syncOpen, setSyncOpen] = useState(false)
+  const { startDate, endDate } = getMonthRange()
+
+  useEffect(() => {
+    setCarrierCode(localStorage.getItem(CARRIER_KEY) ?? '')
+    setCarrierVerify(localStorage.getItem(CARRIER_VERIFY_KEY) ?? '')
+  }, [])
+
   useEffect(() => {
     api.fetchJobs().then(setJobs).catch(() => {})
   }, [])
+
+  function handleSaveCarrier() {
+    const trimmed = carrierCode.trim().toUpperCase()
+    if (!/^\/[A-Z0-9+.]{7}$/.test(trimmed)) {
+      setCarrierError('格式錯誤，應為 /XXXXXXX（含「/」共 8 碼）')
+      return
+    }
+    if (!carrierVerify) {
+      setCarrierError('請輸入驗證碼')
+      return
+    }
+    setCarrierError('')
+    localStorage.setItem(CARRIER_KEY, trimmed)
+    localStorage.setItem(CARRIER_VERIFY_KEY, carrierVerify)
+    setCarrierCode(trimmed)
+    setCarrierSaved(true)
+    setTimeout(() => setCarrierSaved(false), 2000)
+  }
 
   function handleSaveBudget() {
     const val = parseFloat(input)
@@ -142,6 +255,121 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Invoice carrier */}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="flex items-center gap-2 border-b px-4 py-3">
+            <ReceiptIcon className="size-4 text-amber-500" />
+            <p className="text-sm font-semibold">電子發票載具</p>
+          </div>
+          <div className="px-4 py-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">手機條碼</label>
+                <p className="mb-1.5 text-xs text-muted-foreground">格式：/XXXXXXX（含「/」共 8 碼）</p>
+                <input
+                  value={carrierCode}
+                  onChange={e => { setCarrierCode(e.target.value); setCarrierError('') }}
+                  placeholder="/MH3LKMR"
+                  className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm uppercase outline-none focus:border-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">驗證碼（密碼）</label>
+                <p className="mb-1.5 text-xs text-muted-foreground">財政部平台手機條碼專區的登入密碼</p>
+                <input
+                  type="password"
+                  value={carrierVerify}
+                  onChange={e => { setCarrierVerify(e.target.value); setCarrierError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveCarrier()}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
+                />
+              </div>
+              {carrierError && <p className="text-xs text-rose-500">{carrierError}</p>}
+              <button
+                onClick={handleSaveCarrier}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
+              >
+                {carrierSaved && <CheckIcon className="size-4" />}
+                {carrierSaved ? '已儲存' : '儲存設定'}
+              </button>
+            </div>
+            <button
+              onClick={() => setSyncOpen(true)}
+              disabled={!carrierCode || !carrierVerify}
+              className="w-full rounded-xl border-2 border-dashed border-amber-300 py-2.5 text-sm font-medium text-amber-600 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed dark:hover:bg-amber-950/20"
+            >
+              匯入本月發票
+            </button>
+          </div>
+        </div>
+
+        {/* LINE Bot */}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex items-center gap-2">
+              <BotIcon className="size-4 text-green-500" />
+              <p className="text-sm font-semibold">LINE Bot 自動記帳</p>
+            </div>
+            {lineLinked !== null && (
+              <span className={cn(
+                'rounded-full px-2 py-0.5 text-xs font-medium',
+                lineLinked ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-muted text-muted-foreground'
+              )}>
+                {lineLinked ? '已綁定' : '未綁定'}
+              </span>
+            )}
+          </div>
+          <div className="px-4 py-4 flex flex-col gap-4">
+            {lineLinked ? (
+              <>
+                <div className="rounded-xl bg-green-50 px-3 py-2.5 text-xs text-green-700 dark:bg-green-950/30 dark:text-green-400">
+                  LINE 帳號已綁定。直接傳給 Bot 消費記錄即可，例如：<br />
+                  <code className="font-mono">全家 茶葉蛋 10</code>　或　<code className="font-mono">捷運28</code>
+                </div>
+                <button
+                  onClick={handleUnlink}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                >
+                  解除 LINE 綁定
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs text-muted-foreground">步驟 1：加入 Bot 好友（<span className="font-mono">@984ehkom</span>）</p>
+                  <p className="text-xs text-muted-foreground">步驟 2：產生綁定碼，傳給 Bot</p>
+                </div>
+
+                {linkCode && linkSecondsLeft > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
+                      <code className="text-lg font-bold tracking-widest">{linkCode}</code>
+                      <span className="text-xs text-muted-foreground">{Math.floor(linkSecondsLeft / 60)}:{String(linkSecondsLeft % 60).padStart(2, '0')}</span>
+                    </div>
+                    <button
+                      onClick={handleCopyCode}
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
+                    >
+                      {codeCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                      {codeCopied ? '已複製！' : '複製指令（/link 綁定碼）'}
+                    </button>
+                    <p className="text-center text-xs text-muted-foreground">複製後貼到 Bot 聊天室傳送即完成綁定</p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGenerateCode}
+                    disabled={linkLoading}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
+                  >
+                    {linkLoading ? '產生中…' : '產生綁定碼'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Job management */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
           <div className="flex items-center justify-between border-b px-4 py-3">
@@ -206,6 +434,15 @@ export default function SettingsPage() {
           </button>
         </form>
       </div>
+
+      <InvoiceSyncSheet
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        carrierCode={carrierCode}
+        carrierVerify={carrierVerify}
+        startDate={startDate}
+        endDate={endDate}
+      />
 
       {/* Job form overlay */}
       {formOpen && (

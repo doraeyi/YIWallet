@@ -1,6 +1,7 @@
 import { TransactionsProvider } from '@/contexts/transactions-context'
 import { Sidebar } from '@/components/wallet/sidebar'
 import { MobileNav } from '@/components/wallet/mobile-nav'
+import { LineImportBanner } from '@/components/wallet/line-import-banner'
 
 export default function WalletLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,6 +17,9 @@ export default function WalletLayout({ children }: { children: React.ReactNode }
 
         {/* Mobile bottom nav */}
         <MobileNav />
+
+        {/* LINE Bot 匯入通知 */}
+        <LineImportBanner />
       </div>
     </TransactionsProvider>
   )
