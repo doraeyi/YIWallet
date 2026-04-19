@@ -11,10 +11,12 @@ export function LineImportBanner() {
   const [visible, setVisible] = useState(false)
   const [updating, setUpdating] = useState(false)
   const dismissedRef = useRef(false)
+  const esRef = useRef<EventSource | null>(null)
 
-  useEffect(() => {
+  function connectSSE() {
+    if (esRef.current) esRef.current.close()
     const es = new EventSource('/api/line/sse')
-
+    esRef.current = es
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data) as { count: number }
@@ -24,8 +26,35 @@ export function LineImportBanner() {
         }
       } catch {}
     }
+  }
 
-    return () => es.close()
+  async function checkPending() {
+    if (dismissedRef.current) return
+    try {
+      const data = await fetch('/api/line/pending').then(r => r.json())
+      if (data.count > 0) {
+        setCount(data.count)
+        setVisible(true)
+      }
+    } catch {}
+  }
+
+  useEffect(() => {
+    connectSSE()
+
+    // 回到前景時重連 SSE 並補查一次（iOS PWA 背景會斷線）
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        connectSSE()
+        checkPending()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      esRef.current?.close()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   async function handleUpdate() {
