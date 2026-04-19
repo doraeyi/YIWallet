@@ -1,8 +1,15 @@
-const CACHE_NAME = 'yiwallet-v2'
+import { APP_VERSION } from '@/lib/version'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
+  const CACHE_NAME = `yiwallet-${APP_VERSION}`
+
+  const sw = `
+const CACHE_NAME = '${CACHE_NAME}'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.add('/offline')))
-  // 不立刻接管，等使用者確認更新
 })
 
 self.addEventListener('activate', (event) => {
@@ -24,7 +31,6 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
   if (!event.request.url.startsWith(self.location.origin)) return
 
-  // 導覽請求永遠走網路
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('/offline'))
@@ -32,10 +38,19 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // 靜態資源：cache first
   event.respondWith(
     caches.match(event.request).then(
       (cached) => cached ?? fetch(event.request).catch(() => caches.match('/offline'))
     )
   )
 })
+`
+
+  return new Response(sw, {
+    headers: {
+      'Content-Type': 'application/javascript',
+      'Service-Worker-Allowed': '/',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  })
+}

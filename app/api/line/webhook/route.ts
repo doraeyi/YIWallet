@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { parseAny } from '@/lib/line-parser'
-import { incrementPending } from '@/lib/line-pending'
 import { confirmLink, getTokenForLineUser } from '@/lib/line-links'
 
 const BACKEND = process.env.API_URL!
@@ -71,7 +70,6 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    // 查詢此 LINE user 對應的後端 token
     const token = await getTokenForLineUser(lineUserId)
     if (!token) {
       await replyMessage(
@@ -107,7 +105,10 @@ export async function POST(req: NextRequest) {
       })
 
       if (res.ok) {
-        incrementPending()
+        // 記帳成功，在 MySQL 累加此 user 的 pending count
+        await fetch(`${BACKEND}/line/pending/increment?line_user_id=${encodeURIComponent(lineUserId)}`, {
+          method: 'POST',
+        }).catch(() => {})
         await replyMessage(event.replyToken, `✅ 已記帳\n${parsed.merchant}　${parsed.amount}$`)
       } else {
         await replyMessage(

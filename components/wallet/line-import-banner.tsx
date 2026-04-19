@@ -5,28 +5,14 @@ import { BotIcon, XIcon } from 'lucide-react'
 import { useTransactions } from '@/hooks/use-transactions'
 import { cn } from '@/lib/utils'
 
+const POLL_INTERVAL = 15_000
+
 export function LineImportBanner() {
   const { refetch } = useTransactions()
   const [count, setCount] = useState(0)
   const [visible, setVisible] = useState(false)
   const [updating, setUpdating] = useState(false)
   const dismissedRef = useRef(false)
-  const esRef = useRef<EventSource | null>(null)
-
-  function connectSSE() {
-    if (esRef.current) esRef.current.close()
-    const es = new EventSource('/api/line/sse')
-    esRef.current = es
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data) as { count: number }
-        if (data.count > 0 && !dismissedRef.current) {
-          setCount(data.count)
-          setVisible(true)
-        }
-      } catch {}
-    }
-  }
 
   async function checkPending() {
     if (dismissedRef.current) return
@@ -40,19 +26,17 @@ export function LineImportBanner() {
   }
 
   useEffect(() => {
-    connectSSE()
+    checkPending()
 
-    // 回到前景時重連 SSE 並補查一次（iOS PWA 背景會斷線）
+    const id = setInterval(checkPending, POLL_INTERVAL)
+
     function handleVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        connectSSE()
-        checkPending()
-      }
+      if (document.visibilityState === 'visible') checkPending()
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      esRef.current?.close()
+      clearInterval(id)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])

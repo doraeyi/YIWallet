@@ -1,11 +1,30 @@
 import { NextResponse } from 'next/server'
-import { getPending, clearPending } from '@/lib/line-pending'
+import { verifySession } from '@/lib/session'
+
+const BACKEND = process.env.API_URL!
 
 export async function GET() {
-  return NextResponse.json({ count: getPending() })
+  const session = await verifySession()
+  if (!session) return NextResponse.json({ count: 0 })
+
+  try {
+    const res = await fetch(`${BACKEND}/line/pending/count`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    })
+    if (!res.ok) return NextResponse.json({ count: 0 })
+    return NextResponse.json(await res.json())
+  } catch {
+    return NextResponse.json({ count: 0 })
+  }
 }
 
 export async function DELETE() {
-  clearPending()
+  const session = await verifySession()
+  if (!session) return NextResponse.json({ ok: false })
+
+  await fetch(`${BACKEND}/line/pending/count`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${session.token}` },
+  }).catch(() => {})
   return NextResponse.json({ ok: true })
 }
