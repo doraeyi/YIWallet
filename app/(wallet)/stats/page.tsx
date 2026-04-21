@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { XIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -25,7 +25,7 @@ function viewEmoji(type: 'debit' | 'credit' | 'easycard'): string {
   return '🏧'
 }
 
-export default function StatsPage() {
+function StatsContent() {
   const [period, setPeriod] = useState<Period>('month')
   const { transactions, isLoaded } = useTransactions()
   const { cards } = useCards()
@@ -352,5 +352,13 @@ function CategorySection({
         </div>
       </div>
     </div>
+  )
+}
+
+export default function StatsPage() {
+  return (
+    <Suspense>
+      <StatsContent />
+    </Suspense>
   )
 }
