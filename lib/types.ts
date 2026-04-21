@@ -19,6 +19,7 @@ export interface Transaction {
   note: string
   date: string      // YYYY-MM-DD
   createdAt: string // ISO datetime
+  cardId?: string
 }
 
 export interface ChartDataPoint {
@@ -46,6 +47,19 @@ export const CATEGORIES: Category[] = [
 
 export function getCategoryById(id: string): Category | undefined {
   return CATEGORIES.find(c => c.id === id)
+}
+
+export interface Card {
+  id: string
+  name: string
+  type: 'debit' | 'credit' | 'easycard'
+  color: string
+  lastFour?: string
+  bankCode?: string
+  bank?: string
+  balance?: number           // debit/easycard 餘額
+  passExpiryDate?: string    // 悠遊卡月票到期日 YYYY-MM-DD
+  paymentDueDate?: string    // 信用卡繳費截止日 YYYY-MM-DD
 }
 
 export interface Job {

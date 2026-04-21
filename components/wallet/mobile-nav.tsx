@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HomeIcon, BarChart3Icon, SettingsIcon, PlusIcon, CalendarDaysIcon } from 'lucide-react'
+import { HomeIcon, SettingsIcon, PlusIcon, CalendarDaysIcon, ReceiptTextIcon } from 'lucide-react'
 import { AddTransactionSheet } from './add-transaction-sheet'
 import { useTransactions } from '@/hooks/use-transactions'
 import { cn } from '@/lib/utils'
@@ -13,8 +13,8 @@ const LEFT_ITEMS  = [
   { href: '/schedule',  label: '班表', icon: CalendarDaysIcon },
 ]
 const RIGHT_ITEMS = [
-  { href: '/stats',    label: '統計', icon: BarChart3Icon },
-  { href: '/settings', label: '設定', icon: SettingsIcon },
+  { href: '/statements',  label: '對帳', icon: ReceiptTextIcon },
+  { href: '/settings',    label: '設定', icon: SettingsIcon },
 ]
 
 export function MobileNav() {

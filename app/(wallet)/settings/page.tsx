@@ -1,15 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, ReceiptIcon, BotIcon, CopyIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon } from 'lucide-react'
 import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/actions/auth'
-import { InvoiceSyncSheet } from '@/components/wallet/invoice-sync-sheet'
-
 const JOB_COLORS = [
   '#6366F1', '#F59E0B', '#10B981', '#EF4444',
   '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4',
@@ -25,19 +23,7 @@ const EMPTY_FORM = {
   health_insurance: '',
 }
 
-const CARRIER_KEY = 'yiwallet_carrier_code'
-const CARRIER_VERIFY_KEY = 'yiwallet_carrier_verify'
 
-function getMonthRange(): { startDate: string; endDate: string } {
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
-  return {
-    startDate: `${y}-${m}-01`,
-    endDate: `${y}-${m}-${String(lastDay).padStart(2, '0')}`,
-  }
-}
 
 export default function SettingsPage() {
   const { budget, setBudget } = useTransactions()
@@ -117,40 +103,9 @@ export default function SettingsPage() {
     setTimeout(() => setCodeCopied(false), 2000)
   }
 
-  // 電子發票載具
-  const [carrierCode, setCarrierCode] = useState('')
-  const [carrierVerify, setCarrierVerify] = useState('')
-  const [carrierSaved, setCarrierSaved] = useState(false)
-  const [carrierError, setCarrierError] = useState('')
-  const [syncOpen, setSyncOpen] = useState(false)
-  const { startDate, endDate } = getMonthRange()
-
-  useEffect(() => {
-    setCarrierCode(localStorage.getItem(CARRIER_KEY) ?? '')
-    setCarrierVerify(localStorage.getItem(CARRIER_VERIFY_KEY) ?? '')
-  }, [])
-
   useEffect(() => {
     api.fetchJobs().then(setJobs).catch(() => {})
   }, [])
-
-  function handleSaveCarrier() {
-    const trimmed = carrierCode.trim().toUpperCase()
-    if (!/^\/[A-Z0-9+.]{7}$/.test(trimmed)) {
-      setCarrierError('格式錯誤，應為 /XXXXXXX（含「/」共 8 碼）')
-      return
-    }
-    if (!carrierVerify) {
-      setCarrierError('請輸入驗證碼')
-      return
-    }
-    setCarrierError('')
-    localStorage.setItem(CARRIER_KEY, trimmed)
-    localStorage.setItem(CARRIER_VERIFY_KEY, carrierVerify)
-    setCarrierCode(trimmed)
-    setCarrierSaved(true)
-    setTimeout(() => setCarrierSaved(false), 2000)
-  }
 
   function handleSaveBudget() {
     const val = parseFloat(input)
@@ -252,55 +207,6 @@ export default function SettingsPage() {
                 {saved ? '已儲存' : '儲存'}
               </button>
             </div>
-          </div>
-        </div>
-
-        {/* Invoice carrier */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="flex items-center gap-2 border-b px-4 py-3">
-            <ReceiptIcon className="size-4 text-amber-500" />
-            <p className="text-sm font-semibold">電子發票載具</p>
-          </div>
-          <div className="px-4 py-4 flex flex-col gap-3">
-            <div className="flex flex-col gap-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium">手機條碼</label>
-                <p className="mb-1.5 text-xs text-muted-foreground">格式：/XXXXXXX（含「/」共 8 碼）</p>
-                <input
-                  value={carrierCode}
-                  onChange={e => { setCarrierCode(e.target.value); setCarrierError('') }}
-                  placeholder="/MH3LKMR"
-                  className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm uppercase outline-none focus:border-ring"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">驗證碼（密碼）</label>
-                <p className="mb-1.5 text-xs text-muted-foreground">財政部平台手機條碼專區的登入密碼</p>
-                <input
-                  type="password"
-                  value={carrierVerify}
-                  onChange={e => { setCarrierVerify(e.target.value); setCarrierError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleSaveCarrier()}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
-                />
-              </div>
-              {carrierError && <p className="text-xs text-rose-500">{carrierError}</p>}
-              <button
-                onClick={handleSaveCarrier}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
-              >
-                {carrierSaved && <CheckIcon className="size-4" />}
-                {carrierSaved ? '已儲存' : '儲存設定'}
-              </button>
-            </div>
-            <button
-              onClick={() => setSyncOpen(true)}
-              disabled={!carrierCode || !carrierVerify}
-              className="w-full rounded-xl border-2 border-dashed border-amber-300 py-2.5 text-sm font-medium text-amber-600 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed dark:hover:bg-amber-950/20"
-            >
-              匯入本月發票
-            </button>
           </div>
         </div>
 
@@ -434,15 +340,6 @@ export default function SettingsPage() {
           </button>
         </form>
       </div>
-
-      <InvoiceSyncSheet
-        open={syncOpen}
-        onOpenChange={setSyncOpen}
-        carrierCode={carrierCode}
-        carrierVerify={carrierVerify}
-        startDate={startDate}
-        endDate={endDate}
-      />
 
       {/* Job form overlay */}
       {formOpen && (

@@ -1,8 +1,12 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { XIcon } from 'lucide-react'
+import Link from 'next/link'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { useTransactions } from '@/hooks/use-transactions'
+import { useCards } from '@/hooks/use-cards'
 import { filterByPeriod, sumByType, groupByCategory, buildChartData, formatCurrency, groupByDate, formatDate } from '@/lib/finance-utils'
 import { getCategoryById, type Period } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -15,18 +19,60 @@ const PERIODS: { value: Period; label: string }[] = [
 
 const FALLBACK_COLORS = ['#EF4444','#3B82F6','#8B5CF6','#F59E0B','#10B981','#EC4899','#14B8A6','#6B7280']
 
+function viewEmoji(type: 'debit' | 'credit' | 'easycard'): string {
+  if (type === 'credit') return '💳'
+  if (type === 'easycard') return '🚌'
+  return '🏧'
+}
+
 export default function StatsPage() {
   const [period, setPeriod] = useState<Period>('month')
   const { transactions, isLoaded } = useTransactions()
+  const { cards } = useCards()
+  const searchParams = useSearchParams()
+  const cardIdParam = searchParams.get('cardId')
+  const filterParam = searchParams.get('filter')
 
-  const filtered    = useMemo(() => filterByPeriod(transactions, period), [transactions, period])
+  const activeCard = cardIdParam ? cards.find(c => c.id === cardIdParam) : undefined
+
+  const periodFiltered = useMemo(() => filterByPeriod(transactions, period), [transactions, period])
+  const filtered = useMemo(() => {
+    if (cardIdParam) return periodFiltered.filter(tx => tx.cardId === cardIdParam)
+    if (filterParam === 'cash') return periodFiltered.filter(tx => !tx.cardId)
+    return periodFiltered
+  }, [periodFiltered, cardIdParam, filterParam])
   const income      = sumByType(filtered, 'income')
   const expense     = sumByType(filtered, 'expense')
   const balance     = income - expense
   const expenseCats = useMemo(() => groupByCategory(filtered, 'expense'), [filtered])
   const incomeCats  = useMemo(() => groupByCategory(filtered, 'income'),  [filtered])
-  const chartData   = useMemo(() => buildChartData(transactions, period), [transactions, period])
+  const cardFiltered = useMemo(() => {
+    if (cardIdParam) return transactions.filter(tx => tx.cardId === cardIdParam)
+    if (filterParam === 'cash') return transactions.filter(tx => !tx.cardId)
+    return transactions
+  }, [transactions, cardIdParam, filterParam])
+  const chartData   = useMemo(() => buildChartData(cardFiltered, period), [cardFiltered, period])
   const groups      = useMemo(() => groupByDate(filtered), [filtered])
+
+  const cardStats = useMemo(() => {
+    const cashTxs = filtered.filter(tx => !tx.cardId)
+    const rows = [
+      {
+        id: 'cash', name: '現金', emoji: '💵', color: '#10B981',
+        expense: sumByType(cashTxs, 'expense'),
+        income:  sumByType(cashTxs, 'income'),
+      },
+      ...cards.map(card => {
+        const txs = filtered.filter(tx => tx.cardId === card.id)
+        return {
+          id: card.id, name: card.name, emoji: viewEmoji(card.type), color: card.color,
+          expense: sumByType(txs, 'expense'),
+          income:  sumByType(txs, 'income'),
+        }
+      }),
+    ].filter(r => r.expense > 0 || r.income > 0)
+    return rows
+  }, [filtered, cards])
 
   const expensePieData = expenseCats.map(d => ({
     name:  getCategoryById(d.category)?.name ?? d.category,
@@ -47,7 +93,18 @@ export default function StatsPage() {
     <div className="flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
-        <h1 className="text-xl font-bold">收支分析</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold">收支分析</h1>
+          {(cardIdParam || filterParam) && (
+            <Link
+              href="/stats"
+              className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground hover:bg-muted/80"
+            >
+              {filterParam === 'cash' ? '現金' : (activeCard?.name ?? '卡片')}
+              <XIcon className="size-3" />
+            </Link>
+          )}
+        </div>
         {/* Period tabs */}
         <div className="flex gap-1.5">
           {PERIODS.map(p => (
@@ -85,6 +142,48 @@ export default function StatsPage() {
             </p>
           </div>
         </div>
+
+        {/* Cards overview */}
+        {cardStats.length > 0 && (
+          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+            <p className="mb-3 text-sm font-semibold">各帳戶收支</p>
+            <div className="flex flex-col gap-2">
+              {cardStats.map(row => {
+                const net = row.income - row.expense
+                const total = row.income + row.expense
+                const expenseRatio = total > 0 ? row.expense / total : 0
+                return (
+                  <div key={row.id} className="flex items-center gap-3">
+                    <span
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-base"
+                      style={{ backgroundColor: row.color + '33' }}
+                    >
+                      {row.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium truncate">{row.name}</span>
+                        <span className={cn('text-xs font-semibold ml-2 shrink-0', net >= 0 ? 'text-emerald-600' : 'text-rose-500')}>
+                          {net >= 0 ? '+' : ''}{formatCurrency(net)}
+                        </span>
+                      </div>
+                      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${expenseRatio * 100}%`, backgroundColor: row.color }}
+                        />
+                      </div>
+                      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                        <span>支出 {formatCurrency(row.expense)}</span>
+                        <span>收入 {formatCurrency(row.income)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Bar chart — full width */}
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">

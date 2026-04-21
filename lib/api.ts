@@ -1,6 +1,8 @@
-import type { Transaction } from './types'
+import type { Transaction, Card } from './types'
 
 const API = '/api/backend'
+
+// ── Transactions ──────────────────────────────────────────────────
 
 interface ApiTransaction {
   id: string
@@ -10,9 +12,10 @@ interface ApiTransaction {
   note: string
   date: string
   created_at: string
+  card_id?: string | null
 }
 
-function normalize(t: ApiTransaction): Transaction {
+function normalizeTransaction(t: ApiTransaction): Transaction {
   return {
     id: t.id,
     type: t.type,
@@ -21,6 +24,7 @@ function normalize(t: ApiTransaction): Transaction {
     note: t.note,
     date: typeof t.date === 'string' ? t.date.slice(0, 10) : String(t.date),
     createdAt: t.created_at,
+    cardId: t.card_id ?? undefined,
   }
 }
 
@@ -28,14 +32,14 @@ export async function fetchTransactionsByMonth(year: number, month: number): Pro
   const res = await fetch(`${API}/transactions?year=${year}&month=${month}`)
   if (!res.ok) throw new Error('Failed to fetch transactions')
   const data: ApiTransaction[] = await res.json()
-  return data.map(normalize)
+  return data.map(normalizeTransaction)
 }
 
 export async function fetchAllTransactions(): Promise<Transaction[]> {
   const res = await fetch(`${API}/transactions`)
   if (!res.ok) throw new Error('Failed to fetch transactions')
   const data: ApiTransaction[] = await res.json()
-  return data.map(normalize)
+  return data.map(normalizeTransaction)
 }
 
 export async function createTransaction(data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
@@ -48,13 +52,14 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
       category_id: data.category,
       note: data.note,
       date: data.date,
+      card_id: data.cardId ?? null,
     }),
   })
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`Failed to create transaction (${res.status}): ${err}`)
   }
-  return normalize(await res.json())
+  return normalizeTransaction(await res.json())
 }
 
 export async function updateTransaction(id: string, data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
@@ -67,15 +72,107 @@ export async function updateTransaction(id: string, data: Omit<Transaction, 'id'
       category_id: data.category,
       note: data.note,
       date: data.date,
+      card_id: data.cardId ?? null,
     }),
   })
   if (!res.ok) throw new Error('Failed to update transaction')
-  return normalize(await res.json())
+  return normalizeTransaction(await res.json())
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
   const res = await fetch(`${API}/transactions/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete transaction')
+}
+
+export async function setTransactionCard(txId: string, cardId: string | null): Promise<void> {
+  const res = await fetch(`${API}/transactions/${txId}/card`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card_id: cardId }),
+  })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to update card')
+}
+
+// ── Cards ─────────────────────────────────────────────────────────
+
+interface ApiCard {
+  id: string
+  name: string
+  type: 'debit' | 'credit' | 'easycard'
+  color: string
+  last_four?: string | null
+  bank_code?: string | null
+  bank?: string | null
+  balance?: number | null
+  pass_expiry_date?: string | null
+  payment_due_date?: string | null
+}
+
+function normalizeCard(c: ApiCard): Card {
+  return {
+    id: c.id,
+    name: c.name,
+    type: c.type,
+    color: c.color,
+    lastFour: c.last_four ?? undefined,
+    bankCode: c.bank_code ?? undefined,
+    bank: c.bank ?? undefined,
+    balance: c.balance ?? undefined,
+    passExpiryDate: c.pass_expiry_date ?? undefined,
+    paymentDueDate: c.payment_due_date ?? undefined,
+  }
+}
+
+export async function fetchCards(): Promise<Card[]> {
+  const res = await fetch(`${API}/cards`)
+  if (!res.ok) throw new Error('Failed to fetch cards')
+  const data: ApiCard[] = await res.json()
+  return data.map(normalizeCard)
+}
+
+export async function createCard(data: Omit<Card, 'id'>): Promise<Card> {
+  const res = await fetch(`${API}/cards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: data.name,
+      type: data.type,
+      color: data.color,
+      last_four: data.lastFour ?? null,
+      bank_code: data.bankCode ?? null,
+      bank: data.bank ?? null,
+      balance: data.balance ?? null,
+      pass_expiry_date: data.passExpiryDate ?? null,
+      payment_due_date: data.paymentDueDate ?? null,
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to create card')
+  return normalizeCard(await res.json())
+}
+
+export async function updateCard(id: string, data: Omit<Card, 'id'>): Promise<Card> {
+  const res = await fetch(`${API}/cards/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: data.name,
+      type: data.type,
+      color: data.color,
+      last_four: data.lastFour ?? null,
+      bank_code: data.bankCode ?? null,
+      bank: data.bank ?? null,
+      balance: data.balance ?? null,
+      pass_expiry_date: data.passExpiryDate ?? null,
+      payment_due_date: data.paymentDueDate ?? null,
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to update card')
+  return normalizeCard(await res.json())
+}
+
+export async function deleteCard(id: string): Promise<void> {
+  const res = await fetch(`${API}/cards/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete card')
 }
 
 // ── Jobs ──────────────────────────────────────────────────────────

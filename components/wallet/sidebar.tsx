@@ -3,17 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HomeIcon, BarChart3Icon, SettingsIcon, PlusIcon, WalletIcon, CalendarDaysIcon, LogOutIcon } from 'lucide-react'
+import { HomeIcon, SettingsIcon, PlusIcon, WalletIcon, CalendarDaysIcon, LogOutIcon, ReceiptTextIcon } from 'lucide-react'
 import { AddTransactionSheet } from './add-transaction-sheet'
 import { useTransactions } from '@/hooks/use-transactions'
 import { logout } from '@/app/actions/auth'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: '首頁', icon: HomeIcon },
-  { href: '/schedule',  label: '班表', icon: CalendarDaysIcon },
-  { href: '/stats',        label: '統計', icon: BarChart3Icon },
-  { href: '/settings',     label: '設定', icon: SettingsIcon },
+  { href: '/dashboard',   label: '首頁', icon: HomeIcon },
+  { href: '/schedule',    label: '班表', icon: CalendarDaysIcon },
+  { href: '/statements',  label: '對帳', icon: ReceiptTextIcon },
+  { href: '/settings',    label: '設定', icon: SettingsIcon },
 ]
 
 export function Sidebar() {

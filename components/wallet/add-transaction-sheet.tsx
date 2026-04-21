@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
+import { useCards } from '@/hooks/use-cards'
 import { CATEGORIES, type Transaction, type TransactionType } from '@/lib/types'
 import { todayString } from '@/lib/finance-utils'
 import { cn } from '@/lib/utils'
@@ -38,12 +39,14 @@ export function AddTransactionSheet({
   initialData,
 }: AddTransactionSheetProps) {
   const isDesktop = useIsDesktop()
+  const { cards } = useCards()
 
   const [type,     setType]     = useState<TransactionType>(initialData?.type     ?? 'expense')
   const [category, setCategory] = useState(initialData?.category ?? '')
   const [amount,   setAmount]   = useState(initialData ? String(initialData.amount) : '')
   const [note,     setNote]     = useState(initialData?.note     ?? '')
   const [date,     setDate]     = useState(initialData?.date     ?? todayString())
+  const [cardId,   setCardId]   = useState<string | undefined>(initialData?.cardId)
 
   const categories = CATEGORIES.filter(c => c.type === type)
 
@@ -55,10 +58,10 @@ export function AddTransactionSheet({
   const handleSave = useCallback(() => {
     const parsed = parseFloat(amount)
     if (!amount || isNaN(parsed) || parsed <= 0 || !category) return
-    onSubmit({ type, amount: parsed, category, note, date })
-    setAmount(''); setNote(''); setDate(todayString()); setCategory(''); setType('expense')
+    onSubmit({ type, amount: parsed, category, note, date, cardId })
+    setAmount(''); setNote(''); setDate(todayString()); setCategory(''); setType('expense'); setCardId(undefined)
     onOpenChange(false)
-  }, [amount, category, type, note, date, onSubmit, onOpenChange])
+  }, [amount, category, type, note, date, cardId, onSubmit, onOpenChange])
 
   const handleKey = useCallback((key: string) => {
     if (key === '✓') { handleSave(); return }
@@ -160,6 +163,39 @@ export function AddTransactionSheet({
         />
       </div>
 
+      {/* Card selector — only shown when cards exist */}
+      {cards.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto border-t px-4 py-2.5 scrollbar-none">
+          {/* 現金 option */}
+          <button
+            onClick={() => setCardId(undefined)}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+              !cardId
+                ? 'bg-emerald-500 text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80',
+            )}
+          >
+            💵 現金
+          </button>
+          {cards.map(card => (
+            <button
+              key={card.id}
+              onClick={() => setCardId(card.id)}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                cardId === card.id ? 'text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80',
+              )}
+              style={cardId === card.id ? { backgroundColor: card.color } : undefined}
+            >
+              {card.type === 'credit' ? '💳' : '🏧'}
+              {card.name}
+              {card.lastFour && <span className="opacity-70">···· {card.lastFour}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Number pad */}
       <div className="grid grid-cols-4 border-t bg-muted/20">
         {PAD_KEYS.map((key, idx) => {
@@ -192,7 +228,6 @@ export function AddTransactionSheet({
     </div>
   )
 
-  // Desktop: Dialog (centered modal, unaffected by sidebar)
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -204,7 +239,6 @@ export function AddTransactionSheet({
     )
   }
 
-  // Mobile: bottom Sheet
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" showCloseButton={false} className="gap-0 rounded-t-2xl p-0 max-h-[92dvh] overflow-y-auto">
