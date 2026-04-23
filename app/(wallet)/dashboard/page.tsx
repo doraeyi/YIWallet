@@ -11,6 +11,8 @@ import { filterByMonth, sumByType, groupByDate, formatCurrency } from '@/lib/fin
 import { getCategoryById, type Card } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AddCardSheet } from '@/components/wallet/add-card-sheet'
+import { MonthNav } from '@/components/wallet/month-nav'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 type ViewItem =
   | { kind: 'all' }
@@ -127,6 +129,17 @@ export default function DashboardPage() {
   const [showPassInfo, setShowPassInfo] = useState(false)
   const [renewingPass, setRenewingPass] = useState(false)
   const [bulkAssigning, setBulkAssigning] = useState(false)
+  const [showUnassigned, setShowUnassigned] = useState(false)
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
+  // 用 lazy initializer 直接讀 localStorage，避免第一幀空窗導致 banner 閃現
+  const [dismissedIds, setDismissedIdsState] = useState<string>(
+    () => (typeof window !== 'undefined' ? localStorage.getItem('yiwallet_dismissed_unassigned') ?? '' : '')
+  )
+
+  function setDismissedIds(key: string) {
+    setDismissedIdsState(key)
+    localStorage.setItem('yiwallet_dismissed_unassigned', key)
+  }
 
   useEffect(() => { setShowPassInfo(false) }, [viewIndex])
 
@@ -176,25 +189,71 @@ export default function DashboardPage() {
     ? '/stats?filter=cash'
     : '/stats'
 
-  // 未分類交易（未指定卡片）數量
-  const unassignedCount = useMemo(
-    () => allFiltered.filter(tx => !tx.cardId).length,
-    [allFiltered],
+  // 未分類交易（未指定卡片，且非領現，且非明確選現金）
+  // cashTxIds 內嵌在 memo 裡，每次 allFiltered 變動時重新讀 localStorage，避免 stale
+  const unassigned = useMemo(() => {
+    let cashIds: Set<string>
+    try { cashIds = new Set(JSON.parse(localStorage.getItem('yiwallet_cash_tx_ids') ?? '[]')) }
+    catch { cashIds = new Set() }
+    return allFiltered.filter(tx =>
+      !tx.cardId &&
+      !/領現 \d{4}-\d{2}-\d{2}$/.test(tx.note) &&
+      !cashIds.has(tx.id)
+    )
+  }, [allFiltered])
+  const unassignedCount = unassigned.length
+
+  // 用所有未分類 id 的排序字串當 key，只要清單有變就重新顯示
+  const unassignedKey = useMemo(
+    () => unassigned.map(tx => tx.id).sort().join(','),
+    [unassigned],
   )
+
+  useEffect(() => {
+    if (unassignedKey !== dismissedIds && unassignedCount > 0 && defaultCard) {
+      setSelectedTxIds(new Set(unassigned.map(tx => tx.id)))
+    }
+  }, [unassignedKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function openUnassignedDialog() {
+    setSelectedTxIds(new Set(unassigned.map(tx => tx.id)))
+    setShowUnassigned(true)
+  }
+
+  function dismissUnassigned() {
+    setShowUnassigned(false)
+    setDismissedIds(unassignedKey)
+  }
+
+  function toggleTx(id: string) {
+    setSelectedTxIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    setSelectedTxIds(prev =>
+      prev.size === unassigned.length
+        ? new Set()
+        : new Set(unassigned.map(tx => tx.id))
+    )
+  }
 
   // 批量套用常用卡
   const handleBulkAssign = useCallback(async () => {
-    if (!defaultCard || bulkAssigning) return
+    if (!defaultCard || bulkAssigning || selectedTxIds.size === 0) return
     setBulkAssigning(true)
     try {
       const { setTransactionCard } = await import('@/lib/api')
-      const unassigned = allFiltered.filter(tx => !tx.cardId)
-      await Promise.all(unassigned.map(tx => setTransactionCard(tx.id, defaultCard.id)))
+      await Promise.all([...selectedTxIds].map(id => setTransactionCard(id, defaultCard.id)))
       await refetch()
+      setShowUnassigned(false)
     } finally {
       setBulkAssigning(false)
     }
-  }, [defaultCard, allFiltered, bulkAssigning, refetch])
+  }, [defaultCard, selectedTxIds, bulkAssigning, refetch])
 
   const handleRenewPass = useCallback(async () => {
     if (currentView.kind !== 'card' || renewingPass) return
@@ -251,22 +310,7 @@ export default function DashboardPage() {
     <div className="flex flex-col">
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-amber-400 px-4 py-1 text-sm font-semibold text-white">
-            月
-          </span>
-          <div className="flex items-center gap-0.5">
-            <button onClick={prevMonth} className="px-1.5 py-1 text-lg text-muted-foreground hover:text-foreground">
-              ‹
-            </button>
-            <span className="text-base font-semibold">
-              {year}年{String(month).padStart(2, '0')}月
-            </span>
-            <button onClick={nextMonth} className="px-1.5 py-1 text-lg text-muted-foreground hover:text-foreground">
-              ›
-            </button>
-          </div>
-        </div>
+        <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         <div className="flex items-center gap-3 text-muted-foreground">
           <button className="hover:text-foreground">
             <BellIcon className="size-5" />
@@ -442,21 +486,98 @@ export default function DashboardPage() {
       </div>
 
       {/* ── 套用常用卡 banner ──────────────────────────────── */}
-      {defaultCard && unassignedCount > 0 && (
-        <div className="mx-4 mb-3 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-2.5 dark:bg-amber-900/20">
+      {defaultCard && unassignedCount > 0 && unassignedKey !== dismissedIds && (
+        <button
+          onClick={openUnassignedDialog}
+          className="mx-4 mb-3 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-2.5 dark:bg-amber-900/20 w-[calc(100%-2rem)]"
+        >
           <span className="text-xs text-amber-700 dark:text-amber-300">
-            有 {unassignedCount} 筆未分類，套用到{' '}
+            有 <span className="font-semibold">{unassignedCount}</span> 筆未分類，套用到{' '}
             <span className="font-semibold">{defaultCard.name}</span>？
           </span>
-          <button
-            onClick={handleBulkAssign}
-            disabled={bulkAssigning}
-            className="shrink-0 rounded-lg bg-amber-400 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
-          >
-            {bulkAssigning ? '套用中…' : '套用'}
-          </button>
-        </div>
+          <ChevronRightIcon className="size-3.5 text-amber-500 shrink-0" />
+        </button>
       )}
+
+      {/* ── 未分類交易 Dialog ──────────────────────────────── */}
+      <Dialog open={showUnassigned} onOpenChange={open => { if (!open) dismissUnassigned() }}>
+        <DialogContent showCloseButton={false} className="p-0 max-w-sm overflow-hidden">
+          <DialogTitle className="sr-only">未分類交易</DialogTitle>
+
+          {/* header */}
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <span className="text-sm font-semibold">未分類交易</span>
+            <button onClick={dismissUnassigned} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+              <XIcon className="size-4" />
+            </button>
+          </div>
+
+          {/* 全選列 */}
+          <button
+            onClick={toggleAll}
+            className="flex w-full items-center gap-2.5 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/40"
+          >
+            <span className={cn(
+              'flex size-4 items-center justify-center rounded border transition-colors',
+              selectedTxIds.size === unassigned.length
+                ? 'border-amber-400 bg-amber-400 text-white'
+                : 'border-muted-foreground/40',
+            )}>
+              {selectedTxIds.size === unassigned.length && <span className="text-[10px] font-bold">✓</span>}
+            </span>
+            全選（{unassigned.length} 筆）
+          </button>
+
+          {/* 交易清單 */}
+          <div className="max-h-[50dvh] overflow-y-auto">
+            {unassigned.map((tx, idx) => {
+              const cat = getCategoryById(tx.category)
+              const checked = selectedTxIds.has(tx.id)
+              return (
+                <button
+                  key={tx.id}
+                  onClick={() => toggleTx(tx.id)}
+                  className={cn('flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/40', idx > 0 && 'border-t')}
+                >
+                  <span className={cn(
+                    'flex size-4 shrink-0 items-center justify-center rounded border transition-colors',
+                    checked ? 'border-amber-400 bg-amber-400 text-white' : 'border-muted-foreground/40',
+                  )}>
+                    {checked && <span className="text-[10px] font-bold">✓</span>}
+                  </span>
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-lg" style={{ backgroundColor: cat?.color }}>
+                    {cat?.emoji ?? '💸'}
+                  </span>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-sm font-medium">{cat?.name ?? tx.category}</p>
+                    {tx.note && <p className="truncate text-xs text-muted-foreground">{tx.note}</p>}
+                  </div>
+                  <span className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
+                    {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* footer */}
+          <div className="flex gap-2 border-t px-4 py-3">
+            <button
+              onClick={dismissUnassigned}
+              className="flex-1 rounded-xl border py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted/40"
+            >
+              不套用
+            </button>
+            <button
+              onClick={handleBulkAssign}
+              disabled={bulkAssigning || selectedTxIds.size === 0}
+              className="flex-1 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
+            >
+              {bulkAssigning ? '套用中…' : `套用 ${selectedTxIds.size} 筆`}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Delete card confirmation ───────────────────────── */}
       {deleteTarget && (

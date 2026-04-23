@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { XIcon, DeleteIcon } from 'lucide-react'
 import {
   Sheet,
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 interface AddTransactionSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>) => void
+  onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>, isCash: boolean) => Promise<Transaction> | void
   initialData?: Transaction
 }
 
@@ -39,16 +39,27 @@ export function AddTransactionSheet({
   initialData,
 }: AddTransactionSheetProps) {
   const isDesktop = useIsDesktop()
-  const { cards } = useCards()
+  const { cards, defaultCard } = useCards()
 
   const [type,     setType]     = useState<TransactionType>(initialData?.type     ?? 'expense')
   const [category, setCategory] = useState(initialData?.category ?? '')
   const [amount,   setAmount]   = useState(initialData ? String(initialData.amount) : '')
   const [note,     setNote]     = useState(initialData?.note     ?? '')
   const [date,     setDate]     = useState(initialData?.date     ?? todayString())
-  const [cardId,   setCardId]   = useState<string | undefined>(initialData?.cardId)
+  const [cardId,        setCardId]        = useState<string | undefined>(
+    initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id)
+  )
+  const [isExplicitCash, setIsExplicitCash] = useState(false)
 
   const categories = CATEGORIES.filter(c => c.type === type)
+
+  // 當 cards 載入完成後，若是新增模式且尚未選卡，自動帶入 defaultCard
+  useEffect(() => {
+    if (!initialData && cardId === undefined && !isExplicitCash) {
+      const preferred = defaultCard?.id ?? cards[0]?.id
+      if (preferred) setCardId(preferred)
+    }
+  }, [defaultCard?.id, cards.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleTypeChange(t: TransactionType) {
     setType(t)
@@ -58,10 +69,13 @@ export function AddTransactionSheet({
   const handleSave = useCallback(() => {
     const parsed = parseFloat(amount)
     if (!amount || isNaN(parsed) || parsed <= 0 || !category) return
-    onSubmit({ type, amount: parsed, category, note, date, cardId })
-    setAmount(''); setNote(''); setDate(todayString()); setCategory(''); setType('expense'); setCardId(undefined)
+    const isCash = !cardId && cards.length > 0 && isExplicitCash
+    onSubmit({ type, amount: parsed, category, note, date, cardId }, isCash)
+    setAmount(''); setNote(''); setDate(todayString()); setCategory(''); setType('expense')
+    setIsExplicitCash(false)
+    setCardId(defaultCard?.id ?? cards[0]?.id)
     onOpenChange(false)
-  }, [amount, category, type, note, date, cardId, onSubmit, onOpenChange])
+  }, [amount, category, type, note, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id])
 
   const handleKey = useCallback((key: string) => {
     if (key === '✓') { handleSave(); return }
@@ -168,7 +182,7 @@ export function AddTransactionSheet({
         <div className="flex items-center gap-2 overflow-x-auto border-t px-4 py-2.5 scrollbar-none">
           {/* 現金 option */}
           <button
-            onClick={() => setCardId(undefined)}
+            onClick={() => { setCardId(undefined); setIsExplicitCash(true) }}
             className={cn(
               'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
               !cardId
@@ -181,16 +195,19 @@ export function AddTransactionSheet({
           {cards.map(card => (
             <button
               key={card.id}
-              onClick={() => setCardId(card.id)}
+              onClick={() => { setCardId(card.id); setIsExplicitCash(false) }}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                 cardId === card.id ? 'text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80',
               )}
               style={cardId === card.id ? { backgroundColor: card.color } : undefined}
             >
-              {card.type === 'credit' ? '💳' : '🏧'}
-              {card.name}
-              {card.lastFour && <span className="opacity-70">···· {card.lastFour}</span>}
+              {card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'}
+              {card.type === 'credit' ? '信用卡' : card.type === 'easycard' ? '悠遊卡' : '金融卡'}
+              {(() => {
+                const last4 = card.lastFour ?? (/^\d{4,}$/.test(card.name) ? card.name.slice(-4) : undefined)
+                return last4 ? <span className="opacity-70"> ···· {last4}</span> : null
+              })()}
             </button>
           ))}
         </div>

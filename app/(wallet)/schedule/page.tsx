@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job, Shift } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { MonthNav } from '@/components/wallet/month-nav'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -275,11 +276,7 @@ export default function SchedulePage() {
     <div className="flex flex-col">
       <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold">{year} / {String(month).padStart(2, '0')}</span>
-          <div className="flex gap-0.5 text-muted-foreground">
-            <button onClick={prevMonth} className="px-1 hover:text-foreground">‹</button>
-            <button onClick={nextMonth} className="px-1 hover:text-foreground">›</button>
-          </div>
+          <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
         {/* Job legend */}
         <div className="flex gap-2">

@@ -12,7 +12,7 @@ interface TransactionsContextValue {
   isLoaded: boolean
   year: number
   setYear: (year: number) => void
-  addTransaction: (data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<void>
+  addTransaction: (data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<Transaction>
   updateTransaction: (id: string, data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
   setBudget: (value: number) => void
@@ -42,9 +42,10 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refetch() }, [])
 
-  const addTransaction = useCallback(async (data: Omit<Transaction, 'id' | 'createdAt'>) => {
+  const addTransaction = useCallback(async (data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> => {
     const tx = await api.createTransaction(data)
     setTransactions(prev => [tx, ...prev])
+    return tx
   }, [])
 
   const updateTransaction = useCallback(async (id: string, data: Omit<Transaction, 'id' | 'createdAt'>) => {

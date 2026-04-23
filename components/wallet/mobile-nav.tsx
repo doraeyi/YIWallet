@@ -22,12 +22,23 @@ export function MobileNav() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const { addTransaction } = useTransactions()
 
+  async function handleSubmit(data: Parameters<typeof addTransaction>[0], isCash: boolean) {
+    const tx = await addTransaction(data)
+    if (isCash) {
+      const raw = localStorage.getItem('yiwallet_cash_tx_ids') ?? '[]'
+      const ids: string[] = JSON.parse(raw)
+      ids.push(tx.id)
+      localStorage.setItem('yiwallet_cash_tx_ids', JSON.stringify(ids))
+    }
+    return tx
+  }
+
   return (
     <>
       <AddTransactionSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        onSubmit={addTransaction}
+        onSubmit={handleSubmit}
       />
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 flex items-center border-t bg-background safe-area-pb lg:hidden">

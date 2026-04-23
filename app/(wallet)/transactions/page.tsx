@@ -48,7 +48,7 @@ export default function TransactionsPage() {
         <AddTransactionSheet
           open={!!editTx}
           onOpenChange={open => { if (!open) setEditTx(null) }}
-          onSubmit={data => { updateTransaction(editTx.id, data); setEditTx(null) }}
+          onSubmit={(data) => { updateTransaction(editTx.id, data); setEditTx(null) }}
           initialData={editTx}
         />
       )}
