@@ -120,7 +120,8 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
                   min="1"
                   max="30"
                   value={notifyDaysBefore}
-                  onChange={e => setNotifyDaysBefore(e.target.value.replace(/\D/g, '') || '1')}
+                  onChange={e => setNotifyDaysBefore(e.target.value)}
+                  onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) setNotifyDaysBefore('1') }}
                   className="w-full rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
                 />
                 <span className="shrink-0 text-xs text-muted-foreground">天前</span>
@@ -136,13 +137,19 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
               />
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            {card.type === 'easycard' && passExpiryDate
-              ? `月票 ${passExpiryDate} → 提前 ${notifyDaysBefore} 天的 ${notifyTime} 通知`
-              : card.type === 'credit' && paymentDueDate
-              ? `繳費截止 ${paymentDueDate} → 提前 ${notifyDaysBefore} 天的 ${notifyTime} 通知`
-              : '請先設定日期'}
-          </p>
+          {(() => {
+            const expiryDate = card.type === 'easycard' ? passExpiryDate : paymentDueDate
+            if (!expiryDate || !notifyDaysBefore) return <p className="text-[11px] text-muted-foreground">請先設定日期</p>
+            const d = new Date(expiryDate)
+            d.setDate(d.getDate() - Number(notifyDaysBefore))
+            const notifyDate = d.toISOString().slice(0, 10)
+            const label = card.type === 'easycard' ? `月票 ${expiryDate}` : `繳費截止 ${expiryDate}`
+            return (
+              <p className="text-[11px] text-muted-foreground">
+                {label} → <span className="font-medium text-foreground">{notifyDate} {notifyTime}</span> 通知
+              </p>
+            )
+          })()}
         </div>
       )}
 
