@@ -106,6 +106,8 @@ interface ApiCard {
   balance?: number | null
   pass_expiry_date?: string | null
   payment_due_date?: string | null
+  notify_days_before?: number | null
+  notify_time?: string | null
 }
 
 function normalizeCard(c: ApiCard): Card {
@@ -120,6 +122,8 @@ function normalizeCard(c: ApiCard): Card {
     balance: c.balance ?? undefined,
     passExpiryDate: c.pass_expiry_date ?? undefined,
     paymentDueDate: c.payment_due_date ?? undefined,
+    notifyDaysBefore: c.notify_days_before ?? undefined,
+    notifyTime: c.notify_time ?? undefined,
   }
 }
 
@@ -164,6 +168,8 @@ export async function updateCard(id: string, data: Omit<Card, 'id'>): Promise<Ca
       balance: data.balance ?? null,
       pass_expiry_date: data.passExpiryDate ?? null,
       payment_due_date: data.paymentDueDate ?? null,
+      notify_days_before: data.notifyDaysBefore ?? 1,
+      notify_time: data.notifyTime ?? '09:00',
     }),
   })
   if (!res.ok) throw new Error('Failed to update card')

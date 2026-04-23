@@ -9,6 +9,9 @@ import type { Job } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/actions/auth'
 import { useSearchParams } from 'next/navigation'
+import { useCards } from '@/hooks/use-cards'
+import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
+import type { Card } from '@/lib/types'
 
 function GoogleStatusBanner() {
   const searchParams = useSearchParams()
@@ -43,15 +46,20 @@ const EMPTY_FORM = {
 
 
 export default function SettingsPage() {
-  const { budget, setBudget } = useTransactions()
+  const { budget, setBudget, isLoaded: txLoaded } = useTransactions()
   const [input, setInput] = useState(budget > 0 ? String(budget) : '')
   const [saved, setSaved] = useState(false)
 
   const [jobs, setJobs] = useState<Job[]>([])
+  const [jobsLoaded, setJobsLoaded] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
+
+  // 卡片管理
+  const { cards, updateCard, isLoaded: cardsLoaded } = useCards()
+  const [editingCard, setEditingCard] = useState<Card | null>(null)
 
   // Google 綁定
   const [googleLinked, setGoogleLinked] = useState<boolean | null>(null)
@@ -142,7 +150,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    api.fetchJobs().then(setJobs).catch(() => {})
+    api.fetchJobs().then(setJobs).catch(() => {}).finally(() => setJobsLoaded(true))
   }, [])
 
   function handleSaveBudget() {
@@ -206,6 +214,19 @@ export default function SettingsPage() {
     setJobs(prev => prev.filter(j => j.id !== id))
   }
 
+  const isLoaded = txLoaded && cardsLoaded && jobsLoaded && googleLinked !== null && lineLinked !== null
+
+  if (!isLoaded) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-amber-400" />
+          <p className="text-sm text-muted-foreground">載入中…</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col">
       <div className="px-5 pt-10 pb-6 lg:pt-8">
@@ -213,6 +234,56 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex flex-col gap-4 px-4 lg:max-w-lg lg:px-6">
+
+        {/* 卡片管理 */}
+        {cards.length > 0 && (
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+            <div className="border-b px-4 py-3">
+              <p className="text-sm font-semibold">卡片管理</p>
+            </div>
+            <div className="divide-y">
+              {cards.map(card => {
+                const emoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
+                return (
+                  <div key={card.id} className="flex items-center gap-3 px-4 py-3">
+                    <div
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white"
+                      style={{ backgroundColor: card.color }}
+                    >
+                      {emoji}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{card.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {card.type === 'debit' && card.balance != null && `餘額 $${card.balance}`}
+                        {card.type === 'easycard' && card.balance != null && `餘額 $${card.balance}`}
+                        {card.type === 'easycard' && card.balance != null && card.passExpiryDate && ' · '}
+                        {card.type === 'easycard' && card.passExpiryDate && `月票 ${card.passExpiryDate}`}
+                        {card.type === 'credit' && card.paymentDueDate && `繳費截止 ${card.paymentDueDate}`}
+                        {!card.balance && !card.passExpiryDate && !card.paymentDueDate && '尚未設定'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setEditingCard(card)}
+                      className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                    >
+                      <PencilIcon className="size-4" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {editingCard && (
+          <EditCardSheet
+            card={editingCard}
+            open={!!editingCard}
+            onOpenChange={open => { if (!open) setEditingCard(null) }}
+            onSave={async (id, data) => { await updateCard(id, data) }}
+          />
+        )}
 
         {/* Budget */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">

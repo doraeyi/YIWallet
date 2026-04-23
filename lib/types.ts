@@ -60,6 +60,8 @@ export interface Card {
   balance?: number           // debit/easycard 餘額
   passExpiryDate?: string    // 悠遊卡月票到期日 YYYY-MM-DD
   paymentDueDate?: string    // 信用卡繳費截止日 YYYY-MM-DD
+  notifyDaysBefore?: number  // 提前幾天通知（預設 1）
+  notifyTime?: string        // 通知時間 HH:MM（預設 09:00）
 }
 
 export interface Job {
