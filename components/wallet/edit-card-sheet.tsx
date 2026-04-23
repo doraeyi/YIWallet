@@ -111,8 +111,8 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
       {hasNotification && (
         <div className="flex flex-col gap-3 rounded-xl border px-4 py-3">
           <p className="text-xs font-medium text-muted-foreground">LINE Bot 通知設定</p>
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1.5">
+          <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs text-muted-foreground">提前幾天</label>
               <div className="flex items-center gap-1.5">
                 <input
@@ -122,7 +122,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
                   value={notifyDaysBefore}
                   onChange={e => setNotifyDaysBefore(e.target.value)}
                   onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) setNotifyDaysBefore('1') }}
-                  className="w-full rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
+                  className="w-16 rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
                 />
                 <span className="shrink-0 text-xs text-muted-foreground">天前</span>
               </div>
