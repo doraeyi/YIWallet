@@ -270,6 +270,9 @@ export default function DashboardPage() {
     }
   }, [currentView, renewingPass, updateCard])
 
+  const hour = now.getHours()
+  const greeting = hour < 12 ? '早安 ☀️' : hour < 18 ? '午安 🌤️' : '晚安 🌙'
+
   function prevMonth() {
     if (month === 1) { setYear(year - 1); setMonth(12) }
     else setMonth(m => m - 1)
@@ -310,7 +313,10 @@ export default function DashboardPage() {
     <div className="flex flex-col">
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
-        <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
+        <div className="flex flex-col">
+          <span className="text-xs text-muted-foreground">{greeting}</span>
+          <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
+        </div>
         <div className="flex items-center gap-3 text-muted-foreground">
           <button className="hover:text-foreground">
             <BellIcon className="size-5" />
