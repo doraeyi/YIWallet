@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon } from 'lucide-react'
 import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency } from '@/lib/finance-utils'
@@ -8,6 +8,23 @@ import * as api from '@/lib/api'
 import type { Job } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/actions/auth'
+import { useSearchParams } from 'next/navigation'
+
+function GoogleStatusBanner() {
+  const searchParams = useSearchParams()
+  const success = searchParams.get('success')
+  const error = searchParams.get('error')
+  if (success === 'google_linked') return (
+    <p className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950/30">Google 帳號綁定成功！</p>
+  )
+  if (error === 'google_failed') return (
+    <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">Google 綁定失敗，請稍後再試</p>
+  )
+  if (error === 'google_taken') return (
+    <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">此 Google 帳號已被其他帳號綁定</p>
+  )
+  return null
+}
 const JOB_COLORS = [
   '#6366F1', '#F59E0B', '#10B981', '#EF4444',
   '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4',
@@ -35,6 +52,27 @@ export default function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
+
+  // Google 綁定
+  const [googleLinked, setGoogleLinked] = useState<boolean | null>(null)
+  const [googleUnlinking, setGoogleUnlinking] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/backend/users/me/google')
+      .then(r => r.json())
+      .then(d => setGoogleLinked(d.linked))
+      .catch(() => setGoogleLinked(false))
+  }, [])
+
+  async function handleGoogleUnlink() {
+    setGoogleUnlinking(true)
+    try {
+      await fetch('/api/backend/users/me/google', { method: 'DELETE' })
+      setGoogleLinked(false)
+    } finally {
+      setGoogleUnlinking(false)
+    }
+  }
 
   // LINE Bot 綁定
   const [lineLinked, setLineLinked] = useState<boolean | null>(null)
@@ -207,6 +245,49 @@ export default function SettingsPage() {
                 {saved ? '已儲存' : '儲存'}
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Google 帳號綁定 */}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              <p className="text-sm font-semibold">Google 帳號</p>
+            </div>
+            {googleLinked !== null && (
+              <span className={cn(
+                'rounded-full px-2 py-0.5 text-xs font-medium',
+                googleLinked ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-muted text-muted-foreground'
+              )}>
+                {googleLinked ? '已綁定' : '未綁定'}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-3 px-4 py-4">
+            <Suspense><GoogleStatusBanner /></Suspense>
+            <p className="text-xs text-muted-foreground">綁定後可用 Google 帳號直接登入，忘記密碼也不怕。</p>
+            {googleLinked ? (
+              <button
+                onClick={handleGoogleUnlink}
+                disabled={googleUnlinking}
+                className="flex items-center justify-center rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-950/20"
+              >
+                {googleUnlinking ? '解除中…' : '解除 Google 綁定'}
+              </button>
+            ) : (
+              <a
+                href="/api/auth/google/link-redirect"
+                className="flex items-center justify-center rounded-xl bg-white border py-2.5 text-sm font-medium transition-colors hover:bg-muted/50 dark:bg-card dark:hover:bg-muted/20"
+              >
+                綁定 Google 帳號
+              </a>
+            )}
           </div>
         </div>
 

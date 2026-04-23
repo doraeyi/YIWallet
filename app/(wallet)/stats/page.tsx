@@ -92,7 +92,7 @@ function StatsContent() {
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold">收支分析</h1>
           {(cardIdParam || filterParam) && (

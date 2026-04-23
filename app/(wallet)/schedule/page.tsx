@@ -274,7 +274,7 @@ export default function SchedulePage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
         <div className="flex items-center gap-2">
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>

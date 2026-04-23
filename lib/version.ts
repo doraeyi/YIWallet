@@ -1,6 +1,13 @@
-export const APP_VERSION = 'v1.4'
+export const APP_VERSION = 'v1.5'
 
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
+  {
+    version: 'v1.5',
+    changes: [
+      '新增 Google 帳號登入',
+      '設定頁可綁定／解除 Google 帳號',
+    ],
+  },
   {
     version: 'v1.4',
     changes: [

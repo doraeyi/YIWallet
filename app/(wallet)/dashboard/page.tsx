@@ -312,7 +312,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 pt-10 pb-4 lg:pt-8">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
         <div className="flex flex-col">
           <span className="text-xs text-muted-foreground">{greeting}</span>
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
