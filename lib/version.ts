@@ -1,6 +1,12 @@
-export const APP_VERSION = 'v1.3'
+export const APP_VERSION = 'v1.4'
 
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
+  {
+    version: 'v1.4',
+    changes: [
+      '更新 App 圖示',
+    ],
+  },
   {
     version: 'v1.3',
     changes: [

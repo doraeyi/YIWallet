@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   title: "易記帳",
   description: "簡單好用的個人記帳 App",
   applicationName: "易記帳",
+  icons: { icon: '/icons/logo.png', apple: '/icons/logo.png' },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

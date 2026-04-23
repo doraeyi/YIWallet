@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import Link from 'next/link'
-import { WalletIcon } from 'lucide-react'
+import Image from 'next/image'
 import { login } from '@/app/actions/auth'
 
 export default function LoginPage() {
@@ -12,9 +12,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-amber-400 text-white shadow-lg shadow-amber-400/30">
-            <WalletIcon className="size-7" strokeWidth={2.5} />
-          </span>
+          <Image src="/icons/logo.png" alt="易記帳" width={120} height={120} className="rounded-2xl shadow-lg" />
           <h1 className="text-2xl font-bold">易記帳</h1>
           <p className="text-sm text-muted-foreground">登入你的帳號</p>
         </div>
