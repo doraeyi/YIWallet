@@ -244,12 +244,18 @@ export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
       {/* Color */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-medium text-muted-foreground">卡片顏色</label>
-        <div className="flex flex-wrap gap-2.5">
+        <div
+          className="flex gap-2.5 overflow-x-auto py-2 scrollbar-none"
+          onWheel={e => {
+            e.preventDefault()
+            ;(e.currentTarget as HTMLDivElement).scrollLeft += e.deltaY
+          }}
+        >
           {PRESET_COLORS.map(c => (
             <button
               key={c}
               onClick={() => setColor(c)}
-              className={cn('size-9 rounded-full transition-transform', color === c && 'ring-2 ring-offset-2 ring-amber-400 scale-110')}
+              className={cn('size-9 shrink-0 rounded-full transition-transform', color === c && 'ring-2 ring-offset-2 ring-amber-400 scale-110')}
               style={{ backgroundColor: c }}
             />
           ))}

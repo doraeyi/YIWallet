@@ -14,9 +14,11 @@ export function UpdateBanner() {
 
   if (!ready) return null
 
-  function applyUpdate() {
-    navigator.serviceWorker.controller?.postMessage({ type: 'SKIP_WAITING' })
-    window.location.reload()
+  async function applyUpdate() {
+    const reg = await navigator.serviceWorker.getRegistration()
+    reg?.waiting?.postMessage({ type: 'SKIP_WAITING' })
+    // Wait for the new SW to take control, then reload
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true })
   }
 
   return (

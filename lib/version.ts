@@ -1,6 +1,12 @@
-export const APP_VERSION = 'v1.5'
+export const APP_VERSION = 'v1.6'
 
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
+  {
+    version: 'v1.6',
+    changes: [
+      '改善新增卡片的顏色選擇介面',
+    ],
+  },
   {
     version: 'v1.5',
     changes: [

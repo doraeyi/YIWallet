@@ -109,7 +109,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
 
       {/* 通知設定（悠遊卡／信用卡） */}
       {hasNotification && (
-        <div className="flex flex-col gap-3 rounded-xl border px-4 py-3">
+        <div className="flex flex-col gap-3 overflow-hidden rounded-xl border px-4 py-3">
           <p className="text-xs font-medium text-muted-foreground">LINE Bot 通知設定</p>
           <div className="flex items-end gap-3">
             <div className="flex flex-col gap-1.5">
