@@ -10,6 +10,8 @@ export interface ParsedPayment {
   date: string   // YYYY-MM-DD
   suggestedCategory: string
   paymentType?: PaymentType  // undefined = not specified
+  isTransfer?: boolean
+  transferTo?: string
 }
 
 // 偵測付款方式關鍵字，並從文字中移除
@@ -95,6 +97,27 @@ export function parseQuickEntry(text: string): ParsedPayment | null {
   }
 }
 
+// 解析轉帳格式
+// 範例：「轉帳50王小明 午餐」「轉帳給50王小明」「轉帳 100 王小明 還錢」
+export function parseTransfer(text: string): ParsedPayment | null {
+  const m = text.match(/^轉帳(?:給)?\s*(\d+\.?\d*)\s*(\S+?)(?:\s+(.+))?$/)
+  if (!m) return null
+  const amount = parseFloat(m[1])
+  if (!amount || isNaN(amount) || amount <= 0) return null
+  const transferTo = m[2].trim()
+  const extraNote = m[3]?.trim() ?? ''
+  return {
+    amount,
+    merchant: `轉帳給${transferTo}`,
+    note: transferTo + (extraNote ? `|${extraNote}` : ''),
+    date: todayString(),
+    suggestedCategory: 'transfer',
+    paymentType: 'debit',
+    isTransfer: true,
+    transferTo,
+  }
+}
+
 export function parseAny(text: string): ParsedPayment | null {
-  return parseLineNotification(text) ?? parseQuickEntry(text)
+  return parseTransfer(text) ?? parseLineNotification(text) ?? parseQuickEntry(text)
 }

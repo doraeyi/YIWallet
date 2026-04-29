@@ -5,6 +5,7 @@ export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
     version: 'v1.6',
     changes: [
       '改善新增卡片的顏色選擇介面',
+      '修正卡片通知時間輸入框跑版問題',
     ],
   },
   {

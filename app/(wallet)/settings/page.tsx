@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon } from 'lucide-react'
+import Link from 'next/link'
+import { APP_VERSION } from '@/lib/version'
 import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
@@ -12,6 +14,14 @@ import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
 import type { Card } from '@/lib/types'
+
+interface UserProfile {
+  id: string
+  username?: string
+  email?: string
+  name?: string
+  picture?: string
+}
 
 function GoogleStatusBanner() {
   const searchParams = useSearchParams()
@@ -58,8 +68,22 @@ export default function SettingsPage() {
   const [submitting, setSubmitting] = useState(false)
 
   // 卡片管理
-  const { cards, updateCard, isLoaded: cardsLoaded } = useCards()
+  const { cards, updateCard, removeCard, isLoaded: cardsLoaded } = useCards()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
+
+  // 個人資料
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+
+  // 展開狀態
+  const [expandedAccount, setExpandedAccount] = useState<'google' | 'line' | null>(null)
+  const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | null>(null)
+
+  useEffect(() => {
+    fetch('/api/backend/users/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setProfile(d) })
+      .catch(() => {})
+  }, [])
 
   // Google 綁定
   const [googleLinked, setGoogleLinked] = useState<boolean | null>(null)
@@ -227,6 +251,9 @@ export default function SettingsPage() {
     )
   }
 
+  const displayName = profile?.name || profile?.username || profile?.email?.split('@')[0] || '使用者'
+  const avatarLetter = displayName.charAt(0).toUpperCase()
+
   return (
     <div className="flex flex-col">
       <div className="px-5 pt-10 pb-6 lg:pt-8">
@@ -235,23 +262,192 @@ export default function SettingsPage() {
 
       <div className="flex flex-col gap-4 px-4 lg:max-w-lg lg:px-6">
 
-        {/* 卡片管理 */}
-        {cards.length > 0 && (
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-            <div className="border-b px-4 py-3">
-              <p className="text-sm font-semibold">卡片管理</p>
+        {/* 個人資料 */}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          {/* 漸層 header */}
+          <div className="relative h-20 bg-gradient-to-br from-amber-400 to-amber-300">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+              {profile?.picture ? (
+                <img
+                  src={profile.picture}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  className="size-20 rounded-full object-cover ring-4 ring-white dark:ring-card"
+                />
+              ) : (
+                <div className="flex size-20 items-center justify-center rounded-full bg-white ring-4 ring-white dark:ring-card shadow-sm">
+                  <span className="text-3xl font-bold text-amber-400">{avatarLetter}</span>
+                </div>
+              )}
             </div>
-            <div className="divide-y">
-              {cards.map(card => {
+          </div>
+          {/* 名字 & email */}
+          <div className="flex flex-col items-center pt-14 pb-5 gap-1">
+            <p className="text-base font-semibold">{displayName}</p>
+            {profile?.email && (
+              <p className="text-xs text-muted-foreground">{profile.email}</p>
+            )}
+          </div>
+          <Link
+            href="/settings/profile"
+            className="flex w-full items-center justify-between border-t px-4 py-3.5 text-sm text-muted-foreground hover:bg-muted/40"
+          >
+            <span>編輯個人資料</span>
+            <span className="text-base leading-none">›</span>
+          </Link>
+        </div>
+
+        {/* ── 帳號 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">帳號</p>
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+
+          {/* Google 帳號 row */}
+          <button
+            onClick={() => setExpandedAccount(v => v === 'google' ? null : 'google')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <div className="flex items-center gap-2.5">
+              <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              <span className="text-sm font-medium">Google 帳號</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {googleLinked !== null && (
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 text-xs font-medium',
+                  googleLinked ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-muted text-muted-foreground'
+                )}>
+                  {googleLinked ? '已綁定' : '未綁定'}
+                </span>
+              )}
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedAccount === 'google' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedAccount === 'google' && (
+            <div className="flex flex-col gap-3 border-t px-4 py-4">
+              <Suspense><GoogleStatusBanner /></Suspense>
+              <p className="text-xs text-muted-foreground">綁定後可用 Google 帳號直接登入，忘記密碼也不怕。</p>
+              {googleLinked ? (
+                <button
+                  onClick={handleGoogleUnlink}
+                  disabled={googleUnlinking}
+                  className="flex items-center justify-center rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-950/20"
+                >
+                  {googleUnlinking ? '解除中…' : '解除 Google 綁定'}
+                </button>
+              ) : (
+                <a
+                  href="/api/auth/google/link-redirect"
+                  className="flex items-center justify-center rounded-xl bg-white border py-2.5 text-sm font-medium transition-colors hover:bg-muted/50 dark:bg-card dark:hover:bg-muted/20"
+                >
+                  綁定 Google 帳號
+                </a>
+              )}
+            </div>
+          )}
+
+          <div className="border-t" />
+
+          {/* LINE Bot row */}
+          <button
+            onClick={() => setExpandedAccount(v => v === 'line' ? null : 'line')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <div className="flex items-center gap-2.5">
+              <BotIcon className="size-4 text-green-500" />
+              <span className="text-sm font-medium">LINE Bot 自動記帳</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {lineLinked !== null && (
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 text-xs font-medium',
+                  lineLinked ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-muted text-muted-foreground'
+                )}>
+                  {lineLinked ? '已綁定' : '未綁定'}
+                </span>
+              )}
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedAccount === 'line' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedAccount === 'line' && (
+            <div className="border-t px-4 py-4 flex flex-col gap-4">
+              {lineLinked ? (
+                <>
+                  <div className="rounded-xl bg-green-50 px-3 py-2.5 text-xs text-green-700 dark:bg-green-950/30 dark:text-green-400">
+                    LINE 帳號已綁定。直接傳給 Bot 消費記錄即可，例如：<br />
+                    <code className="font-mono">全家 茶葉蛋 10</code>　或　<code className="font-mono">捷運28</code>
+                  </div>
+                  <button
+                    onClick={handleUnlink}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                  >
+                    解除 LINE 綁定
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs text-muted-foreground">步驟 1：加入 Bot 好友（<span className="font-mono">@984ehkom</span>）</p>
+                    <p className="text-xs text-muted-foreground">步驟 2：產生綁定碼，傳給 Bot</p>
+                  </div>
+                  {linkCode && linkSecondsLeft > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
+                        <code className="text-lg font-bold tracking-widest">{linkCode}</code>
+                        <span className="text-xs text-muted-foreground">{Math.floor(linkSecondsLeft / 60)}:{String(linkSecondsLeft % 60).padStart(2, '0')}</span>
+                      </div>
+                      <button
+                        onClick={handleCopyCode}
+                        className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
+                      >
+                        {codeCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                        {codeCopied ? '已複製！' : '複製指令（/link 綁定碼）'}
+                      </button>
+                      <p className="text-center text-xs text-muted-foreground">複製後貼到 Bot 聊天室傳送即完成綁定</p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGenerateCode}
+                      disabled={linkLoading}
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
+                    >
+                      {linkLoading ? '產生中…' : '產生綁定碼'}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── 功能 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">功能</p>
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+
+          {/* 卡片管理 row */}
+          <button
+            onClick={() => setExpandedFeature(v => v === 'cards' ? null : 'cards')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <span className="text-sm font-medium">卡片管理</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{cards.length > 0 ? `${cards.length} 張` : '尚未新增'}</span>
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedFeature === 'cards' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedFeature === 'cards' && (
+            <div className={cn('border-t divide-y', cards.length > 3 && 'max-h-54 overflow-y-auto')}>
+              {cards.length === 0 ? (
+                <p className="px-4 py-4 text-center text-sm text-muted-foreground">尚未新增任何卡片</p>
+              ) : cards.map(card => {
                 const emoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
                 return (
                   <div key={card.id} className="flex items-center gap-3 px-4 py-3">
-                    <div
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white"
-                      style={{ backgroundColor: card.color }}
-                    >
-                      {emoji}
-                    </div>
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white" style={{ backgroundColor: card.color }}>{emoji}</div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{card.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -263,18 +459,117 @@ export default function SettingsPage() {
                         {!card.balance && !card.passExpiryDate && !card.paymentDueDate && '尚未設定'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => setEditingCard(card)}
-                      className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-                    >
+                    <button onClick={() => setEditingCard(card)} className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
                       <PencilIcon className="size-4" />
+                    </button>
+                    <button
+                      onClick={async () => { if (!confirm(`確定刪除「${card.name}」？相關交易紀錄不受影響。`)) return; await removeCard(card.id) }}
+                      className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500"
+                    >
+                      <Trash2Icon className="size-4" />
                     </button>
                   </div>
                 )
               })}
             </div>
-          </div>
-        )}
+          )}
+
+          <div className="border-t" />
+
+          {/* 預算管理 row */}
+          <button
+            onClick={() => setExpandedFeature(v => v === 'budget' ? null : 'budget')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <span className="text-sm font-medium">預算管理</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{budget > 0 ? formatCurrency(budget) : '未設定'}</span>
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedFeature === 'budget' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedFeature === 'budget' && (
+            <div className="border-t px-4 py-4">
+              <label className="mb-1 block text-sm font-medium">每月預算</label>
+              <p className="mb-3 text-xs text-muted-foreground">
+                {budget > 0 ? `目前：${formatCurrency(budget)}` : '尚未設定每月預算'}
+              </p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="輸入金額"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveBudget()}
+                    className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-ring"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveBudget}
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
+                >
+                  {saved && <CheckIcon className="size-4" />}
+                  {saved ? '已儲存' : '儲存'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="border-t" />
+
+          {/* 工作管理 row */}
+          <button
+            onClick={() => setExpandedFeature(v => v === 'jobs' ? null : 'jobs')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <span className="text-sm font-medium">工作管理</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{jobs.length > 0 ? `${jobs.length} 個` : '未設定'}</span>
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedFeature === 'jobs' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedFeature === 'jobs' && (
+            <div className="border-t">
+              <div className="flex items-center justify-between px-4 py-3">
+                <p className="text-xs text-muted-foreground">工作列表</p>
+                <button
+                  onClick={openNewJob}
+                  className="flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+                >
+                  <PlusIcon className="size-3.5" />
+                  新增
+                </button>
+              </div>
+              {jobs.length === 0 ? (
+                <div className="px-4 pb-4 text-center">
+                  <p className="text-sm text-muted-foreground">還沒有工作，點右上角新增</p>
+                </div>
+              ) : (
+                <div className="divide-y border-t">
+                  {jobs.map(job => (
+                    <div key={job.id} className="flex items-center gap-3 px-4 py-3">
+                      <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: job.color }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{job.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {job.pay_type === 'hourly' ? `時薪 ${formatCurrency(job.rate)}` : `月薪 ${formatCurrency(job.rate)}`}　每月 {job.payday} 號
+                        </p>
+                      </div>
+                      <button onClick={() => openEditJob(job)} className="p-1.5 text-muted-foreground hover:text-foreground">
+                        <PencilIcon className="size-4" />
+                      </button>
+                      <button onClick={() => handleDeleteJob(job.id)} className="p-1.5 text-muted-foreground hover:text-rose-500">
+                        <Trash2Icon className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {editingCard && (
           <EditCardSheet
@@ -285,199 +580,12 @@ export default function SettingsPage() {
           />
         )}
 
-        {/* Budget */}
+        {/* ── 關於 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">關於</p>
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="border-b px-4 py-3">
-            <p className="text-sm font-semibold">預算管理</p>
-          </div>
-          <div className="px-4 py-4">
-            <label className="mb-1 block text-sm font-medium">每月預算</label>
-            <p className="mb-3 text-xs text-muted-foreground">
-              {budget > 0 ? `目前：${formatCurrency(budget)}` : '尚未設定每月預算'}
-            </p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="輸入金額"
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSaveBudget()}
-                  className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-ring"
-                />
-              </div>
-              <button
-                onClick={handleSaveBudget}
-                className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
-              >
-                {saved && <CheckIcon className="size-4" />}
-                {saved ? '已儲存' : '儲存'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Google 帳號綁定 */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-                <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-              </svg>
-              <p className="text-sm font-semibold">Google 帳號</p>
-            </div>
-            {googleLinked !== null && (
-              <span className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-medium',
-                googleLinked ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-muted text-muted-foreground'
-              )}>
-                {googleLinked ? '已綁定' : '未綁定'}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col gap-3 px-4 py-4">
-            <Suspense><GoogleStatusBanner /></Suspense>
-            <p className="text-xs text-muted-foreground">綁定後可用 Google 帳號直接登入，忘記密碼也不怕。</p>
-            {googleLinked ? (
-              <button
-                onClick={handleGoogleUnlink}
-                disabled={googleUnlinking}
-                className="flex items-center justify-center rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-950/20"
-              >
-                {googleUnlinking ? '解除中…' : '解除 Google 綁定'}
-              </button>
-            ) : (
-              <a
-                href="/api/auth/google/link-redirect"
-                className="flex items-center justify-center rounded-xl bg-white border py-2.5 text-sm font-medium transition-colors hover:bg-muted/50 dark:bg-card dark:hover:bg-muted/20"
-              >
-                綁定 Google 帳號
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* LINE Bot */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <div className="flex items-center gap-2">
-              <BotIcon className="size-4 text-green-500" />
-              <p className="text-sm font-semibold">LINE Bot 自動記帳</p>
-            </div>
-            {lineLinked !== null && (
-              <span className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-medium',
-                lineLinked ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-muted text-muted-foreground'
-              )}>
-                {lineLinked ? '已綁定' : '未綁定'}
-              </span>
-            )}
-          </div>
-          <div className="px-4 py-4 flex flex-col gap-4">
-            {lineLinked ? (
-              <>
-                <div className="rounded-xl bg-green-50 px-3 py-2.5 text-xs text-green-700 dark:bg-green-950/30 dark:text-green-400">
-                  LINE 帳號已綁定。直接傳給 Bot 消費記錄即可，例如：<br />
-                  <code className="font-mono">全家 茶葉蛋 10</code>　或　<code className="font-mono">捷運28</code>
-                </div>
-                <button
-                  onClick={handleUnlink}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                >
-                  解除 LINE 綁定
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-xs text-muted-foreground">步驟 1：加入 Bot 好友（<span className="font-mono">@984ehkom</span>）</p>
-                  <p className="text-xs text-muted-foreground">步驟 2：產生綁定碼，傳給 Bot</p>
-                </div>
-
-                {linkCode && linkSecondsLeft > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
-                      <code className="text-lg font-bold tracking-widest">{linkCode}</code>
-                      <span className="text-xs text-muted-foreground">{Math.floor(linkSecondsLeft / 60)}:{String(linkSecondsLeft % 60).padStart(2, '0')}</span>
-                    </div>
-                    <button
-                      onClick={handleCopyCode}
-                      className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
-                    >
-                      {codeCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-                      {codeCopied ? '已複製！' : '複製指令（/link 綁定碼）'}
-                    </button>
-                    <p className="text-center text-xs text-muted-foreground">複製後貼到 Bot 聊天室傳送即完成綁定</p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleGenerateCode}
-                    disabled={linkLoading}
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
-                  >
-                    {linkLoading ? '產生中…' : '產生綁定碼'}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Job management */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <p className="text-sm font-semibold">工作管理</p>
-            <button
-              onClick={openNewJob}
-              className="flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
-            >
-              <PlusIcon className="size-3.5" />
-              新增工作
-            </button>
-          </div>
-
-          {jobs.length === 0 ? (
-            <div className="px-4 py-6 text-center">
-              <p className="text-sm text-muted-foreground">還沒有工作，點右上角新增</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {jobs.map(job => (
-                <div key={job.id} className="flex items-center gap-3 px-4 py-3">
-                  <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: job.color }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{job.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {job.pay_type === 'hourly' ? `時薪 ${formatCurrency(job.rate)}` : `月薪 ${formatCurrency(job.rate)}`}
-                      　每月 {job.payday} 號發薪
-                    </p>
-                  </div>
-                  <button onClick={() => openEditJob(job)} className="p-1.5 text-muted-foreground hover:text-foreground">
-                    <PencilIcon className="size-4" />
-                  </button>
-                  <button onClick={() => handleDeleteJob(job.id)} className="p-1.5 text-muted-foreground hover:text-rose-500">
-                    <Trash2Icon className="size-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* About */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="border-b px-4 py-3">
-            <p className="text-sm font-semibold">關於</p>
-          </div>
-          <div className="px-4 py-4">
-            <p className="text-sm font-medium">易記帳</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">簡單好用的個人記帳 App</p>
-            <p className="mt-2 text-xs text-muted-foreground">資料儲存於雲端資料庫。</p>
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <span className="text-sm font-medium">易記帳</span>
+            <span className="text-sm text-muted-foreground">{APP_VERSION}</span>
           </div>
         </div>
 

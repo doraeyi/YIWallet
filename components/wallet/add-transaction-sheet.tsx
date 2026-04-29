@@ -41,17 +41,36 @@ export function AddTransactionSheet({
   const isDesktop = useIsDesktop()
   const { cards, defaultCard } = useCards()
 
-  const [type,     setType]     = useState<TransactionType>(initialData?.type     ?? 'expense')
-  const [category, setCategory] = useState(initialData?.category ?? '')
-  const [amount,   setAmount]   = useState(initialData ? String(initialData.amount) : '')
-  const [note,     setNote]     = useState(initialData?.note     ?? '')
+  const [type,       setType]       = useState<TransactionType>(initialData?.type     ?? 'expense')
+  const [category,   setCategory]   = useState(initialData?.category ?? '')
+  const [amount,     setAmount]     = useState(initialData ? String(initialData.amount) : '')
+  const [note,       setNote]       = useState(() => {
+    if (initialData?.category === 'transfer' && initialData.note) {
+      const idx = initialData.note.indexOf('|')
+      return idx === -1 ? '' : initialData.note.slice(idx + 1)
+    }
+    return initialData?.note ?? ''
+  })
+  const [transferTo, setTransferTo] = useState(() => {
+    if (initialData?.category === 'transfer' && initialData.note) {
+      const idx = initialData.note.indexOf('|')
+      return idx === -1 ? initialData.note : initialData.note.slice(0, idx)
+    }
+    return ''
+  })
   const [date,     setDate]     = useState(initialData?.date     ?? todayString())
   const [cardId,        setCardId]        = useState<string | undefined>(
     initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id)
   )
   const [isExplicitCash, setIsExplicitCash] = useState(false)
 
-  const categories = CATEGORIES.filter(c => c.type === type)
+  const selectedCard = cards.find(c => c.id === cardId)
+  const isDebitCard = selectedCard?.type === 'debit'
+
+  const categories = CATEGORIES.filter(c => {
+    if (c.id === 'transfer') return isDebitCard
+    return c.type === type
+  })
 
   // 當 cards 載入完成後，若是新增模式且尚未選卡，自動帶入 defaultCard
   useEffect(() => {
@@ -61,21 +80,33 @@ export function AddTransactionSheet({
     }
   }, [defaultCard?.id, cards.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 切換離開金融卡時，重置轉帳分類
+  useEffect(() => {
+    if (category === 'transfer' && !isDebitCard) {
+      setCategory('')
+      setTransferTo('')
+    }
+  }, [isDebitCard]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleTypeChange(t: TransactionType) {
     setType(t)
     setCategory('')
+    setTransferTo('')
   }
 
   const handleSave = useCallback(() => {
     const parsed = parseFloat(amount)
     if (!amount || isNaN(parsed) || parsed <= 0 || !category) return
     const isCash = !cardId && cards.length > 0 && isExplicitCash
-    onSubmit({ type, amount: parsed, category, note, date, cardId }, isCash)
-    setAmount(''); setNote(''); setDate(todayString()); setCategory(''); setType('expense')
+    const savedNote = category === 'transfer'
+      ? (transferTo ? (note ? `${transferTo}|${note}` : transferTo) : note)
+      : note
+    onSubmit({ type, amount: parsed, category, note: savedNote, date, cardId }, isCash)
+    setAmount(''); setNote(''); setTransferTo(''); setDate(todayString()); setCategory(''); setType('expense')
     setIsExplicitCash(false)
     setCardId(defaultCard?.id ?? cards[0]?.id)
     onOpenChange(false)
-  }, [amount, category, type, note, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id])
+  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id])
 
   const handleKey = useCallback((key: string) => {
     if (key === '✓') { handleSave(); return }
@@ -129,8 +160,8 @@ export function AddTransactionSheet({
         </button>
       </div>
 
-      {/* Category grid */}
-      <div className="grid grid-cols-4 gap-3 px-4 pb-3">
+      {/* Category grid — 2 rows, horizontal scroll if overflow */}
+      <div className="grid grid-rows-2 grid-flow-col auto-cols-[72px] gap-3 overflow-x-auto px-4 pb-3 scrollbar-none">
         {categories.map(cat => (
           <button
             key={cat.id}
@@ -161,7 +192,7 @@ export function AddTransactionSheet({
         </span>
       </div>
 
-      {/* Date + note */}
+      {/* Date + note/transfer-to */}
       <div className="flex items-center gap-2 border-t px-4 py-2.5">
         <input
           type="date"
@@ -169,13 +200,33 @@ export function AddTransactionSheet({
           onChange={e => setDate(e.target.value)}
           className="rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none focus:border-ring"
         />
-        <input
-          placeholder="新增備註"
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-        />
+        {category === 'transfer' ? (
+          <input
+            placeholder="轉帳對象（選填）"
+            value={transferTo}
+            onChange={e => setTransferTo(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+          />
+        ) : (
+          <input
+            placeholder="新增備註"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+          />
+        )}
       </div>
+      {/* Transfer extra note row */}
+      {category === 'transfer' && (
+        <div className="flex items-center border-t px-4 py-2.5">
+          <input
+            placeholder="備註（選填）"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            className="w-full rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+          />
+        </div>
+      )}
 
       {/* Card selector — only shown when cards exist */}
       {cards.length > 0 && (

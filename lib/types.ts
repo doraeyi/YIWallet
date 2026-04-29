@@ -38,6 +38,7 @@ export const CATEGORIES: Category[] = [
   { id: 'education',     name: '教育', type: 'expense', emoji: '📚', color: '#FBCFE8', text: '#DB2777' },
   { id: 'shopping',      name: '購物', type: 'expense', emoji: '🛍️', color: '#A5F3FC', text: '#0891B2' },
   { id: 'other-expense', name: '其他', type: 'expense', emoji: '📦', color: '#E5E7EB', text: '#6B7280' },
+  { id: 'transfer',      name: '轉帳', type: 'expense', emoji: '💸', color: '#BFDBFE', text: '#1D4ED8' },
   // Income
   { id: 'salary',        name: '薪水', type: 'income',  emoji: '💼', color: '#BBF7D0', text: '#16A34A' },
   { id: 'bonus',         name: '獎金', type: 'income',  emoji: '🎁', color: '#FDE68A', text: '#D97706' },

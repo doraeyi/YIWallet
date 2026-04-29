@@ -85,7 +85,13 @@ export function TransactionList({
                         </p>
                         {tx.note && (
                           <p className="truncate text-xs text-muted-foreground">
-                            {tx.note}
+                            {tx.category === 'transfer' ? (() => {
+                              const sep = tx.note.indexOf('|')
+                              const to = sep === -1 ? tx.note : tx.note.slice(0, sep)
+                              const extra = sep === -1 ? '' : tx.note.slice(sep + 1)
+                              const label = tx.type === 'income' ? '收款自' : '轉帳給'
+                              return [to && `${label}：${to}`, extra].filter(Boolean).join('　')
+                            })() : tx.note}
                           </p>
                         )}
                       </div>

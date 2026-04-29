@@ -111,7 +111,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
       {hasNotification && (
         <div className="flex flex-col gap-3 overflow-hidden rounded-xl border px-4 py-3">
           <p className="text-xs font-medium text-muted-foreground">LINE Bot 通知設定</p>
-          <div className="flex items-end gap-3">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-muted-foreground">提前幾天</label>
               <div className="flex items-center gap-1.5">
@@ -127,13 +127,13 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
                 <span className="shrink-0 text-xs text-muted-foreground">天前</span>
               </div>
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs text-muted-foreground">通知時間</label>
               <input
                 type="time"
                 value={notifyTime}
                 onChange={e => setNotifyTime(e.target.value)}
-                className="w-full min-w-0 rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
+                className="w-full rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
               />
             </div>
           </div>

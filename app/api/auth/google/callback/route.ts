@@ -51,10 +51,24 @@ export async function GET(req: NextRequest) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.token}`,
       },
-      body: JSON.stringify({ google_id: googleUser.sub }),
+      body: JSON.stringify({ google_id: googleUser.sub, google_name: googleUser.name, google_picture: googleUser.picture }),
     })
 
     if (!res.ok) redirect('/settings?error=google_taken')
+
+    // 同時把 Google 的名稱和大頭照同步到使用者資料
+    await fetch(`${process.env.API_URL}/users/me`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.token}`,
+      },
+      body: JSON.stringify({
+        name: googleUser.name,
+        picture: googleUser.picture,
+      }),
+    }).catch(() => {})
+
     redirect('/settings?success=google_linked')
   }
 

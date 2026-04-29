@@ -195,6 +195,37 @@ function cardToPaymentInfo(card: LineCard): PaymentInfo {
   return { typeName, lastFour }
 }
 
+function buildTransferReceiptFlex(to: string, amount: number, extraNote: string, date: string, payment?: PaymentInfo) {
+  const rows: object[] = [
+    infoRow('轉帳對象', to),
+    ...(extraNote ? [infoRow('備註', extraNote)] : []),
+    infoRow('日期', date),
+    ...(payment ? [infoRow('支付方式', payment.typeName)] : []),
+    ...(payment?.lastFour ? [infoRow('卡號', `**** ${payment.lastFour}`)] : []),
+  ]
+  return {
+    type: 'flex',
+    altText: `💸 轉帳記錄 $${amount} → ${to}`,
+    contents: {
+      type: 'bubble',
+      size: 'kilo',
+      header: {
+        type: 'box', layout: 'vertical',
+        backgroundColor: '#3B82F6', paddingAll: 'md',
+        contents: [{ type: 'text', text: '💸 轉帳記錄', color: '#ffffff', weight: 'bold', size: 'sm' }],
+      },
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: 'lg', spacing: 'md',
+        contents: [
+          { type: 'text', text: `$${amount.toLocaleString()}`, weight: 'bold', size: '3xl', color: '#111827' },
+          { type: 'separator' },
+          { type: 'box', layout: 'vertical', spacing: 'sm', contents: rows },
+        ],
+      },
+    },
+  }
+}
+
 function buildReceiptFlex(merchant: string, amount: number, note: string, date: string, payment?: PaymentInfo) {
   const rows: object[] = [
     infoRow('商家', merchant),
@@ -360,7 +391,7 @@ export async function POST(req: NextRequest) {
     if (!parsed) {
       await replyText(
         event.replyToken,
-        '❌ 無法辨識格式\n\n範例：\n「全家 茶葉蛋 10」\n「星巴克 拿鐵 信用卡 165」\n「捷運 金融卡 28」',
+        '❌ 無法辨識格式\n\n消費範例：\n「全家 茶葉蛋 10」\n「星巴克 信用卡 165」\n\n轉帳範例：\n「轉帳50王小明 午餐」',
       )
       continue
     }
@@ -406,6 +437,13 @@ export async function POST(req: NextRequest) {
       let messages: object[]
       if (needsSelection) {
         messages = cardMessages
+      } else if (parsed.isTransfer) {
+        const sep = parsed.note.indexOf('|')
+        const extraNote = sep === -1 ? '' : parsed.note.slice(sep + 1)
+        messages = [
+          buildTransferReceiptFlex(parsed.transferTo!, parsed.amount, extraNote, parsed.date, payment),
+          ...cardMessages,
+        ]
       } else {
         messages = [
           buildReceiptFlex(parsed.merchant, parsed.amount, parsed.note, parsed.date, payment),
