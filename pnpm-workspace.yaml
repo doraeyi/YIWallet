@@ -1,0 +1,6 @@
+allowBuilds:
+  '@firebase/util': true
+  protobufjs: true
+  sharp: false
+  tesseract.js: true
+  unrs-resolver: false

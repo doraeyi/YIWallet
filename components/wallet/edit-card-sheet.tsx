@@ -19,8 +19,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
   const [balance, setBalance] = useState(card.balance != null ? String(card.balance) : '')
   const [passExpiryDate, setPassExpiryDate] = useState(card.passExpiryDate ?? '')
   const [paymentDueDate, setPaymentDueDate] = useState(card.paymentDueDate ?? '')
-  const [notifyDaysBefore, setNotifyDaysBefore] = useState(String(card.notifyDaysBefore ?? 1))
-  const [notifyTime, setNotifyTime] = useState(card.notifyTime ?? '09:00')
+  const [reminderDay, setReminderDay] = useState(card.reminderDay != null ? String(card.reminderDay) : '')
   const [saving, setSaving] = useState(false)
 
   const hasNotification = card.type === 'easycard' || card.type === 'credit'
@@ -34,8 +33,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
           ? Number(balance) : undefined,
         passExpiryDate: card.type === 'easycard' && passExpiryDate ? passExpiryDate : undefined,
         paymentDueDate: card.type === 'credit' && paymentDueDate ? paymentDueDate : undefined,
-        notifyDaysBefore: hasNotification ? Number(notifyDaysBefore) : undefined,
-        notifyTime: hasNotification ? notifyTime : undefined,
+        reminderDay: hasNotification && reminderDay ? Number(reminderDay) : undefined,
       })
       onOpenChange(false)
     } finally {
@@ -89,7 +87,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
             onChange={e => setPassExpiryDate(e.target.value)}
             className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
           />
-          <p className="text-[11px] text-muted-foreground">到期前一天 LINE Bot 會提醒你續卡</p>
+          <p className="text-[11px] text-muted-foreground">下方可設定推播提醒時機</p>
         </div>
       )}
 
@@ -103,53 +101,31 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
             onChange={e => setPaymentDueDate(e.target.value)}
             className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
           />
-          <p className="text-[11px] text-muted-foreground">到期前一天 LINE Bot 會提醒你繳費</p>
+          <p className="text-[11px] text-muted-foreground">下方可設定推播提醒時機</p>
         </div>
       )}
 
       {/* 通知設定（悠遊卡／信用卡） */}
       {hasNotification && (
         <div className="flex flex-col gap-3 overflow-hidden rounded-xl border px-4 py-3">
-          <p className="text-xs font-medium text-muted-foreground">LINE Bot 通知設定</p>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">提前幾天</label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={notifyDaysBefore}
-                  onChange={e => setNotifyDaysBefore(e.target.value)}
-                  onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) setNotifyDaysBefore('1') }}
-                  className="w-16 rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
-                />
-                <span className="shrink-0 text-xs text-muted-foreground">天前</span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">通知時間</label>
-              <input
-                type="time"
-                value={notifyTime}
-                onChange={e => setNotifyTime(e.target.value)}
-                className="w-full rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
-              />
-            </div>
+          <p className="text-xs font-medium text-muted-foreground">推播提醒設定</p>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-muted-foreground">每月幾號提醒（選填）</label>
+            <input
+              type="number"
+              min="1"
+              max="31"
+              placeholder="不設定則到期前 3 天內每天提醒"
+              value={reminderDay}
+              onChange={e => setReminderDay(e.target.value)}
+              className="w-24 rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
+            />
           </div>
-          {(() => {
-            const expiryDate = card.type === 'easycard' ? passExpiryDate : paymentDueDate
-            if (!expiryDate || !notifyDaysBefore) return <p className="text-[11px] text-muted-foreground">請先設定日期</p>
-            const d = new Date(expiryDate)
-            d.setDate(d.getDate() - Number(notifyDaysBefore))
-            const notifyDate = d.toISOString().slice(0, 10)
-            const label = card.type === 'easycard' ? `月票 ${expiryDate}` : `繳費截止 ${expiryDate}`
-            return (
-              <p className="text-[11px] text-muted-foreground">
-                {label} → <span className="font-medium text-foreground">{notifyDate} {notifyTime}</span> 通知
-              </p>
-            )
-          })()}
+          <p className="text-[11px] text-muted-foreground">
+            {reminderDay
+              ? `每月 ${reminderDay} 號固定推播提醒`
+              : '沒填的話，系統預設在到期前 3 天內每天推播提醒'}
+          </p>
         </div>
       )}
 

@@ -13,7 +13,7 @@ import {
   isWithinInterval,
 } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
-import type { Transaction, Period, ChartDataPoint } from './types'
+import type { Transaction, Period, ChartDataPoint, Job } from './types'
 
 export function filterByPeriod(
   transactions: Transaction[],
@@ -127,6 +127,11 @@ export function buildChartData(
       expense: sumByType(dayTxs, 'expense'),
     }
   })
+}
+
+/** 依 pay_type 取出目前生效的薪資金額（時薪或月薪只會有一個非 null） */
+export function jobRate(job: Job): number {
+  return (job.pay_type === 'hourly' ? job.hourly_rate : job.monthly_salary) ?? 0
 }
 
 export function formatCurrency(amount: number): string {

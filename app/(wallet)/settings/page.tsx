@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, UsersIcon, ShieldCheckIcon } from 'lucide-react'
 import Link from 'next/link'
 import { APP_VERSION } from '@/lib/version'
 import { useTransactions } from '@/hooks/use-transactions'
-import { formatCurrency } from '@/lib/finance-utils'
+import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,8 @@ import { logout } from '@/app/actions/auth'
 import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
+import { JobShareSheet } from '@/components/wallet/job-share-sheet'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
 import type { Card } from '@/lib/types'
 
 interface UserProfile {
@@ -51,6 +53,7 @@ const EMPTY_FORM = {
   payday: '',
   labor_insurance: '',
   health_insurance: '',
+  welfare_fee: '',
 }
 
 
@@ -70,13 +73,17 @@ export default function SettingsPage() {
   // 卡片管理
   const { cards, updateCard, removeCard, isLoaded: cardsLoaded } = useCards()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
+  const [sharingJob, setSharingJob] = useState<Job | null>(null)
 
   // 個人資料
   const [profile, setProfile] = useState<UserProfile | null>(null)
 
   // 展開狀態
   const [expandedAccount, setExpandedAccount] = useState<'google' | 'line' | null>(null)
-  const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | null>(null)
+  const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | 'push' | null>(null)
+
+  // 推播通知
+  const { permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, enable: enablePush, disable: disablePush } = usePushNotifications()
 
   useEffect(() => {
     fetch('/api/backend/users/me')
@@ -198,10 +205,11 @@ export default function SettingsPage() {
       name: job.name,
       color: job.color,
       pay_type: job.pay_type,
-      rate: String(job.rate),
+      rate: String(jobRate(job)),
       payday: String(job.payday),
-      labor_insurance: String(job.labor_insurance),
-      health_insurance: String(job.health_insurance),
+      labor_insurance: String(job.labor_insurance_fee),
+      health_insurance: String(job.health_insurance_fee),
+      welfare_fee: String(job.welfare_fee ?? 0),
     })
     setFormOpen(true)
   }
@@ -210,14 +218,17 @@ export default function SettingsPage() {
     if (!form.name || !form.rate || !form.payday) return
     setSubmitting(true)
     try {
+      const rateValue = parseFloat(form.rate)
       const payload = {
         name: form.name,
         color: form.color,
         pay_type: form.pay_type,
-        rate: parseFloat(form.rate),
+        hourly_rate: form.pay_type === 'hourly' ? rateValue : null,
+        monthly_salary: form.pay_type === 'monthly' ? rateValue : null,
         payday: parseInt(form.payday),
-        labor_insurance: parseFloat(form.labor_insurance || '0'),
-        health_insurance: parseFloat(form.health_insurance || '0'),
+        labor_insurance_fee: parseFloat(form.labor_insurance || '0'),
+        health_insurance_fee: parseFloat(form.health_insurance || '0'),
+        welfare_fee: parseFloat(form.welfare_fee || '0'),
       }
       if (editingId) {
         const updated = await api.updateJob(editingId, payload)
@@ -256,11 +267,11 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="px-5 pt-10 pb-6 lg:pt-8">
+      <div className="px-5 pt-10 pb-6 lg:mx-auto lg:w-full lg:max-w-lg lg:pt-8">
         <h1 className="text-xl font-bold">設定</h1>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 lg:max-w-lg lg:px-6">
+      <div className="flex flex-col gap-4 px-4 lg:mx-auto lg:max-w-lg lg:px-6">
 
         {/* 個人資料 */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
@@ -554,9 +565,12 @@ export default function SettingsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{job.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {job.pay_type === 'hourly' ? `時薪 ${formatCurrency(job.rate)}` : `月薪 ${formatCurrency(job.rate)}`}　每月 {job.payday} 號
+                          {job.pay_type === 'hourly' ? `時薪 ${formatCurrency(jobRate(job))}` : `月薪 ${formatCurrency(jobRate(job))}`}　每月 {job.payday} 號
                         </p>
                       </div>
+                      <button onClick={() => setSharingJob(job)} className="p-1.5 text-muted-foreground hover:text-indigo-500" title="共享設定">
+                        <UsersIcon className="size-4" />
+                      </button>
                       <button onClick={() => openEditJob(job)} className="p-1.5 text-muted-foreground hover:text-foreground">
                         <PencilIcon className="size-4" />
                       </button>
@@ -569,6 +583,50 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+
+          <div className="border-t" />
+
+          {/* 推播通知 row */}
+          <button
+            onClick={() => setExpandedFeature(v => v === 'push' ? null : 'push')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <span className="text-sm font-medium">推播通知</span>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'rounded-full px-2 py-0.5 text-xs font-medium',
+                pushSubscribed ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-muted text-muted-foreground'
+              )}>
+                {pushPermission === 'unsupported' ? '不支援' : pushPermission === 'denied' ? '已封鎖' : pushSubscribed ? '已開啟' : '未開啟'}
+              </span>
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedFeature === 'push' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedFeature === 'push' && (
+            <div className="border-t px-4 py-4 flex flex-col gap-3">
+              {pushPermission === 'unsupported' && (
+                <p className="text-xs text-muted-foreground">此瀏覽器不支援推播通知（iOS 需先將本站加入主畫面再開啟）。</p>
+              )}
+              {pushPermission === 'denied' && (
+                <p className="text-xs text-muted-foreground">通知權限已被封鎖，請至瀏覽器設定手動開啟後再試一次。</p>
+              )}
+              {pushPermission !== 'unsupported' && pushPermission !== 'denied' && (
+                <>
+                  <p className="text-xs text-muted-foreground">開啟後可在卡片到期、繳費等提醒時收到推播通知。</p>
+                  <button
+                    onClick={() => { if (pushSubscribed) { disablePush() } else { enablePush() } }}
+                    disabled={pushLoading}
+                    className={cn(
+                      'flex items-center justify-center rounded-xl py-2.5 text-sm font-medium disabled:opacity-60',
+                      pushSubscribed ? 'border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20' : 'bg-amber-400 text-white hover:bg-amber-500'
+                    )}
+                  >
+                    {pushLoading ? '處理中…' : pushSubscribed ? '關閉推播通知' : '開啟推播通知'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {editingCard && (
@@ -578,6 +636,28 @@ export default function SettingsPage() {
             onOpenChange={open => { if (!open) setEditingCard(null) }}
             onSave={async (id, data) => { await updateCard(id, data) }}
           />
+        )}
+
+        {sharingJob && (
+          <JobShareSheet
+            job={sharingJob}
+            open={!!sharingJob}
+            onOpenChange={open => { if (!open) setSharingJob(null) }}
+          />
+        )}
+
+        {/* ── 管理後台（只有管理員帳號看得到入口，真正的權限判斷在後端）── */}
+        {profile?.email === 'ch855118@gmail.com' && (
+          <Link
+            href="/admin"
+            className="flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm hover:bg-muted/40 dark:bg-card"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <ShieldCheckIcon className="size-4 text-amber-500" />
+              管理後台
+            </span>
+            <span className="text-base leading-none text-muted-foreground">›</span>
+          </Link>
         )}
 
         {/* ── 關於 ── */}
@@ -714,6 +794,19 @@ export default function SettingsPage() {
                     className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
                   />
                 </div>
+              </div>
+
+              {/* Welfare fee */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">福利金自付額</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.welfare_fee}
+                  onChange={e => setForm(f => ({ ...f, welfare_fee: e.target.value }))}
+                  placeholder="0"
+                  className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
+                />
               </div>
             </div>
 

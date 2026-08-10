@@ -22,14 +22,18 @@ export async function GET(req: NextRequest) {
   try {
     const tokens = await google.validateAuthorizationCode(code, codeVerifier)
     accessToken = tokens.accessToken()
-  } catch {
+  } catch (err) {
+    console.error('[google callback] validateAuthorizationCode failed:', err)
     redirect(mode === 'link' ? '/settings?error=google_failed' : '/login?error=google_failed')
   }
 
   const userRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
-  if (!userRes.ok) redirect(mode === 'link' ? '/settings?error=google_failed' : '/login?error=google_failed')
+  if (!userRes.ok) {
+    console.error('[google callback] userinfo fetch failed:', userRes.status, await userRes.text())
+    redirect(mode === 'link' ? '/settings?error=google_failed' : '/login?error=google_failed')
+  }
 
   const googleUser = await userRes.json() as {
     sub: string; email: string; name: string; picture?: string
@@ -76,16 +80,14 @@ export async function GET(req: NextRequest) {
   const backendRes = await fetch(`${process.env.API_URL}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      google_id: googleUser.sub,
-      email: googleUser.email,
-      name: googleUser.name,
-      picture: googleUser.picture,
-    }),
+    body: JSON.stringify({ access_token: accessToken }),
   })
-  if (!backendRes.ok) redirect('/login?error=google_failed')
+  if (!backendRes.ok) {
+    console.error('[google callback] backend /auth/google failed:', backendRes.status, await backendRes.text())
+    redirect('/login?error=google_failed')
+  }
 
-  const { token, user } = await backendRes.json()
+  const { access_token: token, user } = await backendRes.json()
   await createSession(token, String(user?.id ?? user?.username ?? googleUser.email))
   redirect('/dashboard')
 }

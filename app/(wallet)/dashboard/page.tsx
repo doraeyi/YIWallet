@@ -10,8 +10,10 @@ import { useCards } from '@/hooks/use-cards'
 import { filterByMonth, sumByType, groupByDate, formatCurrency } from '@/lib/finance-utils'
 import { getCategoryById, type Card } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import * as api from '@/lib/api'
 import { AddCardSheet } from '@/components/wallet/add-card-sheet'
 import { MonthNav } from '@/components/wallet/month-nav'
+import { CreditBillPanel } from '@/components/wallet/credit-bill-panel'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 type ViewItem =
@@ -128,6 +130,9 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<Card | null>(null)
   const [showPassInfo, setShowPassInfo] = useState(false)
   const [renewingPass, setRenewingPass] = useState(false)
+  const [showCreditPanel, setShowCreditPanel] = useState(false)
+  const [creditSummary, setCreditSummary] = useState<api.BankCreditSummary | null>(null)
+  const [creditSummaryLoading, setCreditSummaryLoading] = useState(false)
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [showUnassigned, setShowUnassigned] = useState(false)
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
@@ -141,7 +146,7 @@ export default function DashboardPage() {
     localStorage.setItem('yiwallet_dismissed_unassigned', key)
   }
 
-  useEffect(() => { setShowPassInfo(false) }, [viewIndex])
+  useEffect(() => { setShowPassInfo(false); setShowCreditPanel(false) }, [viewIndex])
 
   // Touch swipe state
   const touchStartX = useRef<number | null>(null)
@@ -154,6 +159,23 @@ export default function DashboardPage() {
   const total = viewItems.length
   const safeIndex = viewIndex >= total ? 0 : viewIndex
   const currentView = viewItems[safeIndex]
+
+  // 信用卡「本期消費」改用後端依結帳日即時算出的真實數字（BankCreditSetting），
+  // 還沒設定結帳日的話後端 billing_day 會是 null，這時 UI 退回用日曆月加總當預覽
+  const creditBankName = currentView.kind === 'card' && currentView.card.type === 'credit' ? currentView.card.bank : undefined
+  const loadCreditSummary = useCallback(async () => {
+    if (!creditBankName) { setCreditSummary(null); return }
+    setCreditSummaryLoading(true)
+    try {
+      setCreditSummary(await api.fetchBankCreditSummary(creditBankName))
+    } catch {
+      setCreditSummary(null)
+    } finally {
+      setCreditSummaryLoading(false)
+    }
+  }, [creditBankName])
+
+  useEffect(() => { loadCreditSummary() }, [loadCreditSummary])
 
   const allFiltered = useMemo(
     () => filterByMonth(transactions, year, month),
@@ -170,14 +192,16 @@ export default function DashboardPage() {
   const expense = sumByType(filtered, 'expense')
   const balance = income - expense
 
-  // Donut center: debit/easycard → 餘額（stored）, credit → 月帳單, others → 月結餘
+  // Donut center: debit/easycard → 餘額（stored）, credit → 本期消費（有設結帳日就用後端即時算的，
+  // 沒設就退回日曆月加總當預覽）, others → 月結餘
+  const creditPeriodSpend = creditSummary?.billing_day != null ? creditSummary.current_period_spend : expense
   const centerLabel = currentView.kind === 'card'
-    ? currentView.card.type === 'credit' ? '月帳單'
+    ? currentView.card.type === 'credit' ? '本期消費'
     : currentView.card.balance != null ? '餘額'
     : '月結餘'
     : '月結餘'
   const centerValue = currentView.kind === 'card'
-    ? currentView.card.type === 'credit' ? expense
+    ? currentView.card.type === 'credit' ? creditPeriodSpend
     : currentView.card.balance ?? balance
     : balance
   const recentGroups = groupByDate(filtered)
@@ -403,6 +427,15 @@ export default function DashboardPage() {
             <BellIcon className="size-4" />
           </button>
         )}
+        {/* 信用卡帳單鈴鐺 */}
+        {currentView.kind === 'card' && currentView.card.type === 'credit' && (
+          <button
+            onClick={() => setShowCreditPanel(v => !v)}
+            className="absolute right-8 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <BellIcon className="size-4" />
+          </button>
+        )}
       </div>
 
       {/* 月票資訊 popover */}
@@ -436,6 +469,17 @@ export default function DashboardPage() {
           </div>
         )
       })()}
+
+      {/* 信用卡帳單 popover */}
+      {showCreditPanel && creditBankName && (
+        <CreditBillPanel
+          bankName={creditBankName}
+          summary={creditSummary}
+          loading={creditSummaryLoading}
+          onClose={() => setShowCreditPanel(false)}
+          onRefresh={loadCreditSummary}
+        />
+      )}
 
       {/* Current view label + 設為常用 */}
       <div className="flex items-center justify-center gap-2 -mt-3 mb-2">

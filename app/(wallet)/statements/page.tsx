@@ -81,7 +81,7 @@ export default function StatementsPage() {
   const allSelected = items.filter(i => !i.duplicate).every(i => i.selected)
 
   return (
-    <div className="flex flex-col gap-6 p-4 lg:p-6">
+    <div className="flex flex-col gap-6 p-4 lg:mx-auto lg:max-w-2xl lg:p-6">
       <div>
         <h1 className="text-xl font-bold">載具發票匯入</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">從財政部電子發票平台下載 CSV，上傳後批次建立支出記錄</p>

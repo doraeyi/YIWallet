@@ -56,13 +56,14 @@ export interface Card {
   type: 'debit' | 'credit' | 'easycard'
   color: string
   lastFour?: string
-  bankCode?: string
   bank?: string
   balance?: number           // debit/easycard 餘額
+  dueAmount?: number         // 信用卡目前應繳金額
+  creditLimit?: number       // 信用額度
   passExpiryDate?: string    // 悠遊卡月票到期日 YYYY-MM-DD
   paymentDueDate?: string    // 信用卡繳費截止日 YYYY-MM-DD
-  notifyDaysBefore?: number  // 提前幾天通知（預設 1）
-  notifyTime?: string        // 通知時間 HH:MM（預設 09:00）
+  reminderDay?: number       // 每月固定幾號提醒（不是提前幾天）
+  creditAccountId?: string
 }
 
 export interface Job {
@@ -70,18 +71,62 @@ export interface Job {
   name: string
   color: string
   pay_type: 'hourly' | 'monthly'
-  rate: number
+  hourly_rate: number | null
+  monthly_salary: number | null
   payday: number
-  labor_insurance: number
-  health_insurance: number
+  labor_insurance_fee: number
+  health_insurance_fee: number
+  welfare_fee: number
   created_at: string
 }
 
 export interface Shift {
   id: string
-  job_id: string
-  job_name: string
-  job_color: string
+  job_id: string | null
+  job_name: string | null
+  job_color: string | null
   date: string
-  shift_type: 'morning' | 'evening'
+  start_time: string
+  end_time: string
+  shift_type: 'morning' | 'evening' | null
+  note: string | null
+}
+
+export interface FriendUser {
+  id: string
+  email: string
+  displayName: string
+  picture?: string
+}
+
+export interface Friendship {
+  id: string
+  status: 'pending' | 'accepted'
+  friend: FriendUser
+  incoming: boolean
+}
+
+export interface JobShare {
+  id: string
+  sharedWith: FriendUser
+}
+
+/** 好友分享出來的班表，唯讀，只帶顯示需要的欄位（沒有薪資等敏感資料） */
+export interface FriendShift {
+  id: string
+  date: string
+  start_time: string
+  end_time: string
+  shift_type: string | null
+  note: string | null
+  job: { id: string; name: string; color: string } | null
+}
+
+/** 管理後台用的使用者清單項目 */
+export interface AdminUser {
+  id: string
+  email: string
+  displayName: string
+  canUseOcr: boolean
+  createdAt: string
 }

@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python venv (unrelated to this Next.js app, backend lives in a separate repo)
+/venv
+
+# tesseract.js language data (only appears if run directly via node, not from the browser)
+*.traineddata

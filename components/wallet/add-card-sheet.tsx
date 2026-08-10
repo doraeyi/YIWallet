@@ -87,7 +87,6 @@ export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
         type,
         color,
         lastFour: cardNumber.replace(/\D/g, '').slice(-4) || undefined,
-        bankCode: !isEasycard ? (bankCode || undefined) : undefined,
         bank: !isEasycard ? bankName : undefined,
         balance: (type === 'debit' || type === 'easycard') && balance ? Number(balance) : undefined,
         passExpiryDate: isEasycard && passExpiryDate ? passExpiryDate : undefined,
@@ -208,7 +207,7 @@ export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
             onChange={e => setPaymentDueDate(e.target.value)}
             className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
           />
-          <p className="text-[11px] text-muted-foreground">設定後到期前一天 LINE Bot 會提醒你繳費</p>
+          <p className="text-[11px] text-muted-foreground">新增後可到編輯頁設定推播提醒時機</p>
         </div>
       )}
 
@@ -236,7 +235,7 @@ export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
               onChange={e => setPassExpiryDate(e.target.value)}
               className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
             />
-            <p className="text-[11px] text-muted-foreground">設定後到期前一天 LINE Bot 會提醒你續卡</p>
+            <p className="text-[11px] text-muted-foreground">新增後可到編輯頁設定推播提醒時機</p>
           </div>
         </>
       )}

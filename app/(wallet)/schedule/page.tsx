@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import Link from 'next/link'
+import { ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCurrency } from '@/lib/finance-utils'
+import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job, Shift } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { MonthNav } from '@/components/wallet/month-nav'
+import { FriendsBanner } from '@/components/wallet/friends-banner'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -24,19 +27,23 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [addingJob, setAddingJob] = useState<string | null>(null)
   const [holidays, setHolidays] = useState<Set<string>>(new Set())
+  // 工作切換器：預設每個工作的班表/薪資分開顯示，只有使用者主動切成「全部」才合併顯示
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+  const [showAllJobs, setShowAllJobs] = useState(false)
   const isDesktop = useIsDesktop()
   const { transactions, addTransaction, deleteTransaction } = useTransactions()
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    // /schedule 一次回傳使用者所有班表（後端不支援年月篩選），月份切換只是前端換篩選範圍，不用重打 API
     const [j, s] = await Promise.all([
       api.fetchJobs().catch(() => [] as Job[]),
-      api.fetchShifts(year, month).catch(() => [] as Shift[]),
+      api.fetchShifts().catch(() => [] as Shift[]),
     ])
     setJobs(j)
     setShifts(s)
     setLoading(false)
-  }, [year, month])
+  }, [])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -77,6 +84,7 @@ export default function SchedulePage() {
   const daysInMonth = new Date(year, month, 0).getDate()
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
+  // 未過濾版本：日期點擊面板要看得到「所有工作」當天有沒有排班，才能正確顯示每個工作各自的早/晚班切換狀態
   const shiftsByDate = useMemo(() => {
     const map: Record<string, Shift[]> = {}
     for (const s of shifts) {
@@ -86,6 +94,18 @@ export default function SchedulePage() {
     }
     return map
   }, [shifts])
+
+  // 月曆格子顯示用：預設只顯示目前選中工作的班表，切到「全部」才顯示合併結果
+  const visibleShiftsByDate = useMemo(() => {
+    if (showAllJobs || jobs.length <= 1) return shiftsByDate
+    const jobId = activeJobId ?? jobs[0]?.id
+    const map: Record<string, Shift[]> = {}
+    for (const [date, list] of Object.entries(shiftsByDate)) {
+      const filtered = list.filter(s => s.job_id === jobId)
+      if (filtered.length) map[date] = filtered
+    }
+    return map
+  }, [shiftsByDate, showAllJobs, activeJobId, jobs])
 
   const advanceDates = useMemo(() => {
     const set = new Set<string>()
@@ -130,11 +150,12 @@ export default function SchedulePage() {
   }
 
   function shiftAmount(job: Job, date: string) {
+    const rate = jobRate(job)
     if (job.pay_type === 'hourly') {
       const multiplier = holidays.has(date) ? 2 : 1
-      return Math.round(job.rate * 8 * multiplier)
+      return Math.round(rate * 8 * multiplier)
     }
-    return Math.round(job.rate / 30)
+    return Math.round(rate / 30)
   }
 
   async function handleToggleAdvance(job: Job, date: string) {
@@ -278,14 +299,45 @@ export default function SchedulePage() {
         <div className="flex items-center gap-2">
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
-        {/* Job legend */}
-        <div className="flex gap-2">
-          {jobs.map(job => (
-            <div key={job.id} className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full" style={{ backgroundColor: job.color }} />
-              <span className="text-xs text-muted-foreground">{job.name}</span>
+        <div className="flex items-center gap-3">
+          {/* 工作切換器：預設分開顯示各自班表/薪資，「全部」才合併 */}
+          {jobs.length > 1 && (
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              <button
+                onClick={() => setShowAllJobs(true)}
+                className={cn(
+                  'shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                  showAllJobs ? 'border-foreground bg-foreground text-background' : 'border-muted-foreground/20 text-muted-foreground hover:bg-muted/40'
+                )}
+              >
+                全部
+              </button>
+              {jobs.map(job => {
+                const selected = !showAllJobs && (activeJobId ?? jobs[0].id) === job.id
+                return (
+                  <button
+                    key={job.id}
+                    onClick={() => { setActiveJobId(job.id); setShowAllJobs(false) }}
+                    className={cn(
+                      'flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                      selected ? 'text-white' : 'border-muted-foreground/20 text-muted-foreground hover:bg-muted/40'
+                    )}
+                    style={selected ? { backgroundColor: job.color, borderColor: job.color } : undefined}
+                  >
+                    <span className="size-1.5 rounded-full" style={{ backgroundColor: selected ? '#fff' : job.color }} />
+                    {job.name}
+                  </button>
+                )
+              })}
             </div>
-          ))}
+          )}
+          <Link
+            href="/schedule/import"
+            className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/70"
+          >
+            <ImageIcon className="size-3.5" />
+            班表匯入
+          </Link>
         </div>
       </div>
 
@@ -293,6 +345,10 @@ export default function SchedulePage() {
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
       ) : (
         <div className="px-4 lg:px-6">
+          <div className="mb-4">
+            <FriendsBanner />
+          </div>
+
           {/* Calendar */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
             <div className="grid grid-cols-7 border-b">
@@ -311,7 +367,7 @@ export default function SchedulePage() {
               ))}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                const dayShifts = shiftsByDate[dateStr] ?? []
+                const dayShifts = visibleShiftsByDate[dateStr] ?? []
                 const isToday = dateStr === todayStr
                 const col = (firstDayOfWeek + day - 1) % 7
                 const isHolidayDate = holidays.has(dateStr)
@@ -339,7 +395,7 @@ export default function SchedulePage() {
                         <span
                           key={s.id}
                           className="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none text-white"
-                          style={{ backgroundColor: s.job_color }}
+                          style={{ backgroundColor: s.job_color ?? '#9CA3AF' }}
                         >
                           {s.shift_type === 'morning' ? '早' : '晚'}
                         </span>
@@ -360,26 +416,35 @@ export default function SchedulePage() {
           {jobs.length > 0 && (
             <div className="mt-4 flex flex-col gap-3">
               <p className="text-sm font-semibold">本月薪資預估</p>
-              {jobs.map(job => {
+
+              {(() => {
+                // 薪資一律只顯示目前切換器選中的那個工作，不受「全部」合併顯示影響——每份工作的薪資本來就該分開算
+                const job = jobs.find(j => j.id === (activeJobId ?? jobs[0].id))
+                if (!job) return null
                 const jobShifts = shifts.filter(s => s.job_id === job.id)
+                const holidayShiftCount = jobShifts.filter(s => holidays.has(s.date.slice(0, 10))).length
+                const rate = jobRate(job)
+                // 國定假日出勤雙倍工資（勞基法）：時薪制當天薪資直接乘 2，月薪制則是全薪之外
+                // 再加發一天日薪（月薪 ÷ 30）作為假日出勤獎金
                 const gross = job.pay_type === 'hourly'
                   ? jobShifts.reduce((sum, s) => {
                       const multiplier = holidays.has(s.date.slice(0, 10)) ? 2 : 1
-                      return sum + job.rate * 8 * multiplier
+                      return sum + rate * 8 * multiplier
                     }, 0)
-                  : job.rate
-                const deduction = job.labor_insurance + job.health_insurance
+                  : rate + holidayShiftCount * (rate / 30)
+                const deduction = job.labor_insurance_fee + job.health_insurance_fee + job.welfare_fee
                 const net = gross - deduction
                 return (
                   <div key={job.id} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                       <span className="size-3 rounded-full" style={{ backgroundColor: job.color }} />
                       <span className="text-sm font-semibold">{job.name}</span>
-                      {job.pay_type === 'hourly' && (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {jobShifts.length} 班 · {jobShifts.length * 8} 小時
-                        </span>
-                      )}
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {job.pay_type === 'hourly'
+                          ? `${jobShifts.length} 班 · ${jobShifts.length * 8} 小時`
+                          : `${jobShifts.length} 班`}
+                        {holidayShiftCount > 0 && `・${holidayShiftCount} 天假日加成`}
+                      </span>
                     </div>
                     <div className="flex justify-around px-4 py-3">
                       <div className="flex flex-col items-center">
@@ -432,7 +497,7 @@ export default function SchedulePage() {
                     </div>
                   </div>
                 )
-              })}
+              })()}
             </div>
           )}
 

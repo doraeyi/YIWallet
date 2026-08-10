@@ -31,13 +31,13 @@ export default function LoginPage() {
         <form action={action} className="rounded-2xl bg-white p-6 shadow-sm dark:bg-card">
           <div className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">帳號</label>
+              <label className="mb-1.5 block text-sm font-medium">Email</label>
               <input
-                name="username"
-                type="text"
+                name="email"
+                type="email"
                 required
-                autoComplete="username"
-                placeholder="輸入帳號"
+                autoComplete="email"
+                placeholder="輸入 Email"
                 className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
               />
             </div>

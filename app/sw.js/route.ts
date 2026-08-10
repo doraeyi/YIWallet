@@ -5,7 +5,49 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const CACHE_NAME = `yiwallet-${APP_VERSION}`
 
+  const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  }
+
+  // Only wire up FCM once the project has real Firebase credentials configured
+  const pushSection = firebaseConfig.apiKey ? `
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js')
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js')
+
+firebase.initializeApp(${JSON.stringify(firebaseConfig)})
+const messaging = firebase.messaging()
+
+// App 在背景（分頁未開啟/未聚焦）時顯示系統通知
+messaging.onBackgroundMessage((payload) => {
+  const { title, body } = payload.notification || {}
+  self.registration.showNotification(title || '易記帳', {
+    body,
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    data: payload.data,
+  })
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then((list) => {
+      const existing = list.find((c) => c.url.includes(url))
+      if (existing) return existing.focus()
+      return self.clients.openWindow(url)
+    })
+  )
+})
+` : ''
+
   const sw = `
+${pushSection}
 const CACHE_NAME = '${CACHE_NAME}'
 
 // Pre-cache offline fallback; do NOT skipWaiting — new SW stays waiting until user approves

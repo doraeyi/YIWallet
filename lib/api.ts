@@ -1,4 +1,4 @@
-import type { Transaction, Card } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser } from './types'
 
 const API = '/api/backend'
 
@@ -9,7 +9,7 @@ interface ApiTransaction {
   type: 'income' | 'expense'
   amount: number
   category_id: string
-  note: string
+  note: string | null
   date: string
   created_at: string
   card_id?: string | null
@@ -21,7 +21,7 @@ function normalizeTransaction(t: ApiTransaction): Transaction {
     type: t.type,
     amount: t.amount,
     category: t.category_id,
-    note: t.note,
+    note: t.note ?? '',
     date: typeof t.date === 'string' ? t.date.slice(0, 10) : String(t.date),
     createdAt: t.created_at,
     cardId: t.card_id ?? undefined,
@@ -101,13 +101,14 @@ interface ApiCard {
   type: 'debit' | 'credit' | 'easycard'
   color: string
   last_four?: string | null
-  bank_code?: string | null
   bank?: string | null
   balance?: number | null
+  due_amount?: number | null
+  credit_limit?: number | null
   pass_expiry_date?: string | null
   payment_due_date?: string | null
-  notify_days_before?: number | null
-  notify_time?: string | null
+  reminder_day?: number | null
+  credit_account_id?: number | null
 }
 
 function normalizeCard(c: ApiCard): Card {
@@ -117,13 +118,14 @@ function normalizeCard(c: ApiCard): Card {
     type: c.type,
     color: c.color,
     lastFour: c.last_four ?? undefined,
-    bankCode: c.bank_code ?? undefined,
     bank: c.bank ?? undefined,
     balance: c.balance ?? undefined,
+    dueAmount: c.due_amount ?? undefined,
+    creditLimit: c.credit_limit ?? undefined,
     passExpiryDate: c.pass_expiry_date ?? undefined,
     paymentDueDate: c.payment_due_date ?? undefined,
-    notifyDaysBefore: c.notify_days_before ?? undefined,
-    notifyTime: c.notify_time ?? undefined,
+    reminderDay: c.reminder_day ?? undefined,
+    creditAccountId: c.credit_account_id != null ? String(c.credit_account_id) : undefined,
   }
 }
 
@@ -143,9 +145,10 @@ export async function createCard(data: Omit<Card, 'id'>): Promise<Card> {
       type: data.type,
       color: data.color,
       last_four: data.lastFour ?? null,
-      bank_code: data.bankCode ?? null,
       bank: data.bank ?? null,
       balance: data.balance ?? null,
+      due_amount: data.dueAmount ?? null,
+      credit_limit: data.creditLimit ?? null,
       pass_expiry_date: data.passExpiryDate ?? null,
       payment_due_date: data.paymentDueDate ?? null,
     }),
@@ -163,13 +166,14 @@ export async function updateCard(id: string, data: Omit<Card, 'id'>): Promise<Ca
       type: data.type,
       color: data.color,
       last_four: data.lastFour ?? null,
-      bank_code: data.bankCode ?? null,
       bank: data.bank ?? null,
       balance: data.balance ?? null,
+      due_amount: data.dueAmount ?? null,
+      credit_limit: data.creditLimit ?? null,
       pass_expiry_date: data.passExpiryDate ?? null,
       payment_due_date: data.paymentDueDate ?? null,
-      notify_days_before: data.notifyDaysBefore ?? 1,
-      notify_time: data.notifyTime ?? '09:00',
+      reminder_day: data.reminderDay ?? null,
+      credit_account_id: data.creditAccountId ? Number(data.creditAccountId) : null,
     }),
   })
   if (!res.ok) throw new Error('Failed to update card')
@@ -217,24 +221,332 @@ export async function deleteJob(id: string): Promise<void> {
 }
 
 // ── Shifts ────────────────────────────────────────────────────────
+// 後端真正的個人班表端點掛在 /schedule（不是 /shifts，那個 router 不存在），
+// 只有 GET（回傳全部，不支援年月篩選）/ POST / DELETE，沒有更新用的 PUT，
+// 换班別是前端自己「先刪舊的、再建新的」。
 
-export async function fetchShifts(year: number, month: number): Promise<Shift[]> {
-  const res = await fetch(`${API}/shifts?year=${year}&month=${month}`)
+interface ApiShift {
+  id: string
+  job_id: string | null
+  date: string
+  start_time: string
+  end_time: string
+  shift_type: string | null
+  note: string | null
+  job?: { name: string; color: string } | null
+}
+
+function normalizeShift(s: ApiShift): Shift {
+  return {
+    id: s.id,
+    job_id: s.job_id,
+    job_name: s.job?.name ?? null,
+    job_color: s.job?.color ?? null,
+    date: s.date,
+    start_time: s.start_time,
+    end_time: s.end_time,
+    shift_type: (s.shift_type as 'morning' | 'evening' | null) ?? null,
+    note: s.note ?? null,
+  }
+}
+
+// 網頁版目前只有「早班／晚班」兩個固定時段可選，換成自訂時間是排班表匯入那次要做的事
+const SHIFT_TIMES: Record<'morning' | 'evening', { start_time: string; end_time: string }> = {
+  morning: { start_time: '07:00:00', end_time: '15:00:00' },
+  evening: { start_time: '15:00:00', end_time: '23:00:00' },
+}
+
+export async function fetchShifts(): Promise<Shift[]> {
+  const res = await fetch(`${API}/schedule`)
   if (!res.ok) throw new Error('Failed to fetch shifts')
-  return res.json()
+  const data: ApiShift[] = await res.json()
+  return data.map(normalizeShift)
 }
 
 export async function upsertShift(data: { job_id: string; date: string; shift_type: 'morning' | 'evening' }): Promise<Shift> {
-  const res = await fetch(`${API}/shifts`, {
+  const res = await fetch(`${API}/schedule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      job_id: data.job_id,
+      date: data.date,
+      shift_type: data.shift_type,
+      ...SHIFT_TIMES[data.shift_type],
+    }),
   })
   if (!res.ok) throw new Error('Failed to upsert shift')
-  return res.json()
+  return normalizeShift(await res.json())
 }
 
 export async function deleteShift(id: string): Promise<void> {
-  const res = await fetch(`${API}/shifts/${id}`, { method: 'DELETE' })
+  const res = await fetch(`${API}/schedule/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete shift')
+}
+
+// ── Roster import（排班表照片匯入）──────────────────────────────────
+
+export interface PendingRosterPhoto {
+  id: string
+  created_at: string
+}
+
+export async function fetchPendingRosterPhotos(): Promise<PendingRosterPhoto[]> {
+  const res = await fetch(`${API}/roster/pending`)
+  if (!res.ok) throw new Error('Failed to fetch pending roster photos')
+  return res.json()
+}
+
+export function pendingRosterPhotoImageUrl(id: string): string {
+  return `${API}/roster/pending/${id}/image`
+}
+
+export async function deletePendingRosterPhoto(id: string): Promise<void> {
+  const res = await fetch(`${API}/roster/pending/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete pending roster photo')
+}
+
+export interface RosterShiftEntry {
+  employee_name: string
+  date: string
+  start_time: string | null
+  end_time: string | null
+  note: string | null
+}
+
+export async function confirmRosterImport(params: {
+  pendingId?: string
+  jobId: string | null
+  periodStart: string
+  periodEnd: string
+  shifts: RosterShiftEntry[]
+}): Promise<void> {
+  const path = params.pendingId ? `/roster/pending/${params.pendingId}/confirm` : '/roster/confirm'
+  const res = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      job_id: params.jobId,
+      period_start: params.periodStart,
+      period_end: params.periodEnd,
+      shifts: params.shifts,
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to confirm roster import')
+}
+
+export interface RosterOcrResult {
+  lines: { text: string; box: { left: number; top: number; right: number; bottom: number } }[]
+  rawText: string
+}
+
+export async function runRosterOcr(imageDataUrl: string): Promise<RosterOcrResult> {
+  const res = await fetch('/api/roster/ocr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageDataUrl }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'OCR 辨識失敗')
+  }
+  return res.json()
+}
+
+// ── 信用卡帳單（BankCreditSetting）──────────────────────────────────
+// bankName 其實是 credit_group_key，網頁版卡片沒有「不共用額度」的切換，
+// credit_group_key 一律等於 Card.bank，所以直接拿卡片的 bank 名稱當 key 就對了。
+
+export interface BankCreditSetting {
+  bank_name: string
+  billing_day: number | null
+  manual_period_amount: number | null
+  manual_period_set_date: string | null
+}
+
+export interface BankBill {
+  closing_date: string
+  period_start: string
+  period_end: string
+  amount: number
+  paid: boolean
+}
+
+export interface BankCreditSummary {
+  bank_name: string
+  credit_limit: number
+  billing_day: number | null
+  last_closing_date: string | null
+  current_period_spend: number
+  available_credit: number
+  unpaid_bills: BankBill[]
+}
+
+export async function fetchBankCreditSetting(bankName: string): Promise<BankCreditSetting> {
+  const res = await fetch(`${API}/bank-credit-settings/${encodeURIComponent(bankName)}`)
+  if (!res.ok) throw new Error('Failed to fetch bank credit setting')
+  return res.json()
+}
+
+export async function updateBankCreditSetting(
+  bankName: string,
+  data: { billing_day: number | null; manual_period_amount?: number | null },
+): Promise<BankCreditSetting> {
+  const res = await fetch(`${API}/bank-credit-settings/${encodeURIComponent(bankName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to update bank credit setting')
+  return res.json()
+}
+
+/** 找不到這個銀行分組底下的信用卡時後端回 404，這裡轉成 null 讓呼叫端當「還沒有資料」處理 */
+export async function fetchBankCreditSummary(bankName: string): Promise<BankCreditSummary | null> {
+  const res = await fetch(`${API}/bank-credit-settings/${encodeURIComponent(bankName)}/summary`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error('Failed to fetch bank credit summary')
+  return res.json()
+}
+
+export async function payBankCreditBill(bankName: string, closingDate: string): Promise<BankBill> {
+  const res = await fetch(`${API}/bank-credit-settings/${encodeURIComponent(bankName)}/bills/${closingDate}/pay`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '標記已繳失敗')
+  }
+  return res.json()
+}
+
+// ── Friends ───────────────────────────────────────────────────────
+
+interface ApiUser {
+  id: string
+  email: string
+  display_name: string
+  picture?: string | null
+}
+
+function normalizeUser(u: ApiUser): FriendUser {
+  return { id: u.id, email: u.email, displayName: u.display_name, picture: u.picture ?? undefined }
+}
+
+interface ApiFriendship {
+  id: string
+  status: 'pending' | 'accepted'
+  friend: ApiUser
+  incoming: boolean
+}
+
+function normalizeFriendship(f: ApiFriendship): Friendship {
+  return { id: f.id, status: f.status, friend: normalizeUser(f.friend), incoming: f.incoming }
+}
+
+export async function fetchFriendships(): Promise<Friendship[]> {
+  const res = await fetch(`${API}/friends`)
+  if (!res.ok) throw new Error('Failed to fetch friendships')
+  const data: ApiFriendship[] = await res.json()
+  return data.map(normalizeFriendship)
+}
+
+export async function requestFriend(email: string): Promise<Friendship> {
+  const res = await fetch(`${API}/friends/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '加好友失敗')
+  }
+  return normalizeFriendship(await res.json())
+}
+
+export async function acceptFriend(friendshipId: string): Promise<Friendship> {
+  const res = await fetch(`${API}/friends/${friendshipId}/accept`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to accept friend request')
+  return normalizeFriendship(await res.json())
+}
+
+// ── Job sharing ───────────────────────────────────────────────────
+
+interface ApiJobShare {
+  id: string
+  shared_with: ApiUser
+}
+
+export async function fetchJobShares(jobId: string): Promise<JobShare[]> {
+  const res = await fetch(`${API}/jobs/${jobId}/shares`)
+  if (!res.ok) throw new Error('Failed to fetch job shares')
+  const data: ApiJobShare[] = await res.json()
+  return data.map(s => ({ id: s.id, sharedWith: normalizeUser(s.shared_with) }))
+}
+
+export async function addJobShare(jobId: string, friendId: string): Promise<void> {
+  const res = await fetch(`${API}/jobs/${jobId}/shares/${friendId}`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to add job share')
+}
+
+export async function removeJobShare(jobId: string, friendId: string): Promise<void> {
+  const res = await fetch(`${API}/jobs/${jobId}/shares/${friendId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to remove job share')
+}
+
+// ── 好友分享班表（唯讀）──────────────────────────────────────────────
+
+interface ApiFriendShift {
+  id: string
+  date: string
+  start_time: string
+  end_time: string
+  shift_type: string | null
+  note: string | null
+  job?: { id: string; name: string; color: string } | null
+}
+
+export async function fetchFriendShifts(friendId: string): Promise<FriendShift[]> {
+  const res = await fetch(`${API}/schedule/friend/${friendId}`)
+  if (!res.ok) throw new Error('Failed to fetch friend shifts')
+  const data: ApiFriendShift[] = await res.json()
+  return data.map(s => ({
+    id: s.id,
+    date: s.date,
+    start_time: s.start_time,
+    end_time: s.end_time,
+    shift_type: s.shift_type,
+    note: s.note,
+    job: s.job ?? null,
+  }))
+}
+
+// ── Admin（管理後台，後端會擋非管理員帳號）────────────────────────────
+
+interface ApiAdminUser {
+  id: string
+  email: string
+  display_name: string
+  can_use_ocr: boolean
+  created_at: string
+}
+
+function normalizeAdminUser(u: ApiAdminUser): AdminUser {
+  return { id: u.id, email: u.email, displayName: u.display_name, canUseOcr: u.can_use_ocr, createdAt: u.created_at }
+}
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const res = await fetch(`${API}/admin/users`)
+  if (!res.ok) throw new Error('Failed to fetch users')
+  const data: ApiAdminUser[] = await res.json()
+  return data.map(normalizeAdminUser)
+}
+
+export async function updateOcrPermission(userId: string, canUseOcr: boolean): Promise<AdminUser> {
+  const res = await fetch(`${API}/admin/users/${userId}/ocr-permission`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ can_use_ocr: canUseOcr }),
+  })
+  if (!res.ok) throw new Error('Failed to update OCR permission')
+  return normalizeAdminUser(await res.json())
 }
