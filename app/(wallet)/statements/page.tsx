@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { UploadIcon, CheckIcon, AlertCircleIcon, FileTextIcon } from 'lucide-react'
+import Link from 'next/link'
+import { UploadIcon, CheckIcon, AlertCircleIcon, FileTextIcon, ImageIcon } from 'lucide-react'
 import { parseCarrierCsv, type ParsedInvoice } from '@/lib/csv-parser'
 import { useTransactions } from '@/hooks/use-transactions'
 import { cn } from '@/lib/utils'
@@ -82,9 +83,18 @@ export default function StatementsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 lg:mx-auto lg:max-w-2xl lg:p-6">
-      <div>
-        <h1 className="text-xl font-bold">載具發票匯入</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">從財政部電子發票平台下載 CSV，上傳後批次建立支出記錄</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">載具發票匯入</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">從財政部電子發票平台下載 CSV，上傳後批次建立支出記錄</p>
+        </div>
+        <Link
+          href="/schedule/import"
+          className="flex shrink-0 items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/70"
+        >
+          <ImageIcon className="size-3.5" />
+          班表匯入
+        </Link>
       </div>
 
       {/* 上傳區 */}

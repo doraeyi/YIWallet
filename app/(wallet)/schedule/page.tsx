@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import Link from 'next/link'
-import { ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
@@ -331,13 +329,6 @@ export default function SchedulePage() {
               })}
             </div>
           )}
-          <Link
-            href="/schedule/import"
-            className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/70"
-          >
-            <ImageIcon className="size-3.5" />
-            班表匯入
-          </Link>
         </div>
       </div>
 
@@ -345,10 +336,6 @@ export default function SchedulePage() {
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
       ) : (
         <div className="px-4 lg:px-6">
-          <div className="mb-4">
-            <FriendsBanner />
-          </div>
-
           {/* Calendar */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
             <div className="grid grid-cols-7 border-b">
@@ -412,6 +399,10 @@ export default function SchedulePage() {
             </div>
           </div>
 
+          <div className="mt-4">
+            <FriendsBanner />
+          </div>
+
           {/* Salary preview */}
           {jobs.length > 0 && (
             <div className="mt-4 flex flex-col gap-3">
@@ -421,7 +412,8 @@ export default function SchedulePage() {
                 // 薪資一律只顯示目前切換器選中的那個工作，不受「全部」合併顯示影響——每份工作的薪資本來就該分開算
                 const job = jobs.find(j => j.id === (activeJobId ?? jobs[0].id))
                 if (!job) return null
-                const jobShifts = shifts.filter(s => s.job_id === job.id)
+                const monthPrefix = `${year}-${String(month).padStart(2, '0')}`
+                const jobShifts = shifts.filter(s => s.job_id === job.id && s.date.startsWith(monthPrefix))
                 const holidayShiftCount = jobShifts.filter(s => holidays.has(s.date.slice(0, 10))).length
                 const rate = jobRate(job)
                 // 國定假日出勤雙倍工資（勞基法）：時薪制當天薪資直接乘 2，月薪制則是全薪之外
