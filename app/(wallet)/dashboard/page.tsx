@@ -121,10 +121,9 @@ function DonutChart({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { transactions, isLoaded, year, setYear, refetch } = useTransactions()
+  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch } = useTransactions()
   const { cards, removeCard, defaultCard, setDefaultCard, updateCard } = useCards()
   const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
   const [viewIndex, setViewIndex] = useState(0)
   const [addCardOpen, setAddCardOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Card | null>(null)
@@ -296,15 +295,6 @@ export default function DashboardPage() {
 
   const hour = now.getHours()
   const greeting = hour < 12 ? '早安 ☀️' : hour < 18 ? '午安 🌤️' : '晚安 🌙'
-
-  function prevMonth() {
-    if (month === 1) { setYear(year - 1); setMonth(12) }
-    else setMonth(m => m - 1)
-  }
-  function nextMonth() {
-    if (month === 12) { setYear(year + 1); setMonth(1) }
-    else setMonth(m => m + 1)
-  }
 
   function goNext() {
     setViewIndex(i => (i + 1) % total)

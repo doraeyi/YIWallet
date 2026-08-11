@@ -12,6 +12,10 @@ interface TransactionsContextValue {
   isLoaded: boolean
   year: number
   setYear: (year: number) => void
+  month: number
+  setMonth: (month: number) => void
+  prevMonth: () => void
+  nextMonth: () => void
   addTransaction: (data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<Transaction>
   updateTransaction: (id: string, data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
@@ -23,9 +27,24 @@ const TransactionsContext = createContext<TransactionsContextValue | null>(null)
 
 export function TransactionsProvider({ children }: { children: ReactNode }) {
   const [year, setYear] = useState(() => new Date().getFullYear())
+  const [month, setMonth] = useState(() => new Date().getMonth() + 1)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [budget, setBudgetState] = useState(0)
   const [isLoaded, setIsLoaded] = useState(false)
+
+  const prevMonth = useCallback(() => {
+    setMonth(m => {
+      if (m === 1) { setYear(y => y - 1); return 12 }
+      return m - 1
+    })
+  }, [])
+
+  const nextMonth = useCallback(() => {
+    setMonth(m => {
+      if (m === 12) { setYear(y => y + 1); return 1 }
+      return m + 1
+    })
+  }, [])
 
   useEffect(() => {
     const b = localStorage.getItem(BUDGET_KEY)
@@ -36,7 +55,10 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     setIsLoaded(false)
     api.fetchAllTransactions()
       .then(setTransactions)
-      .catch(() => setTransactions([]))
+      .catch((err) => {
+        console.error('fetchAllTransactions failed:', err)
+        setTransactions([])
+      })
       .finally(() => setIsLoaded(true))
   }, [])
 
@@ -65,7 +87,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
   return (
     <TransactionsContext.Provider value={{
-      transactions, budget, isLoaded, year, setYear,
+      transactions, budget, isLoaded, year, setYear, month, setMonth, prevMonth, nextMonth,
       addTransaction, updateTransaction, deleteTransaction, setBudget, refetch,
     }}>
       {children}

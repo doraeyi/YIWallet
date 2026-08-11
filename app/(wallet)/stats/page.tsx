@@ -10,6 +10,7 @@ import { useCards } from '@/hooks/use-cards'
 import { filterByPeriod, sumByType, groupByCategory, buildChartData, formatCurrency, groupByDate, formatDate } from '@/lib/finance-utils'
 import { getCategoryById, type Period } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { MonthNav } from '@/components/wallet/month-nav'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week',  label: '週' },
@@ -27,7 +28,7 @@ function viewEmoji(type: 'debit' | 'credit' | 'easycard'): string {
 
 function StatsContent() {
   const [period, setPeriod] = useState<Period>('month')
-  const { transactions, isLoaded } = useTransactions()
+  const { transactions, isLoaded, year, month, prevMonth, nextMonth } = useTransactions()
   const { cards } = useCards()
   const searchParams = useSearchParams()
   const cardIdParam = searchParams.get('cardId')
@@ -35,7 +36,13 @@ function StatsContent() {
 
   const activeCard = cardIdParam ? cards.find(c => c.id === cardIdParam) : undefined
 
-  const periodFiltered = useMemo(() => filterByPeriod(transactions, period), [transactions, period])
+  // 「月」的統計以使用者選的月份為準（跟首頁共用），週/年維持以今天為準
+  const referenceDate = useMemo(
+    () => period === 'month' ? new Date(year, month - 1, 1) : new Date(),
+    [period, year, month],
+  )
+
+  const periodFiltered = useMemo(() => filterByPeriod(transactions, period, referenceDate), [transactions, period, referenceDate])
   const filtered = useMemo(() => {
     if (cardIdParam) return periodFiltered.filter(tx => tx.cardId === cardIdParam)
     if (filterParam === 'cash') return periodFiltered.filter(tx => !tx.cardId)
@@ -51,7 +58,7 @@ function StatsContent() {
     if (filterParam === 'cash') return transactions.filter(tx => !tx.cardId)
     return transactions
   }, [transactions, cardIdParam, filterParam])
-  const chartData   = useMemo(() => buildChartData(cardFiltered, period), [cardFiltered, period])
+  const chartData   = useMemo(() => buildChartData(cardFiltered, period, referenceDate), [cardFiltered, period, referenceDate])
   const groups      = useMemo(() => groupByDate(filtered), [filtered])
 
   const cardStats = useMemo(() => {
@@ -123,6 +130,12 @@ function StatsContent() {
           ))}
         </div>
       </div>
+
+      {period === 'month' && (
+        <div className="flex justify-center px-5 pb-2">
+          <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 px-4 lg:px-6">
         {/* Summary row */}
