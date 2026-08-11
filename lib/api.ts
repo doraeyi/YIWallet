@@ -5,26 +5,26 @@ const API = '/api/backend'
 // ── Transactions ──────────────────────────────────────────────────
 
 interface ApiTransaction {
-  id: string
-  type: 'income' | 'expense'
+  id: number
+  transaction_type: 'income' | 'expense'
   amount: number
-  category_id: string
+  category: string | null
   note: string | null
-  date: string
+  transaction_date: string | null
   created_at: string
-  card_id?: string | null
+  card_id: number | null
 }
 
 function normalizeTransaction(t: ApiTransaction): Transaction {
   return {
-    id: t.id,
-    type: t.type,
-    amount: t.amount,
-    category: t.category_id,
+    id: String(t.id),
+    type: t.transaction_type,
+    amount: Math.abs(t.amount),
+    category: t.category ?? 'other-expense',
     note: t.note ?? '',
-    date: typeof t.date === 'string' ? t.date.slice(0, 10) : String(t.date),
+    date: t.transaction_date ?? t.created_at.slice(0, 10),
     createdAt: t.created_at,
-    cardId: t.card_id ?? undefined,
+    cardId: t.card_id != null ? String(t.card_id) : undefined,
   }
 }
 
@@ -47,9 +47,9 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      type: data.type,
+      transaction_type: data.type,
       amount: data.amount,
-      category_id: data.category,
+      category: data.category,
       note: data.note,
       date: data.date,
       card_id: data.cardId ?? null,
@@ -62,17 +62,16 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
   return normalizeTransaction(await res.json())
 }
 
+// 後端只有 PATCH /transactions/{id}，且只接受 amount/category/note
+// （日期、類型、卡片目前無法透過這支端點修改；卡片指定另外走 setTransactionCard）
 export async function updateTransaction(id: string, data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
   const res = await fetch(`${API}/transactions/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      type: data.type,
       amount: data.amount,
-      category_id: data.category,
+      category: data.category,
       note: data.note,
-      date: data.date,
-      card_id: data.cardId ?? null,
     }),
   })
   if (!res.ok) throw new Error('Failed to update transaction')
