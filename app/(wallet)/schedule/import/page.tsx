@@ -8,20 +8,10 @@ import type { Job } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { preprocessImageForOcr } from '@/lib/image-utils'
 import { parseRosterTableFromLines, parseCell } from '@/lib/roster-parser'
-import { runRosterOcrClient } from '@/lib/roster-ocr-client'
 
 interface EditableRow {
   employeeName: string
   cells: string[] // "HHmm-HHmm" 自由文字，跟日期欄一一對應
-}
-
-// Tesseract.js 第一次跑會先下載語言包，進度訊息翻成中文比較好懂
-const OCR_STATUS_LABELS: Record<string, string> = {
-  'loading tesseract core': '載入 OCR 核心',
-  'initializing tesseract': '初始化 OCR',
-  'loading language traineddata': '下載中文語言包',
-  'initializing api': '準備辨識',
-  'recognizing text': '辨識文字中',
 }
 
 export default function RosterImportPage() {
@@ -90,13 +80,11 @@ export default function RosterImportPage() {
 
   async function recognizeAndReview(file: File, forPendingId: string | null) {
     setRecognizing(true)
-    setRecognizeProgress(null)
+    setRecognizeProgress('辨識中…')
     setListMessage(null)
     try {
       const dataUrl = await preprocessImageForOcr(file)
-      const { lines, rawText: raw } = await runRosterOcrClient(dataUrl, (status, progress) => {
-        setRecognizeProgress(`${OCR_STATUS_LABELS[status] ?? status}${progress > 0 ? `（${Math.round(progress * 100)}%）` : ''}`)
-      })
+      const { lines, rawText: raw } = await api.runRosterOcr(dataUrl)
       const guess = parseRosterTableFromLines(lines, raw)
       startReview(guess, raw, forPendingId)
     } catch (e) {
