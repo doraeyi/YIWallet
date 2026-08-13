@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import Link from 'next/link'
-import { UsersIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
@@ -22,6 +20,7 @@ export default function SchedulePage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [jobs, setJobs] = useState<Job[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
+  const [rosterUploads, setRosterUploads] = useState<api.RosterUpload[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -36,12 +35,14 @@ export default function SchedulePage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     // /schedule 一次回傳使用者所有班表（後端不支援年月篩選），月份切換只是前端換篩選範圍，不用重打 API
-    const [j, s] = await Promise.all([
+    const [j, s, r] = await Promise.all([
       api.fetchJobs().catch(() => [] as Job[]),
       api.fetchShifts().catch(() => [] as Shift[]),
+      api.fetchRosterUploads().catch(() => [] as api.RosterUpload[]),
     ])
     setJobs(j)
     setShifts(s)
+    setRosterUploads(r)
     setLoading(false)
   }, [])
 
@@ -120,6 +121,29 @@ export default function SchedulePage() {
     () => (selectedDate ? (shiftsByDate[selectedDate] ?? []) : []),
     [selectedDate, shiftsByDate]
   )
+
+  // 從 LINE 傳照片匯入的團隊班表（同事名字，非本 App 使用者），依 job_id 分組給日期詳情用
+  const rosterShiftsByJob = useMemo(() => {
+    const map: Record<string, api.RosterViewShift[]> = {}
+    for (const u of rosterUploads) {
+      if (!u.jobId) continue
+      if (!map[u.jobId]) map[u.jobId] = []
+      map[u.jobId].push(...u.shifts)
+    }
+    return map
+  }, [rosterUploads])
+
+  function teamShiftsFor(jobId: string, date: string) {
+    const shiftsForJob = rosterShiftsByJob[jobId] ?? []
+    const working = shiftsForJob.filter(s => s.date === date && s.startTime)
+    const grouped = new Map<string, api.RosterViewShift[]>()
+    for (const s of working) {
+      const key = s.shiftType ?? (s.startTime && s.endTime ? `${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}` : '其他')
+      if (!grouped.has(key)) grouped.set(key, [])
+      grouped.get(key)!.push(s)
+    }
+    return Array.from(grouped.entries())
+  }
 
   async function handleAddSalary(job: Job, net: number) {
     if (addingJob) return
@@ -271,6 +295,23 @@ export default function SchedulePage() {
                       {advanceTx ? '✓ 已領現　點擊取消' : `+ 領現　${formatCurrency(shiftAmount(job, selectedDate))}`}
                     </button>
                   )}
+                  {/* 團隊班表：從 LINE 匯入的整份排班表裡，這個工作當天有誰上班 */}
+                  {teamShiftsFor(job.id, selectedDate).length > 0 && (
+                    <div className="mt-3 flex flex-col gap-2 border-t pt-3">
+                      {teamShiftsFor(job.id, selectedDate).map(([label, people]) => (
+                        <div key={label} className="flex items-start gap-2">
+                          <span className="mt-1 shrink-0 text-[10px] font-semibold text-muted-foreground">{label}</span>
+                          <div className="flex flex-wrap gap-1">
+                            {people.map(p => (
+                              <span key={p.id} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+                                {p.employeeName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })
@@ -331,13 +372,6 @@ export default function SchedulePage() {
               })}
             </div>
           )}
-          <Link
-            href="/schedule/team"
-            className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/70"
-          >
-            <UsersIcon className="size-3.5" />
-            團隊班表
-          </Link>
         </div>
       </div>
 
