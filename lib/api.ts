@@ -351,6 +351,76 @@ export async function runRosterOcr(imageDataUrl: string): Promise<RosterOcrResul
   return res.json()
 }
 
+// ── 團隊班表（同一份匯入班表裡的所有同事，employee_name 是自由文字）──────────
+
+export interface RosterViewShift {
+  id: string
+  employeeName: string
+  date: string
+  startTime: string | null
+  endTime: string | null
+  shiftType: string | null
+  note: string | null
+}
+
+export interface RosterUpload {
+  id: string
+  jobId: string | null
+  job: { id: string; name: string; color: string } | null
+  periodStart: string
+  periodEnd: string
+  createdAt: string
+  shifts: RosterViewShift[]
+}
+
+interface ApiRosterShift {
+  id: number
+  roster_upload_id: number
+  employee_name: string
+  date: string
+  start_time: string | null
+  end_time: string | null
+  shift_type: string | null
+  note: string | null
+}
+
+interface ApiRosterUpload {
+  id: number
+  job_id: number | null
+  job: { id: number; name: string; color: string } | null
+  period_start: string
+  period_end: string
+  created_at: string
+  shifts: ApiRosterShift[]
+}
+
+function normalizeRosterShift(s: ApiRosterShift): RosterViewShift {
+  return {
+    id: String(s.id),
+    employeeName: s.employee_name,
+    date: s.date,
+    startTime: s.start_time,
+    endTime: s.end_time,
+    shiftType: s.shift_type,
+    note: s.note,
+  }
+}
+
+export async function fetchRosterUploads(): Promise<RosterUpload[]> {
+  const res = await fetch(`${API}/roster/uploads`)
+  if (!res.ok) throw new Error('Failed to fetch roster uploads')
+  const data: ApiRosterUpload[] = await res.json()
+  return data.map(u => ({
+    id: String(u.id),
+    jobId: u.job_id != null ? String(u.job_id) : null,
+    job: u.job ? { id: String(u.job.id), name: u.job.name, color: u.job.color } : null,
+    periodStart: u.period_start,
+    periodEnd: u.period_end,
+    createdAt: u.created_at,
+    shifts: u.shifts.map(normalizeRosterShift),
+  }))
+}
+
 // ── 信用卡帳單（BankCreditSetting）──────────────────────────────────
 // bankName 其實是 credit_group_key，網頁版卡片沒有「不共用額度」的切換，
 // credit_group_key 一律等於 Card.bank，所以直接拿卡片的 bank 名稱當 key 就對了。
@@ -548,4 +618,27 @@ export async function updateOcrPermission(userId: string, canUseOcr: boolean): P
   })
   if (!res.ok) throw new Error('Failed to update OCR permission')
   return normalizeAdminUser(await res.json())
+}
+
+// ── 銀行通知截圖（LINE 轉傳的簡訊/App 通知截圖，待確認記帳）──────────────
+
+export interface PendingBankScreenshot {
+  id: string
+  createdAt: string
+}
+
+export function bankScreenshotImageUrl(id: string): string {
+  return `${API}/bank-notify/pending/${id}/image`
+}
+
+export async function fetchPendingBankScreenshots(): Promise<PendingBankScreenshot[]> {
+  const res = await fetch(`${API}/bank-notify/pending`)
+  if (!res.ok) throw new Error('Failed to fetch pending bank screenshots')
+  const data: { id: number; created_at: string }[] = await res.json()
+  return data.map(s => ({ id: String(s.id), createdAt: s.created_at }))
+}
+
+export async function dismissBankScreenshot(id: string): Promise<void> {
+  const res = await fetch(`${API}/bank-notify/pending/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to dismiss screenshot')
 }

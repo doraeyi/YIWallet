@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import Link from 'next/link'
+import { UsersIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
@@ -329,6 +331,13 @@ export default function SchedulePage() {
               })}
             </div>
           )}
+          <Link
+            href="/schedule/team"
+            className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/70"
+          >
+            <UsersIcon className="size-3.5" />
+            團隊班表
+          </Link>
         </div>
       </div>
 

@@ -135,6 +135,7 @@ export default function DashboardPage() {
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [showUnassigned, setShowUnassigned] = useState(false)
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
+  const [pendingNotifyCount, setPendingNotifyCount] = useState(0)
   // 用 lazy initializer 直接讀 localStorage，避免第一幀空窗導致 banner 閃現
   const [dismissedIds, setDismissedIdsState] = useState<string>(
     () => (typeof window !== 'undefined' ? localStorage.getItem('yiwallet_dismissed_unassigned') ?? '' : '')
@@ -175,6 +176,12 @@ export default function DashboardPage() {
   }, [creditBankName])
 
   useEffect(() => { loadCreditSummary() }, [loadCreditSummary])
+
+  useEffect(() => {
+    api.fetchPendingBankScreenshots()
+      .then(list => setPendingNotifyCount(list.length))
+      .catch(() => setPendingNotifyCount(0))
+  }, [])
 
   const allFiltered = useMemo(
     () => filterByMonth(transactions, year, month),
@@ -332,9 +339,14 @@ export default function DashboardPage() {
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
         <div className="flex items-center gap-3 text-muted-foreground">
-          <button className="hover:text-foreground">
+          <Link href="/bank-notify" className="relative hover:text-foreground">
             <BellIcon className="size-5" />
-          </button>
+            {pendingNotifyCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-4 text-white">
+                {pendingNotifyCount > 99 ? '99+' : pendingNotifyCount}
+              </span>
+            )}
+          </Link>
           <Link href="/schedule" className="hover:text-foreground">
             <CalendarIcon className="size-5" />
           </Link>
