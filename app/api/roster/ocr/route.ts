@@ -3,22 +3,27 @@ import { verifySession } from '@/lib/session'
 
 export const runtime = 'nodejs'
 
-interface VisionVertex {
-  x?: number
-  y?: number
+interface OcrSpaceWord {
+  WordText: string
+  Left: number
+  Top: number
+  Height: number
+  Width: number
 }
 
-interface VisionParagraph {
-  boundingBox?: { vertices?: VisionVertex[] }
-  words?: { symbols?: { text: string }[] }[]
+interface OcrSpaceLine {
+  Words?: OcrSpaceWord[]
 }
 
-interface VisionBlock {
-  paragraphs?: VisionParagraph[]
+interface OcrSpaceParsedResult {
+  ParsedText?: string
+  TextOverlay?: { Lines?: OcrSpaceLine[] }
 }
 
-interface VisionPage {
-  blocks?: VisionBlock[]
+interface OcrSpaceResponse {
+  ParsedResults?: OcrSpaceParsedResult[]
+  IsErroredOnProcessing?: boolean
+  ErrorMessage?: string | string[]
 }
 
 export async function POST(req: NextRequest) {
@@ -27,9 +32,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const apiKey = process.env.GOOGLE_VISION_API_KEY
+  const apiKey = process.env.OCR_SPACE_API_KEY
   if (!apiKey) {
-    return NextResponse.json({ error: '尚未設定 GOOGLE_VISION_API_KEY' }, { status: 500 })
+    return NextResponse.json({ error: '尚未設定 OCR_SPACE_API_KEY' }, { status: 500 })
   }
 
   const body = await req.json().catch(() => null)
@@ -37,57 +42,52 @@ export async function POST(req: NextRequest) {
   if (!image || typeof image !== 'string') {
     return NextResponse.json({ error: '缺少圖片資料' }, { status: 400 })
   }
-  const base64 = image.includes(',') ? image.split(',')[1] : image
 
-  const visionRes = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
+  const form = new URLSearchParams()
+  form.set('base64Image', image)
+  form.set('language', 'cht')
+  form.set('isOverlayRequired', 'true')
+  form.set('OCREngine', '2')
+  form.set('scale', 'true')
+
+  const ocrRes = await fetch('https://api.ocr.space/parse/image', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      requests: [{
-        image: { content: base64 },
-        features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
-        imageContext: { languageHints: ['zh-Hant'] },
-      }],
-    }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      apikey: apiKey,
+    },
+    body: form,
   })
 
-  if (!visionRes.ok) {
-    const text = await visionRes.text().catch(() => '')
+  if (!ocrRes.ok) {
+    const text = await ocrRes.text().catch(() => '')
     return NextResponse.json({ error: `OCR 服務錯誤：${text}` }, { status: 502 })
   }
 
-  const data = await visionRes.json()
-  const response = data.responses?.[0]
-  if (response?.error) {
-    return NextResponse.json({ error: response.error.message ?? 'OCR 辨識失敗' }, { status: 502 })
+  const data: OcrSpaceResponse = await ocrRes.json()
+  if (data.IsErroredOnProcessing) {
+    const msg = Array.isArray(data.ErrorMessage) ? data.ErrorMessage.join('; ') : data.ErrorMessage
+    return NextResponse.json({ error: msg || 'OCR 辨識失敗' }, { status: 502 })
   }
 
-  const fullTextAnnotation = response?.fullTextAnnotation
-  const rawText: string = fullTextAnnotation?.text ?? ''
+  const result = data.ParsedResults?.[0]
+  const rawText: string = result?.ParsedText ?? ''
 
-  // 用「段落」當作 Flutter 版 ML Kit TextLine 的對應單位——Vision 的段落分群
-  // 一樣是靠文字間的空間距離判斷是否算同一段，對於分得開的表格儲存格通常會
-  // 各自成段，跟 ML Kit 的行為相近，後續的座標分群演算法可以直接沿用。
+  // OCR.space 的「Line」是依空間位置分群的文字行，中文常常逐字切成獨立 Word，
+  // 拼字串時不加空格，不然中文名字/句子中間會被塞進不該有的空白。
   const lines: { text: string; box: { left: number; top: number; right: number; bottom: number } }[] = []
-  const pages: VisionPage[] = fullTextAnnotation?.pages ?? []
-  for (const page of pages) {
-    for (const block of page.blocks ?? []) {
-      for (const paragraph of block.paragraphs ?? []) {
-        const text = (paragraph.words ?? [])
-          .map(w => (w.symbols ?? []).map(s => s.text).join(''))
-          .join(' ')
-          .trim()
-        if (!text) continue
-        const vertices = paragraph.boundingBox?.vertices ?? []
-        if (vertices.length === 0) continue
-        const xs = vertices.map(v => v.x ?? 0)
-        const ys = vertices.map(v => v.y ?? 0)
-        lines.push({
-          text,
-          box: { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) },
-        })
-      }
-    }
+  for (const line of result?.TextOverlay?.Lines ?? []) {
+    const words = line.Words ?? []
+    if (words.length === 0) continue
+    const text = words.map(w => w.WordText).join('')
+    const lefts = words.map(w => w.Left)
+    const tops = words.map(w => w.Top)
+    const rights = words.map(w => w.Left + w.Width)
+    const bottoms = words.map(w => w.Top + w.Height)
+    lines.push({
+      text,
+      box: { left: Math.min(...lefts), top: Math.min(...tops), right: Math.max(...rights), bottom: Math.max(...bottoms) },
+    })
   }
 
   return NextResponse.json({ lines, rawText })
