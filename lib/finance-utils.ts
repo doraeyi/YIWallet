@@ -134,6 +134,18 @@ export function jobRate(job: Job): number {
   return (job.pay_type === 'hourly' ? job.hourly_rate : job.monthly_salary) ?? 0
 }
 
+// 舊資料是網頁版寫死「早班／晚班」時期存下的英文字面值，新資料（自訂班別）
+// shift_type 存的已經是使用者自己取的中文名稱，直接顯示即可
+const LEGACY_SHIFT_TYPE_LABELS: Record<string, string> = {
+  morning: '早班',
+  evening: '晚班',
+}
+
+export function shiftTypeLabel(shiftType: string | null | undefined): string | null {
+  if (!shiftType) return null
+  return LEGACY_SHIFT_TYPE_LABELS[shiftType] ?? shiftType
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('zh-TW', {
     style: 'currency',

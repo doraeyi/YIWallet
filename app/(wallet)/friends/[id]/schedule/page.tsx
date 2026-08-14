@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ChevronLeftIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { shiftTypeLabel } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { FriendShift } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -82,7 +83,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
               </div>
               {s.shift_type && (
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {s.shift_type}
+                  {shiftTypeLabel(s.shift_type)}
                 </span>
               )}
             </div>
@@ -152,7 +153,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
                           className="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none text-white"
                           style={{ backgroundColor: s.job?.color ?? '#9CA3AF' }}
                         >
-                          {s.shift_type ?? s.start_time.slice(0, 5)}
+                          {shiftTypeLabel(s.shift_type) ?? s.start_time.slice(0, 5)}
                         </span>
                       ))}
                       {dayShifts.length > 2 && (

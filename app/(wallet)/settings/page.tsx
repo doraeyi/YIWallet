@@ -70,6 +70,12 @@ export default function SettingsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
 
+  // 班別（ShiftPreset）管理：只有編輯既有工作時才能新增，因為需要 job_id
+  const [presetLabel, setPresetLabel] = useState('')
+  const [presetStart, setPresetStart] = useState('')
+  const [presetEnd, setPresetEnd] = useState('')
+  const [presetSubmitting, setPresetSubmitting] = useState(false)
+
   // 卡片管理
   const { cards, updateCard, removeCard, isLoaded: cardsLoaded } = useCards()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
@@ -193,9 +199,16 @@ export default function SettingsPage() {
     }
   }
 
+  function resetPresetForm() {
+    setPresetLabel('')
+    setPresetStart('')
+    setPresetEnd('')
+  }
+
   function openNewJob() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    resetPresetForm()
     setFormOpen(true)
   }
 
@@ -211,7 +224,30 @@ export default function SettingsPage() {
       health_insurance: String(job.health_insurance_fee),
       welfare_fee: String(job.welfare_fee ?? 0),
     })
+    resetPresetForm()
     setFormOpen(true)
+  }
+
+  async function handleAddPreset() {
+    if (!editingId || !presetLabel.trim() || !presetStart || !presetEnd || presetSubmitting) return
+    setPresetSubmitting(true)
+    try {
+      const preset = await api.addShiftPreset(editingId, {
+        label: presetLabel.trim(),
+        start_time: presetStart,
+        end_time: presetEnd,
+      })
+      setJobs(prev => prev.map(j => j.id === editingId ? { ...j, presets: [...j.presets, preset] } : j))
+      resetPresetForm()
+    } finally {
+      setPresetSubmitting(false)
+    }
+  }
+
+  async function handleDeletePreset(presetId: string) {
+    if (!editingId) return
+    await api.deleteShiftPreset(editingId, presetId)
+    setJobs(prev => prev.map(j => j.id === editingId ? { ...j, presets: j.presets.filter(p => p.id !== presetId) } : j))
   }
 
   async function handleSubmitJob() {
@@ -808,6 +844,55 @@ export default function SettingsPage() {
                   className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
                 />
               </div>
+
+              {/* 班別（早班/晚班/大夜...），需要先儲存過工作才能新增 */}
+              {editingId && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">班別</label>
+                  <div className="flex flex-col gap-1.5">
+                    {(jobs.find(j => j.id === editingId)?.presets ?? []).map(preset => (
+                      <div key={preset.id} className="flex items-center gap-2 rounded-xl bg-muted/30 px-3 py-2">
+                        <span className="flex-1 text-sm">
+                          {preset.label}　{preset.start_time.slice(0, 5)}–{preset.end_time.slice(0, 5)}
+                        </span>
+                        <button
+                          onClick={() => handleDeletePreset(preset.id)}
+                          className="text-muted-foreground hover:text-rose-500"
+                        >
+                          <Trash2Icon className="size-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-end gap-1.5">
+                    <input
+                      value={presetLabel}
+                      onChange={e => setPresetLabel(e.target.value)}
+                      placeholder="早班"
+                      className="w-16 min-w-0 flex-1 rounded-xl border bg-muted/30 px-2.5 py-2 text-sm outline-none focus:border-ring"
+                    />
+                    <input
+                      type="time"
+                      value={presetStart}
+                      onChange={e => setPresetStart(e.target.value)}
+                      className="min-w-0 rounded-xl border bg-muted/30 px-2 py-2 text-sm outline-none focus:border-ring"
+                    />
+                    <input
+                      type="time"
+                      value={presetEnd}
+                      onChange={e => setPresetEnd(e.target.value)}
+                      className="min-w-0 rounded-xl border bg-muted/30 px-2 py-2 text-sm outline-none focus:border-ring"
+                    />
+                    <button
+                      onClick={handleAddPreset}
+                      disabled={presetSubmitting || !presetLabel.trim() || !presetStart || !presetEnd}
+                      className="flex shrink-0 size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-amber-100 hover:text-amber-600 disabled:opacity-50"
+                    >
+                      <PlusIcon className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

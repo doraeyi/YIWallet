@@ -186,37 +186,80 @@ export async function deleteCard(id: string): Promise<void> {
 
 // ── Jobs ──────────────────────────────────────────────────────────
 
-import type { Job, Shift } from './types'
+import type { Job, Shift, ShiftPreset } from './types'
+
+interface ApiShiftPreset {
+  id: number
+  label: string
+  start_time: string
+  end_time: string
+}
+
+interface ApiJob {
+  id: number
+  name: string
+  color: string
+  pay_type: 'hourly' | 'monthly'
+  hourly_rate: number | null
+  monthly_salary: number | null
+  payday: number
+  labor_insurance_fee: number
+  health_insurance_fee: number
+  welfare_fee: number
+  created_at: string
+  presets: ApiShiftPreset[]
+}
+
+function normalizeJob(j: ApiJob): Job {
+  return { ...j, id: String(j.id), presets: j.presets.map(p => ({ ...p, id: String(p.id) })) }
+}
 
 export async function fetchJobs(): Promise<Job[]> {
   const res = await fetch(`${API}/jobs`)
   if (!res.ok) throw new Error('Failed to fetch jobs')
-  return res.json()
+  const data: ApiJob[] = await res.json()
+  return data.map(normalizeJob)
 }
 
-export async function createJob(data: Omit<Job, 'id' | 'created_at'>): Promise<Job> {
+export async function createJob(data: Omit<Job, 'id' | 'created_at' | 'presets'>): Promise<Job> {
   const res = await fetch(`${API}/jobs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Failed to create job')
-  return res.json()
+  return normalizeJob(await res.json())
 }
 
-export async function updateJob(id: string, data: Omit<Job, 'id' | 'created_at'>): Promise<Job> {
+export async function updateJob(id: string, data: Omit<Job, 'id' | 'created_at' | 'presets'>): Promise<Job> {
   const res = await fetch(`${API}/jobs/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Failed to update job')
-  return res.json()
+  return normalizeJob(await res.json())
 }
 
 export async function deleteJob(id: string): Promise<void> {
   const res = await fetch(`${API}/jobs/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete job')
+}
+
+export async function addShiftPreset(jobId: string, data: { label: string; start_time: string; end_time: string }): Promise<ShiftPreset> {
+  const res = await fetch(`${API}/jobs/${jobId}/presets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to add shift preset')
+  const p: ApiShiftPreset = await res.json()
+  return { ...p, id: String(p.id) }
+}
+
+export async function deleteShiftPreset(jobId: string, presetId: string): Promise<void> {
+  const res = await fetch(`${API}/jobs/${jobId}/presets/${presetId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete shift preset')
 }
 
 // ── Shifts ────────────────────────────────────────────────────────
@@ -225,8 +268,8 @@ export async function deleteJob(id: string): Promise<void> {
 // 换班別是前端自己「先刪舊的、再建新的」。
 
 interface ApiShift {
-  id: string
-  job_id: string | null
+  id: number
+  job_id: number | null
   date: string
   start_time: string
   end_time: string
@@ -237,22 +280,16 @@ interface ApiShift {
 
 function normalizeShift(s: ApiShift): Shift {
   return {
-    id: s.id,
-    job_id: s.job_id,
+    id: String(s.id),
+    job_id: s.job_id != null ? String(s.job_id) : null,
     job_name: s.job?.name ?? null,
     job_color: s.job?.color ?? null,
     date: s.date,
     start_time: s.start_time,
     end_time: s.end_time,
-    shift_type: (s.shift_type as 'morning' | 'evening' | null) ?? null,
+    shift_type: s.shift_type,
     note: s.note ?? null,
   }
-}
-
-// 網頁版目前只有「早班／晚班」兩個固定時段可選，換成自訂時間是排班表匯入那次要做的事
-const SHIFT_TIMES: Record<'morning' | 'evening', { start_time: string; end_time: string }> = {
-  morning: { start_time: '07:00:00', end_time: '15:00:00' },
-  evening: { start_time: '15:00:00', end_time: '23:00:00' },
 }
 
 export async function fetchShifts(): Promise<Shift[]> {
@@ -262,15 +299,16 @@ export async function fetchShifts(): Promise<Shift[]> {
   return data.map(normalizeShift)
 }
 
-export async function upsertShift(data: { job_id: string; date: string; shift_type: 'morning' | 'evening' }): Promise<Shift> {
+export async function upsertShift(data: { job_id: string; date: string; label: string; start_time: string; end_time: string }): Promise<Shift> {
   const res = await fetch(`${API}/schedule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       job_id: data.job_id,
       date: data.date,
-      shift_type: data.shift_type,
-      ...SHIFT_TIMES[data.shift_type],
+      shift_type: data.label,
+      start_time: data.start_time,
+      end_time: data.end_time,
     }),
   })
   if (!res.ok) throw new Error('Failed to upsert shift')
@@ -310,6 +348,7 @@ export interface RosterShiftEntry {
   start_time: string | null
   end_time: string | null
   note: string | null
+  matched_user_id?: number | null
 }
 
 export async function confirmRosterImport(params: {
@@ -331,6 +370,22 @@ export async function confirmRosterImport(params: {
     }),
   })
   if (!res.ok) throw new Error('Failed to confirm roster import')
+}
+
+export interface MatchedRosterShift {
+  id: string
+  date: string
+  startTime: string | null
+  endTime: string | null
+  shiftType: string | null
+}
+
+// 好友幫我上傳班表、把某一列標成「這是我本人」時，不用等我自己上傳同一份班表
+export async function fetchMatchedRosterShifts(start: string, end: string): Promise<MatchedRosterShift[]> {
+  const res = await fetch(`${API}/roster/shifts/matched-to-me?start=${start}&end=${end}`)
+  if (!res.ok) throw new Error('Failed to fetch matched roster shifts')
+  const data: { id: number; date: string; start_time: string | null; end_time: string | null; shift_type: string | null }[] = await res.json()
+  return data.map(s => ({ id: String(s.id), date: s.date, startTime: s.start_time, endTime: s.end_time, shiftType: s.shift_type }))
 }
 
 export interface RosterOcrResult {

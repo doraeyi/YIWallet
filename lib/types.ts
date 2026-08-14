@@ -66,6 +66,13 @@ export interface Card {
   creditAccountId?: string
 }
 
+export interface ShiftPreset {
+  id: string
+  label: string
+  start_time: string
+  end_time: string
+}
+
 export interface Job {
   id: string
   name: string
@@ -78,6 +85,7 @@ export interface Job {
   health_insurance_fee: number
   welfare_fee: number
   created_at: string
+  presets: ShiftPreset[]
 }
 
 export interface Shift {
@@ -88,7 +96,7 @@ export interface Shift {
   date: string
   start_time: string
   end_time: string
-  shift_type: 'morning' | 'evening' | null
+  shift_type: string | null
   note: string | null
 }
 

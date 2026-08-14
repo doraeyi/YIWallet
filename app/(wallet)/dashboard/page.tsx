@@ -178,9 +178,10 @@ export default function DashboardPage() {
   useEffect(() => { loadCreditSummary() }, [loadCreditSummary])
 
   useEffect(() => {
-    api.fetchPendingBankScreenshots()
-      .then(list => setPendingNotifyCount(list.length))
-      .catch(() => setPendingNotifyCount(0))
+    Promise.all([
+      api.fetchPendingBankScreenshots().catch(() => []),
+      api.fetchPendingRosterPhotos().catch(() => []),
+    ]).then(([bank, roster]) => setPendingNotifyCount(bank.length + roster.length))
   }, [])
 
   const allFiltered = useMemo(

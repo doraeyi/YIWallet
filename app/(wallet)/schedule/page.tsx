@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { formatCurrency, jobRate } from '@/lib/finance-utils'
+import { formatCurrency, jobRate, shiftTypeLabel } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
-import type { Job, Shift } from '@/lib/types'
+import type { Job, Shift, ShiftPreset } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { FriendsBanner } from '@/components/wallet/friends-banner'
@@ -21,6 +22,7 @@ export default function SchedulePage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [rosterUploads, setRosterUploads] = useState<api.RosterUpload[]>([])
+  const [matchedShifts, setMatchedShifts] = useState<api.MatchedRosterShift[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -31,6 +33,7 @@ export default function SchedulePage() {
   const [showAllJobs, setShowAllJobs] = useState(false)
   const isDesktop = useIsDesktop()
   const { transactions, addTransaction, deleteTransaction } = useTransactions()
+  const touchStartX = useRef<number | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -47,6 +50,13 @@ export default function SchedulePage() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    const lastDay = new Date(year, month, 0).getDate()
+    const start = `${year}-${String(month).padStart(2, '0')}-01`
+    const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    api.fetchMatchedRosterShifts(start, end).then(setMatchedShifts).catch(() => setMatchedShifts([]))
+  }, [year, month])
 
   useEffect(() => {
     fetch(`https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`)
@@ -79,6 +89,34 @@ export default function SchedulePage() {
   function nextMonth() {
     if (month === 12) { setYear(y => y + 1); setMonth(1) }
     else setMonth(m => m + 1)
+  }
+
+  // 手機版拿掉工作切換 tab，改左右滑動；「全部」也算序列裡的一格，跟桌機版 tab 順序一致
+  const jobViewSequence = useMemo(
+    () => [{ kind: 'all' as const }, ...jobs.map(job => ({ kind: 'job' as const, job }))],
+    [jobs],
+  )
+  const currentJobViewIndex = showAllJobs || jobs.length === 0
+    ? 0
+    : jobViewSequence.findIndex(v => v.kind === 'job' && v.job.id === (activeJobId ?? jobs[0]?.id))
+
+  function goToJobView(index: number) {
+    const total = jobViewSequence.length
+    const view = jobViewSequence[(index + total) % total]
+    if (view.kind === 'all') setShowAllJobs(true)
+    else { setActiveJobId(view.job.id); setShowAllJobs(false) }
+  }
+
+  function handleJobTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+  function handleJobTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || jobViewSequence.length <= 1) return
+    const delta = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(delta) > 48) {
+      goToJobView(currentJobViewIndex + (delta > 0 ? 1 : -1))
+    }
+    touchStartX.current = null
   }
 
   const firstDayOfWeek = new Date(year, month - 1, 1).getDay()
@@ -116,6 +154,16 @@ export default function SchedulePage() {
     }
     return set
   }, [transactions])
+
+  // 好友幫我上傳班表、標成「這是我本人」的班，不綁定特定工作，跟目前選的工作 tab 無關
+  const matchedShiftsByDate = useMemo(() => {
+    const map: Record<string, api.MatchedRosterShift[]> = {}
+    for (const s of matchedShifts) {
+      if (!map[s.date]) map[s.date] = []
+      map[s.date].push(s)
+    }
+    return map
+  }, [matchedShifts])
 
   const selectedShifts = useMemo(
     () => (selectedDate ? (shiftsByDate[selectedDate] ?? []) : []),
@@ -203,11 +251,11 @@ export default function SchedulePage() {
     }
   }
 
-  async function handleToggleShift(jobId: string, shiftType: 'morning' | 'evening') {
+  async function handleToggleShift(jobId: string, preset: ShiftPreset) {
     if (!selectedDate || saving) return
     setSaving(true)
     try {
-      const existing = selectedShifts.find(s => s.job_id === jobId && s.shift_type === shiftType)
+      const existing = selectedShifts.find(s => s.job_id === jobId && s.shift_type === preset.label)
       if (existing) {
         await api.deleteShift(existing.id)
         setShifts(prev => prev.filter(s => s.id !== existing.id))
@@ -217,7 +265,10 @@ export default function SchedulePage() {
           await api.deleteShift(other.id)
           setShifts(prev => prev.filter(s => s.id !== other.id))
         }
-        const newShift = await api.upsertShift({ job_id: jobId, date: selectedDate, shift_type: shiftType })
+        const newShift = await api.upsertShift({
+          job_id: jobId, date: selectedDate,
+          label: preset.label, start_time: preset.start_time, end_time: preset.end_time,
+        })
         setShifts(prev => [...prev, newShift])
       }
     } finally {
@@ -242,9 +293,7 @@ export default function SchedulePage() {
             <p className="py-6 text-center text-sm text-muted-foreground">請先在設定中新增工作</p>
           ) : (
             jobs.map(job => {
-              const morningOn = selectedShifts.some(s => s.job_id === job.id && s.shift_type === 'morning')
-              const eveningOn = selectedShifts.some(s => s.job_id === job.id && s.shift_type === 'evening')
-              const hasShift  = morningOn || eveningOn
+              const hasShift = selectedShifts.some(s => s.job_id === job.id)
               const advanceTx = getAdvanceTx(job, selectedDate)
               return (
                 <div key={job.id} className="rounded-2xl border p-3">
@@ -257,30 +306,34 @@ export default function SchedulePage() {
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      disabled={saving}
-                      onClick={() => handleToggleShift(job.id, 'morning')}
-                      className={cn(
-                        'flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors',
-                        morningOn ? 'text-white' : 'bg-muted text-muted-foreground'
-                      )}
-                      style={morningOn ? { backgroundColor: job.color } : undefined}
+                  {job.presets.length === 0 ? (
+                    <Link
+                      href="/settings"
+                      className="block rounded-xl bg-muted px-3 py-2.5 text-center text-xs text-muted-foreground hover:bg-muted/70"
                     >
-                      早班 07:00–15:00
-                    </button>
-                    <button
-                      disabled={saving}
-                      onClick={() => handleToggleShift(job.id, 'evening')}
-                      className={cn(
-                        'flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors',
-                        eveningOn ? 'text-white' : 'bg-muted text-muted-foreground'
-                      )}
-                      style={eveningOn ? { backgroundColor: job.color } : undefined}
-                    >
-                      晚班 15:00–23:00
-                    </button>
-                  </div>
+                      尚未設定班別，點此到工作管理新增
+                    </Link>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {job.presets.map(preset => {
+                        const on = selectedShifts.some(s => s.job_id === job.id && s.shift_type === preset.label)
+                        return (
+                          <button
+                            key={preset.id}
+                            disabled={saving}
+                            onClick={() => handleToggleShift(job.id, preset)}
+                            className={cn(
+                              'flex-1 min-w-[45%] rounded-xl py-2.5 text-sm font-medium transition-colors',
+                              on ? 'text-white' : 'bg-muted text-muted-foreground'
+                            )}
+                            style={on ? { backgroundColor: job.color } : undefined}
+                          >
+                            {preset.label} {preset.start_time.slice(0, 5)}–{preset.end_time.slice(0, 5)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                   {hasShift && (
                     <button
                       disabled={!!addingJob}
@@ -317,6 +370,21 @@ export default function SchedulePage() {
             })
           )}
 
+          {/* 好友幫我上傳班表、標成「這是我本人」的班——跟目前選的工作 tab 無關 */}
+          {(matchedShiftsByDate[selectedDate] ?? []).length > 0 && (
+            <div className="rounded-2xl bg-violet-50 p-3 dark:bg-violet-400/10">
+              <p className="mb-2 text-xs font-semibold text-violet-700 dark:text-violet-400">好友幫你排的班</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(matchedShiftsByDate[selectedDate] ?? []).map(s => (
+                  <span key={s.id} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium shadow-sm dark:bg-card">
+                    {shiftTypeLabel(s.shiftType) ?? (s.startTime ? s.startTime.slice(0, 5) : '')}
+                    {s.startTime && s.endTime && ` ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 當日領現紀錄 */}
           {dateAdvances.length > 0 && (
             <div className="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-400/10">
@@ -341,9 +409,9 @@ export default function SchedulePage() {
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
         <div className="flex items-center gap-3">
-          {/* 工作切換器：預設分開顯示各自班表/薪資，「全部」才合併 */}
+          {/* 工作切換器（桌機）：預設分開顯示各自班表/薪資，「全部」才合併。手機版拿掉 tab，改左右滑動 */}
           {jobs.length > 1 && (
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+            <div className="hidden gap-1.5 overflow-x-auto scrollbar-none lg:flex">
               <button
                 onClick={() => setShowAllJobs(true)}
                 className={cn(
@@ -375,10 +443,25 @@ export default function SchedulePage() {
         </div>
       </div>
 
+      {/* 手機版目前檢視指示（可左右滑動切換），只在有多個工作時顯示 */}
+      {jobs.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5 pb-2 lg:hidden">
+          {jobViewSequence.map((view, i) => (
+            <span
+              key={view.kind === 'all' ? 'all' : view.job.id}
+              className={cn(
+                'h-1.5 rounded-full transition-all',
+                i === currentJobViewIndex ? 'w-4 bg-foreground' : 'w-1.5 bg-muted-foreground/30'
+              )}
+            />
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
       ) : (
-        <div className="px-4 lg:px-6">
+        <div className="px-4 lg:px-6" onTouchStart={handleJobTouchStart} onTouchEnd={handleJobTouchEnd}>
           {/* Calendar */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
             <div className="grid grid-cols-7 border-b">
@@ -398,6 +481,7 @@ export default function SchedulePage() {
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                 const dayShifts = visibleShiftsByDate[dateStr] ?? []
+                const dayMatchedShifts = matchedShiftsByDate[dateStr] ?? []
                 const isToday = dateStr === todayStr
                 const col = (firstDayOfWeek + day - 1) % 7
                 const isHolidayDate = holidays.has(dateStr)
@@ -427,9 +511,14 @@ export default function SchedulePage() {
                           className="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none text-white"
                           style={{ backgroundColor: s.job_color ?? '#9CA3AF' }}
                         >
-                          {s.shift_type === 'morning' ? '早' : '晚'}
+                          {shiftTypeLabel(s.shift_type) ?? s.start_time.slice(0, 5)}
                         </span>
                       ))}
+                      {dayMatchedShifts.length > 0 && (
+                        <span className="truncate rounded bg-violet-100 px-1 py-0.5 text-[10px] font-semibold leading-none text-violet-700 dark:bg-violet-400/20 dark:text-violet-400">
+                          好友排 {shiftTypeLabel(dayMatchedShifts[0].shiftType) ?? dayMatchedShifts[0].startTime?.slice(0, 5)}
+                        </span>
+                      )}
                       {advanceDates.has(dateStr) && (
                         <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold leading-none text-emerald-700">
                           現

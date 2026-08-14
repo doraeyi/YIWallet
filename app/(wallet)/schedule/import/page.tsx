@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeftIcon, ImageIcon, RefreshCwIcon, Trash2Icon, XIcon, UsersIcon, CalendarPlusIcon } from 'lucide-react'
 import * as api from '@/lib/api'
-import type { Job } from '@/lib/types'
+import type { Job, Friendship } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { preprocessImageForOcr } from '@/lib/image-utils'
 import { parseRosterTableFromLines, parseCell } from '@/lib/roster-parser'
@@ -12,6 +12,7 @@ import { parseRosterTableFromLines, parseCell } from '@/lib/roster-parser'
 interface EditableRow {
   employeeName: string
   cells: string[] // "HHmm-HHmm" 自由文字，跟日期欄一一對應
+  matchedUserId: string | null // 標註成「這是我的哪個好友」，僅限好友
 }
 
 export default function RosterImportPage() {
@@ -20,6 +21,7 @@ export default function RosterImportPage() {
   const [hasOcrPermission, setHasOcrPermission] = useState(false)
 
   const [jobs, setJobs] = useState<Job[]>([])
+  const [friends, setFriends] = useState<Friendship[]>([])
   const [pending, setPending] = useState<api.PendingRosterPhoto[]>([])
   const [pendingLoading, setPendingLoading] = useState(true)
   const [recognizing, setRecognizing] = useState(false)
@@ -44,6 +46,7 @@ export default function RosterImportPage() {
       .catch(() => setHasOcrPermission(false))
       .finally(() => setPermissionChecking(false))
     api.fetchJobs().then(setJobs).catch(() => {})
+    api.fetchFriendships().then(list => setFriends(list.filter(f => f.status === 'accepted'))).catch(() => {})
     loadPending()
   }, [])
 
@@ -65,8 +68,9 @@ export default function RosterImportPage() {
       ? guess.rows.map(r => ({
           employeeName: r.employeeName,
           cells: guessDates.map((_, i) => r.cells[i] ?? ''),
+          matchedUserId: null,
         }))
-      : [{ employeeName: '', cells: guessDates.map(() => '') }]
+      : [{ employeeName: '', cells: guessDates.map(() => ''), matchedUserId: null }]
 
     setPendingId(forPendingId)
     setDates(guessDates)
@@ -125,7 +129,11 @@ export default function RosterImportPage() {
   // ── 校正頁操作 ──
 
   function addRow() {
-    setRows(prev => [...prev, { employeeName: '', cells: dates.map(() => '') }])
+    setRows(prev => [...prev, { employeeName: '', cells: dates.map(() => ''), matchedUserId: null }])
+  }
+
+  function updateMatchedUser(rowIndex: number, value: string | null) {
+    setRows(prev => prev.map((r, i) => (i === rowIndex ? { ...r, matchedUserId: value } : r)))
   }
 
   function removeRow(index: number) {
@@ -163,9 +171,10 @@ export default function RosterImportPage() {
     for (const row of rows) {
       const name = row.employeeName.trim()
       if (!name) continue
+      const matchedUserId = row.matchedUserId ? Number(row.matchedUserId) : null
       dates.forEach((date, i) => {
         const parsed = parseCell(row.cells[i] ?? '')
-        shifts.push({ employee_name: name, date, start_time: parsed.start, end_time: parsed.end, note: null })
+        shifts.push({ employee_name: name, date, start_time: parsed.start, end_time: parsed.end, note: null, matched_user_id: matchedUserId })
       })
     }
 
@@ -262,12 +271,26 @@ export default function RosterImportPage() {
                 {rows.map((row, r) => (
                   <tr key={r} className="border-b last:border-0">
                     <td className="sticky left-0 z-10 bg-white px-2 py-1.5 dark:bg-card">
-                      <input
-                        value={row.employeeName}
-                        onChange={e => updateName(r, e.target.value)}
-                        placeholder="姓名"
-                        className="w-24 rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
-                      />
+                      <div className="flex flex-col gap-1">
+                        <input
+                          value={row.employeeName}
+                          onChange={e => updateName(r, e.target.value)}
+                          placeholder="姓名"
+                          className="w-24 rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
+                        />
+                        {friends.length > 0 && (
+                          <select
+                            value={row.matchedUserId ?? ''}
+                            onChange={e => updateMatchedUser(r, e.target.value || null)}
+                            className="w-24 rounded-lg border bg-muted/30 px-1 py-1 text-[10px] text-muted-foreground outline-none focus:border-ring"
+                          >
+                            <option value="">不標註本人</option>
+                            {friends.map(f => (
+                              <option key={f.friend.id} value={f.friend.id}>{f.friend.displayName}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </td>
                     {row.cells.map((cell, i) => (
                       <td key={i} className="px-1.5 py-1.5">
