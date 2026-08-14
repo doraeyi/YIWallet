@@ -351,7 +351,7 @@ export default function RosterImportPage() {
           )}
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 border-t bg-white p-4 dark:bg-card lg:left-64">
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:bg-card lg:left-64">
           <button
             onClick={handleConfirm}
             disabled={saving}
