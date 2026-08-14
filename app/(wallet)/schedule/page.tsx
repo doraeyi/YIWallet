@@ -292,7 +292,7 @@ export default function SchedulePage() {
           {jobs.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">請先在設定中新增工作</p>
           ) : (
-            jobs.map(job => {
+            (showAllJobs || jobs.length <= 1 ? jobs : jobs.filter(j => j.id === (activeJobId ?? jobs[0].id))).map(job => {
               const hasShift = selectedShifts.some(s => s.job_id === job.id)
               const advanceTx = getAdvanceTx(job, selectedDate)
               return (

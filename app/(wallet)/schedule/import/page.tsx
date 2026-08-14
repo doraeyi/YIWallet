@@ -242,6 +242,11 @@ export default function RosterImportPage() {
                 <option key={job.id} value={job.id}>{job.name}</option>
               ))}
             </select>
+            {!selectedJobId && (
+              <p className="mt-1 text-xs text-amber-600">
+                沒選工作的話，這批班表不會出現在「班表頁」對應工作的團隊班表裡
+              </p>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded-2xl border bg-white dark:bg-card">
