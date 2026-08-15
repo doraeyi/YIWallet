@@ -15,6 +15,7 @@ import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
 import { JobShareSheet } from '@/components/wallet/job-share-sheet'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { Switch } from '@/components/ui/switch'
 import type { Card } from '@/lib/types'
 
 interface UserProfile {
@@ -23,6 +24,7 @@ interface UserProfile {
   email?: string
   name?: string
   picture?: string
+  auto_accept_shared_shifts?: boolean
 }
 
 function GoogleStatusBanner() {
@@ -184,6 +186,17 @@ export default function SettingsPage() {
     await navigator.clipboard.writeText(`/link ${linkCode}`)
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  async function handleToggleAutoAccept(checked: boolean) {
+    setProfile(p => p ? { ...p, auto_accept_shared_shifts: checked } : p)
+    await fetch('/api/backend/users/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto_accept_shared_shifts: checked }),
+    }).catch(() => {
+      setProfile(p => p ? { ...p, auto_accept_shared_shifts: !checked } : p)
+    })
   }
 
   useEffect(() => {
@@ -663,6 +676,23 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+
+          <div className="border-t" />
+
+          {/* 好友幫我標註本人 row */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">接受好友標註我的班表</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                開啟後，好友幫忙上傳班表、標註「這是你本人」時會直接建立成你的班表；關閉的話只會顯示唯讀提示
+              </p>
+            </div>
+            <Switch
+              checked={!!profile?.auto_accept_shared_shifts}
+              onCheckedChange={handleToggleAutoAccept}
+              className="shrink-0"
+            />
+          </div>
         </div>
 
         {editingCard && (
