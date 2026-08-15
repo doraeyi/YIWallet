@@ -22,6 +22,7 @@ export default function RosterImportPage() {
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [friends, setFriends] = useState<Friendship[]>([])
+  const [myUserId, setMyUserId] = useState<string | null>(null)
   const [pending, setPending] = useState<api.PendingRosterPhoto[]>([])
   const [pendingLoading, setPendingLoading] = useState(true)
   const [recognizing, setRecognizing] = useState(false)
@@ -42,7 +43,10 @@ export default function RosterImportPage() {
   useEffect(() => {
     fetch('/api/backend/users/me')
       .then(r => r.ok ? r.json() : null)
-      .then(d => setHasOcrPermission(!!d?.can_use_ocr))
+      .then(d => {
+        setHasOcrPermission(!!d?.can_use_ocr)
+        if (d?.id != null) setMyUserId(String(d.id))
+      })
       .catch(() => setHasOcrPermission(false))
       .finally(() => setPermissionChecking(false))
     api.fetchJobs().then(setJobs).catch(() => {})
@@ -283,13 +287,14 @@ export default function RosterImportPage() {
                           placeholder="姓名"
                           className="w-24 rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
                         />
-                        {friends.length > 0 && (
+                        {(myUserId || friends.length > 0) && (
                           <select
                             value={row.matchedUserId ?? ''}
                             onChange={e => updateMatchedUser(r, e.target.value || null)}
                             className="w-24 rounded-lg border bg-muted/30 px-1 py-1 text-[10px] text-muted-foreground outline-none focus:border-ring"
                           >
-                            <option value="">不標註本人</option>
+                            <option value="">不標註</option>
+                            {myUserId && <option value={myUserId}>👤 這是我本人</option>}
                             {friends.map(f => (
                               <option key={f.friend.id} value={f.friend.id}>{f.friend.displayName}</option>
                             ))}
