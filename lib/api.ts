@@ -495,6 +495,13 @@ export interface BankBill {
   paid: boolean
 }
 
+export interface CardSpendBreakdown {
+  card_id: number
+  name: string
+  color: string
+  spend: number
+}
+
 export interface BankCreditSummary {
   bank_name: string
   credit_limit: number
@@ -503,6 +510,7 @@ export interface BankCreditSummary {
   current_period_spend: number
   available_credit: number
   unpaid_bills: BankBill[]
+  card_breakdown: CardSpendBreakdown[]
 }
 
 export async function fetchBankCreditSetting(bankName: string): Promise<BankCreditSetting> {

@@ -93,6 +93,30 @@ export function CreditBillPanel({ bankName, summary, loading, onClose, onRefresh
                 </div>
               </div>
 
+              {/* 額度進度條：共用額度時依卡片分色，跟手機儲存空間那種分段長條一樣 */}
+              {summary.credit_limit > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                    {summary.card_breakdown.filter(c => c.spend > 0).map(c => (
+                      <div
+                        key={c.card_id}
+                        style={{ width: `${Math.min(100, (c.spend / summary.credit_limit) * 100)}%`, backgroundColor: c.color }}
+                      />
+                    ))}
+                  </div>
+                  {summary.card_breakdown.length > 1 && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {summary.card_breakdown.map(c => (
+                        <div key={c.card_id} className="flex items-center gap-1">
+                          <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                          <span className="text-[10px] text-muted-foreground">{c.name} {formatCurrency(c.spend)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 待繳帳單 */}
               {summary.unpaid_bills.length > 0 && (
                 <div className="flex flex-col gap-1.5">
