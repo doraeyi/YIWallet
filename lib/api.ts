@@ -680,6 +680,25 @@ export async function updateOcrPermission(userId: string, canUseOcr: boolean): P
 export interface PendingBankScreenshot {
   id: string
   createdAt: string
+  ocrProcessed: boolean
+  parsedAmount: number | null
+  parsedLastFour: string | null
+  parsedMerchant: string | null
+  parsedTransactionAt: string | null
+  matchedCardId: string | null
+  matchedCardName: string | null
+}
+
+interface ApiPendingBankScreenshot {
+  id: number
+  created_at: string
+  ocr_processed: boolean
+  parsed_amount: number | null
+  parsed_last_four: string | null
+  parsed_merchant: string | null
+  parsed_transaction_at: string | null
+  matched_card_id: number | null
+  matched_card: { name: string } | null
 }
 
 export function bankScreenshotImageUrl(id: string): string {
@@ -689,11 +708,35 @@ export function bankScreenshotImageUrl(id: string): string {
 export async function fetchPendingBankScreenshots(): Promise<PendingBankScreenshot[]> {
   const res = await fetch(`${API}/bank-notify/pending`)
   if (!res.ok) throw new Error('Failed to fetch pending bank screenshots')
-  const data: { id: number; created_at: string }[] = await res.json()
-  return data.map(s => ({ id: String(s.id), createdAt: s.created_at }))
+  const data: ApiPendingBankScreenshot[] = await res.json()
+  return data.map(s => ({
+    id: String(s.id),
+    createdAt: s.created_at,
+    ocrProcessed: s.ocr_processed,
+    parsedAmount: s.parsed_amount,
+    parsedLastFour: s.parsed_last_four,
+    parsedMerchant: s.parsed_merchant,
+    parsedTransactionAt: s.parsed_transaction_at,
+    matchedCardId: s.matched_card_id != null ? String(s.matched_card_id) : null,
+    matchedCardName: s.matched_card?.name ?? null,
+  }))
 }
 
 export async function dismissBankScreenshot(id: string): Promise<void> {
   const res = await fetch(`${API}/bank-notify/pending/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to dismiss screenshot')
+}
+
+export async function importPendingScreenshot(id: string, data: { amount: number; cardId: string | null; note: string | null; date: string | null }): Promise<void> {
+  const res = await fetch(`${API}/bank-notify/pending/${id}/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount: data.amount,
+      card_id: data.cardId,
+      note: data.note,
+      date: data.date,
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to import screenshot')
 }
