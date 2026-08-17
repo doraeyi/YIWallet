@@ -10,7 +10,10 @@ import type { PendingBankScreenshot } from '@/lib/api'
 type Tab = 'bank' | 'roster'
 
 function formatDateTime(iso: string): string {
-  const d = new Date(iso)
+  // 後端回傳的是沒有時區標記的 UTC 時間字串（例如 "2026-08-17T05:12:17"），
+  // 瀏覽器解析時如果沒看到 'Z' 會誤判成本地時間，導致顯示少 8 小時——
+  // 這裡明確補上 'Z' 讓 Date 正確當成 UTC 解析，toLocaleString 才會轉對時區。
+  const d = new Date(iso.endsWith('Z') ? iso : `${iso}Z`)
   return d.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
