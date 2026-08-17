@@ -416,6 +416,7 @@ export interface RosterViewShift {
   endTime: string | null
   shiftType: string | null
   note: string | null
+  matchedUserId: string | null
 }
 
 export interface RosterUpload {
@@ -437,6 +438,7 @@ interface ApiRosterShift {
   end_time: string | null
   shift_type: string | null
   note: string | null
+  matched_user_id: number | null
 }
 
 interface ApiRosterUpload {
@@ -458,6 +460,16 @@ function normalizeRosterShift(s: ApiRosterShift): RosterViewShift {
     endTime: s.end_time,
     shiftType: s.shift_type,
     note: s.note,
+    matchedUserId: s.matched_user_id != null ? String(s.matched_user_id) : null,
+  }
+}
+
+// 認領團隊班表裡的某一列是自己本人：後端會直接建立對應的真正 Shift
+export async function claimRosterShift(shiftId: string): Promise<void> {
+  const res = await fetch(`${API}/roster/shifts/${shiftId}/claim`, { method: 'POST' })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '認領失敗')
   }
 }
 

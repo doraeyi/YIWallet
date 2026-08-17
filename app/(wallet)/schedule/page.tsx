@@ -27,6 +27,7 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [addingJob, setAddingJob] = useState<string | null>(null)
+  const [claimingId, setClaimingId] = useState<string | null>(null)
   const [holidays, setHolidays] = useState<Set<string>>(new Set())
   // 工作切換器：預設每個工作的班表/薪資分開顯示，只有使用者主動切成「全部」才合併顯示
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -193,6 +194,21 @@ export default function SchedulePage() {
     return Array.from(grouped.entries())
   }
 
+  async function handleClaim(shiftId: string) {
+    if (claimingId) return
+    setClaimingId(shiftId)
+    try {
+      await api.claimRosterShift(shiftId)
+      const [s, r] = await Promise.all([api.fetchShifts(), api.fetchRosterUploads()])
+      setShifts(s)
+      setRosterUploads(r)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '認領失敗')
+    } finally {
+      setClaimingId(null)
+    }
+  }
+
   async function handleAddSalary(job: Job, net: number) {
     if (addingJob) return
     const remaining = Math.round(net) - getTotalAdvance(job)
@@ -356,8 +372,23 @@ export default function SchedulePage() {
                           <span className="mt-1 shrink-0 text-[10px] font-semibold text-muted-foreground">{label}</span>
                           <div className="flex flex-wrap gap-1">
                             {people.map(p => (
-                              <span key={p.id} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+                              <span
+                                key={p.id}
+                                className={cn(
+                                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                                  p.matchedUserId ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-400' : 'bg-muted'
+                                )}
+                              >
                                 {p.employeeName}
+                                {!p.matchedUserId && (
+                                  <button
+                                    onClick={() => handleClaim(p.id)}
+                                    disabled={claimingId === p.id}
+                                    className="text-muted-foreground hover:text-amber-600 disabled:opacity-50"
+                                  >
+                                    {claimingId === p.id ? '…' : '認領'}
+                                  </button>
+                                )}
                               </span>
                             ))}
                           </div>
