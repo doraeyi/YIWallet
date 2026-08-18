@@ -464,15 +464,6 @@ function normalizeRosterShift(s: ApiRosterShift): RosterViewShift {
   }
 }
 
-// 認領團隊班表裡的某一列是自己本人：後端會直接建立對應的真正 Shift
-export async function claimRosterShift(shiftId: string): Promise<void> {
-  const res = await fetch(`${API}/roster/shifts/${shiftId}/claim`, { method: 'POST' })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || '認領失敗')
-  }
-}
-
 export async function fetchRosterUploads(): Promise<RosterUpload[]> {
   const res = await fetch(`${API}/roster/uploads`)
   if (!res.ok) throw new Error('Failed to fetch roster uploads')

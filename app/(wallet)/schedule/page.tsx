@@ -27,7 +27,8 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [addingJob, setAddingJob] = useState<string | null>(null)
-  const [claimingId, setClaimingId] = useState<string | null>(null)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+  const [myName, setMyName] = useState<string | null>(null)
   const [holidays, setHolidays] = useState<Set<string>>(new Set())
   // 工作切換器：預設每個工作的班表/薪資分開顯示，只有使用者主動切成「全部」才合併顯示
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -51,6 +52,16 @@ export default function SchedulePage() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    fetch('/api/backend/users/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.id != null) setMyUserId(String(d.id))
+        if (d?.name) setMyName(d.name)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const lastDay = new Date(year, month, 0).getDate()
@@ -184,29 +195,26 @@ export default function SchedulePage() {
 
   function teamShiftsFor(jobId: string, date: string) {
     const shiftsForJob = rosterShiftsByJob[jobId] ?? []
-    const working = shiftsForJob.filter(s => s.date === date && s.startTime)
-    const grouped = new Map<string, api.RosterViewShift[]>()
+    // 匯入時已經標成自己的那幾列（matchedUserId === 我），改用下面「自己的班表」
+    // 這筆資料顯示，這裡排除掉避免同一個人重複出現兩次。
+    const working = shiftsForJob.filter(s => s.date === date && s.startTime && s.matchedUserId !== myUserId)
+    const grouped = new Map<string, { id: string; employeeName: string; isMe: boolean }[]>()
     for (const s of working) {
       const key = s.shiftType ?? (s.startTime && s.endTime ? `${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}` : '其他')
       if (!grouped.has(key)) grouped.set(key, [])
-      grouped.get(key)!.push(s)
+      grouped.get(key)!.push({ id: s.id, employeeName: s.employeeName, isMe: false })
     }
-    return Array.from(grouped.entries())
-  }
 
-  async function handleClaim(shiftId: string) {
-    if (claimingId) return
-    setClaimingId(shiftId)
-    try {
-      await api.claimRosterShift(shiftId)
-      const [s, r] = await Promise.all([api.fetchShifts(), api.fetchRosterUploads()])
-      setShifts(s)
-      setRosterUploads(r)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '認領失敗')
-    } finally {
-      setClaimingId(null)
+    // 自己的班表（不管是匯入時標本人自動建立的，還是自己手動按早/晚班），
+    // 只要有就直接顯示在團隊班表裡，跟著早/晚班按鈕自動同步，不用另外認領。
+    const mine = selectedShifts.find(s => s.job_id === jobId)
+    if (mine) {
+      const key = mine.shift_type ?? `${mine.start_time.slice(0, 5)}-${mine.end_time.slice(0, 5)}`
+      if (!grouped.has(key)) grouped.set(key, [])
+      grouped.get(key)!.push({ id: `me-${mine.id}`, employeeName: myName ?? '我', isMe: true })
     }
+
+    return Array.from(grouped.entries())
   }
 
   async function handleAddSalary(job: Job, net: number) {
@@ -375,20 +383,11 @@ export default function SchedulePage() {
                               <span
                                 key={p.id}
                                 className={cn(
-                                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
-                                  p.matchedUserId ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-400' : 'bg-muted'
+                                  'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                                  p.isMe ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-400' : 'bg-muted'
                                 )}
                               >
                                 {p.employeeName}
-                                {!p.matchedUserId && (
-                                  <button
-                                    onClick={() => handleClaim(p.id)}
-                                    disabled={claimingId === p.id}
-                                    className="text-muted-foreground hover:text-amber-600 disabled:opacity-50"
-                                  >
-                                    {claimingId === p.id ? '…' : '認領'}
-                                  </button>
-                                )}
                               </span>
                             ))}
                           </div>
