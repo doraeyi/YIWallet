@@ -6,6 +6,7 @@ import { ChevronLeftIcon, XIcon, ImageIcon, CheckIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency } from '@/lib/finance-utils'
 import { useCards } from '@/hooks/use-cards'
+import { useTransactions } from '@/hooks/use-transactions'
 import * as api from '@/lib/api'
 import type { PendingBankScreenshot } from '@/lib/api'
 
@@ -121,6 +122,7 @@ function BankScreenshotCard({
 export default function BankNotifyPage() {
   const [tab, setTab] = useState<Tab>('bank')
   const { cards } = useCards()
+  const { refetch: refetchTransactions } = useTransactions()
 
   const [bankItems, setBankItems] = useState<PendingBankScreenshot[]>([])
   const [bankLoading, setBankLoading] = useState(true)
@@ -169,6 +171,9 @@ export default function BankNotifyPage() {
     try {
       await api.importPendingScreenshot(id, data)
       setBankItems(prev => prev.filter(i => i.id !== id))
+      // 首頁的交易列表是共用的 TransactionsContext，不重新抓的話回首頁看不到
+      // 剛匯入的這筆，要滑掉再進來才會更新——這裡直接同步觸發重新整理。
+      await refetchTransactions()
     } finally {
       setImportingId(null)
     }
