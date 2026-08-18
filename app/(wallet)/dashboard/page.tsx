@@ -136,6 +136,7 @@ export default function DashboardPage() {
   const [showUnassigned, setShowUnassigned] = useState(false)
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
   const [pendingNotifyCount, setPendingNotifyCount] = useState(0)
+  const [dashboardOrder, setDashboardOrder] = useState<string[] | null>(null)
   // 用 lazy initializer 直接讀 localStorage，避免第一幀空窗導致 banner 閃現
   const [dismissedIds, setDismissedIdsState] = useState<string>(
     () => (typeof window !== 'undefined' ? localStorage.getItem('yiwallet_dismissed_unassigned') ?? '' : '')
@@ -151,11 +152,25 @@ export default function DashboardPage() {
   // Touch swipe state
   const touchStartX = useRef<number | null>(null)
 
-  // Build view items: 全部 | 現金 | ...each card
-  const viewItems = useMemo<ViewItem[]>(
-    () => [{ kind: 'all' }, { kind: 'cash' }, ...cards.map(card => ({ kind: 'card' as const, card }))],
-    [cards],
-  )
+  // Build view items: 全部 | 現金 | ...each card。「全部」永遠固定第一個，
+  // 現金／卡片的順序可由使用者在設定頁自訂（dashboardOrder），沒自訂過或
+  // 有新卡片還沒排進去的話，退回預設順序（現金優先、卡片依建立順序）補在後面。
+  const viewItems = useMemo<ViewItem[]>(() => {
+    const sortable = [{ kind: 'cash' as const }, ...cards.map(card => ({ kind: 'card' as const, card }))]
+    if (!dashboardOrder) return [{ kind: 'all' }, ...sortable]
+
+    const tokenOf = (item: (typeof sortable)[number]) => item.kind === 'cash' ? 'cash' : item.card.id
+    const byToken = new Map(sortable.map(item => [tokenOf(item), item]))
+    const ordered: ViewItem[] = []
+    for (const token of dashboardOrder) {
+      const item = byToken.get(token)
+      if (item) { ordered.push(item); byToken.delete(token) }
+    }
+    for (const item of sortable) {
+      if (byToken.has(tokenOf(item))) ordered.push(item)
+    }
+    return [{ kind: 'all' }, ...ordered]
+  }, [cards, dashboardOrder])
   const total = viewItems.length
   const safeIndex = viewIndex >= total ? 0 : viewIndex
   const currentView = viewItems[safeIndex]
@@ -182,6 +197,16 @@ export default function DashboardPage() {
       api.fetchPendingBankScreenshots().catch(() => []),
       api.fetchPendingRosterPhotos().catch(() => []),
     ]).then(([bank, roster]) => setPendingNotifyCount(bank.length + roster.length))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/backend/users/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.dashboard_order) return
+        try { setDashboardOrder(JSON.parse(d.dashboard_order)) } catch {}
+      })
+      .catch(() => {})
   }, [])
 
   const allFiltered = useMemo(
