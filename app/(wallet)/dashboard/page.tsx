@@ -14,6 +14,8 @@ import * as api from '@/lib/api'
 import { AddCardSheet } from '@/components/wallet/add-card-sheet'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { CreditBillPanel } from '@/components/wallet/credit-bill-panel'
+import { CardVisual } from '@/components/wallet/card-visual'
+import { CardCreatedCelebration } from '@/components/wallet/card-created-celebration'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 type ViewItem =
@@ -137,6 +139,8 @@ export default function DashboardPage() {
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
   const [pendingNotifyCount, setPendingNotifyCount] = useState(0)
   const [dashboardOrder, setDashboardOrder] = useState<string[] | null>(null)
+  const [cardFlipped, setCardFlipped] = useState(false)
+  const [justCreatedCard, setJustCreatedCard] = useState<Card | null>(null)
   // 用 lazy initializer 直接讀 localStorage，避免第一幀空窗導致 banner 閃現
   const [dismissedIds, setDismissedIdsState] = useState<string>(
     () => (typeof window !== 'undefined' ? localStorage.getItem('yiwallet_dismissed_unassigned') ?? '' : '')
@@ -147,7 +151,7 @@ export default function DashboardPage() {
     localStorage.setItem('yiwallet_dismissed_unassigned', key)
   }
 
-  useEffect(() => { setShowPassInfo(false); setShowCreditPanel(false) }, [viewIndex])
+  useEffect(() => { setShowPassInfo(false); setShowCreditPanel(false); setCardFlipped(false) }, [viewIndex])
 
   // Touch swipe state
   const touchStartX = useRef<number | null>(null)
@@ -429,39 +433,48 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* ── Mobile: swipeable donut ────────────────────────── */}
+      {/* ── Mobile: swipeable donut／卡片 ──────────────────── */}
       <div
-        className="relative flex justify-center py-6 lg:py-4 select-none"
+        className="relative flex justify-center px-8 py-6 lg:py-4 select-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <Link href={statsHref}>
-          <DonutChart
-            expense={expense}
-            income={income}
-            balance={balance}
-            ringColor={ringColor}
-            centerLabel={centerLabel}
-            centerValue={centerValue}
+        {currentView.kind === 'card' ? (
+          <CardVisual
+            card={currentView.card}
+            flipped={cardFlipped}
+            onFlip={() => setCardFlipped(v => !v)}
+            balanceLabel={centerLabel}
+            balanceValue={centerValue}
+            overlay={
+              (currentView.card.type === 'easycard' && currentView.card.passExpiryDate) ? (
+                <button
+                  onClick={() => setShowPassInfo(v => !v)}
+                  className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm hover:text-foreground transition-colors"
+                >
+                  <BellIcon className="size-4" />
+                </button>
+              ) : currentView.card.type === 'credit' ? (
+                <button
+                  onClick={() => setShowCreditPanel(v => !v)}
+                  className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm hover:text-foreground transition-colors"
+                >
+                  <BellIcon className="size-4" />
+                </button>
+              ) : undefined
+            }
           />
-        </Link>
-        {/* 月票鈴鐺 */}
-        {currentView.kind === 'card' && currentView.card.type === 'easycard' && currentView.card.passExpiryDate && (
-          <button
-            onClick={() => setShowPassInfo(v => !v)}
-            className="absolute right-8 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <BellIcon className="size-4" />
-          </button>
-        )}
-        {/* 信用卡帳單鈴鐺 */}
-        {currentView.kind === 'card' && currentView.card.type === 'credit' && (
-          <button
-            onClick={() => setShowCreditPanel(v => !v)}
-            className="absolute right-8 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <BellIcon className="size-4" />
-          </button>
+        ) : (
+          <Link href={statsHref}>
+            <DonutChart
+              expense={expense}
+              income={income}
+              balance={balance}
+              ringColor={ringColor}
+              centerLabel={centerLabel}
+              centerValue={centerValue}
+            />
+          </Link>
         )}
       </div>
 
@@ -750,7 +763,10 @@ export default function DashboardPage() {
       <div className="h-6" />
 
       {/* ── Sheets ─────────────────────────────────────────── */}
-      <AddCardSheet open={addCardOpen} onOpenChange={setAddCardOpen} />
+      <AddCardSheet open={addCardOpen} onOpenChange={setAddCardOpen} onCreated={setJustCreatedCard} />
+      {justCreatedCard && (
+        <CardCreatedCelebration card={justCreatedCard} onDone={() => setJustCreatedCard(null)} />
+      )}
     </div>
   )
 }

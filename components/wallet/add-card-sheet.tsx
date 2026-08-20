@@ -8,6 +8,7 @@ import { useCards } from '@/hooks/use-cards'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { lookupBank } from '@/lib/bank-codes'
 import { cn } from '@/lib/utils'
+import type { Card } from '@/lib/types'
 
 const PRESET_COLORS = [
   '#1E293B', '#1D4ED8', '#0891B2', '#7C3AED',
@@ -19,6 +20,7 @@ type CardType = 'debit' | 'credit' | 'easycard'
 interface AddCardSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreated?: (card: Card) => void
 }
 
 const TYPE_OPTIONS: { value: CardType; label: string; emoji: string }[] = [
@@ -27,7 +29,7 @@ const TYPE_OPTIONS: { value: CardType; label: string; emoji: string }[] = [
   { value: 'easycard', label: '悠遊卡', emoji: '🚌' },
 ]
 
-export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
+export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProps) {
   const { addCard } = useCards()
   const isDesktop = useIsDesktop()
   const [type,     setType]     = useState<CardType>('debit')
@@ -81,8 +83,9 @@ export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
     setErrors({})
     setSubmitting(true)
     setSubmitError('')
+    let created: Card
     try {
-      await addCard({
+      created = await addCard({
         name: trimmed,
         type,
         color,
@@ -100,6 +103,7 @@ export function AddCardSheet({ open, onOpenChange }: AddCardSheetProps) {
     setSubmitting(false)
     reset()
     onOpenChange(false)
+    onCreated?.(created)
   }
 
   const cardLabel = autoName(type, bankName, last4) || '卡片名稱'

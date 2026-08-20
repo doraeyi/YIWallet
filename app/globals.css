@@ -135,3 +135,21 @@
     display: none;
   }
 }
+
+@keyframes card-spin-in {
+  0% {
+    transform: scale(0.3) rotateY(0deg);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotateY(360deg);
+    opacity: 1;
+  }
+}
+
+@utility animate-card-spin-in {
+  animation: card-spin-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
