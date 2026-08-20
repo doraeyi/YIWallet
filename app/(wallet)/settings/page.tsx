@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, UsersIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
+import { useState, useEffect, Suspense } from 'react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, UsersIcon, ShieldCheckIcon } from 'lucide-react'
 import Link from 'next/link'
 import { APP_VERSION } from '@/lib/version'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -27,97 +27,6 @@ interface UserProfile {
   name?: string
   picture?: string
   auto_accept_shared_shifts?: boolean
-  dashboard_order?: string | null
-}
-
-// 首頁「現金／卡片」拖拉排序。用 pointer events 自己實作（不用 HTML5 native
-// drag，觸控支援太差），拖動時用 elementFromPoint 命中測試找出目前懸停在
-// 哪一列的 data-drag-id，即時把陣列元素搬過去。
-function DashboardOrderEditor({
-  cards, initialOrder, onSave,
-}: {
-  cards: Card[]
-  initialOrder: string[] | null
-  onSave: (order: string[]) => void
-}) {
-  const defaultOrder = ['cash', ...cards.map(c => c.id)]
-  const [order, setOrder] = useState<string[]>(() => {
-    if (!initialOrder) return defaultOrder
-    const known = new Set(defaultOrder)
-    const kept = initialOrder.filter(id => known.has(id))
-    const missing = defaultOrder.filter(id => !kept.includes(id))
-    return [...kept, ...missing]
-  })
-  const draggingRef = useRef<string | null>(null)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-
-  function itemInfo(id: string) {
-    if (id === 'cash') return { emoji: '💵', name: '現金' }
-    const c = cards.find(c => c.id === id)
-    if (!c) return { emoji: '❓', name: '(已刪除的卡片)' }
-    return { emoji: c.type === 'credit' ? '💳' : c.type === 'easycard' ? '🚌' : '🏧', name: c.name }
-  }
-
-  function handlePointerDown(e: React.PointerEvent, id: string) {
-    draggingRef.current = id
-    setDraggingId(id)
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }
-
-  function handlePointerMove(e: React.PointerEvent) {
-    if (!draggingRef.current) return
-    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
-    const overId = el?.closest<HTMLElement>('[data-drag-id]')?.dataset.dragId
-    if (!overId || overId === draggingRef.current) return
-    setOrder(prev => {
-      const from = prev.indexOf(draggingRef.current!)
-      const to = prev.indexOf(overId)
-      if (from === -1 || to === -1 || from === to) return prev
-      const next = [...prev]
-      next.splice(from, 1)
-      next.splice(to, 0, draggingRef.current!)
-      return next
-    })
-  }
-
-  function handlePointerUp() {
-    if (!draggingRef.current) return
-    draggingRef.current = null
-    setDraggingId(null)
-    onSave(order)
-  }
-
-  return (
-    <div className="flex flex-col gap-1.5 border-t px-4 py-4">
-      <p className="mb-1 text-xs text-muted-foreground">按住右邊的把手拖拉，調整首頁「現金／卡片」的顯示順序</p>
-      {order.map(id => {
-        const info = itemInfo(id)
-        return (
-          <div
-            key={id}
-            data-drag-id={id}
-            className={cn(
-              'flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2.5 transition-transform',
-              draggingId === id && 'scale-[1.02] bg-amber-50 dark:bg-amber-900/20',
-            )}
-          >
-            <span className="flex size-7 shrink-0 items-center justify-center text-base">{info.emoji}</span>
-            <span className="flex-1 truncate text-sm">{info.name}</span>
-            <span
-              onPointerDown={e => handlePointerDown(e, id)}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              style={{ touchAction: 'none' }}
-              className="flex size-8 shrink-0 cursor-grab items-center justify-center text-muted-foreground active:cursor-grabbing"
-            >
-              <GripVerticalIcon className="size-4" />
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
 }
 
 function GoogleStatusBanner() {
@@ -181,7 +90,7 @@ export default function SettingsPage() {
 
   // 展開狀態
   const [expandedAccount, setExpandedAccount] = useState<'google' | 'line' | null>(null)
-  const [expandedFeature, setExpandedFeature] = useState<'cards' | 'order' | 'budget' | 'jobs' | 'push' | null>(null)
+  const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | 'push' | null>(null)
 
   // 推播通知
   const { permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, enable: enablePush, disable: disablePush } = usePushNotifications()
@@ -287,16 +196,6 @@ export default function SettingsPage() {
     await navigator.clipboard.writeText(`/link ${linkCode}`)
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
-  }
-
-  async function handleSaveDashboardOrder(order: string[]) {
-    const encoded = JSON.stringify(order)
-    setProfile(p => p ? { ...p, dashboard_order: encoded } : p)
-    await fetch('/api/backend/users/me', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dashboard_order: encoded }),
-    }).catch(() => {})
   }
 
   async function handleToggleAutoAccept(checked: boolean) {
@@ -663,24 +562,6 @@ export default function SettingsPage() {
                 )
               })}
             </div>
-          )}
-
-          <div className="border-t" />
-
-          {/* 首頁排序 row */}
-          <button
-            onClick={() => setExpandedFeature(v => v === 'order' ? null : 'order')}
-            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
-          >
-            <span className="text-sm font-medium">首頁排序</span>
-            <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedFeature === 'order' && 'rotate-180')} />
-          </button>
-          {expandedFeature === 'order' && (
-            <DashboardOrderEditor
-              cards={cards}
-              initialOrder={profile?.dashboard_order ? (() => { try { return JSON.parse(profile.dashboard_order!) } catch { return null } })() : null}
-              onSave={handleSaveDashboardOrder}
-            />
           )}
 
           <div className="border-t" />
