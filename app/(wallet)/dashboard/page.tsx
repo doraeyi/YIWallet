@@ -14,7 +14,6 @@ import * as api from '@/lib/api'
 import { AddCardSheet } from '@/components/wallet/add-card-sheet'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { CreditBillPanel } from '@/components/wallet/credit-bill-panel'
-import { DashboardOrderSheet } from '@/components/wallet/dashboard-order-sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 type ViewItem =
@@ -138,7 +137,6 @@ export default function DashboardPage() {
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
   const [pendingNotifyCount, setPendingNotifyCount] = useState(0)
   const [dashboardOrder, setDashboardOrder] = useState<string[] | null>(null)
-  const [orderSheetOpen, setOrderSheetOpen] = useState(false)
   // 用 lazy initializer 直接讀 localStorage，避免第一幀空窗導致 banner 閃現
   const [dismissedIds, setDismissedIdsState] = useState<string>(
     () => (typeof window !== 'undefined' ? localStorage.getItem('yiwallet_dismissed_unassigned') ?? '' : '')
@@ -151,30 +149,26 @@ export default function DashboardPage() {
 
   useEffect(() => { setShowPassInfo(false); setShowCreditPanel(false) }, [viewIndex])
 
-  // 圓圈圈：滑動切換 現金/卡片 + 長按進入排序，統一用 pointer events 處理
-  // （手機觸控、桌面滑鼠都吃得到），比原本只認 touch event 更好維護。
-  const pointerStart = useRef<{ x: number; y: number } | null>(null)
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const longPressTriggered = useRef(false)
+  // Touch swipe state
+  const touchStartX = useRef<number | null>(null)
 
-  // Build view items: 全部 | 現金 | ...each card。「全部」永遠固定第一個，
-  // 現金／卡片的順序可由使用者在設定頁自訂（dashboardOrder），沒自訂過或
-  // 有新卡片還沒排進去的話，退回預設順序（現金優先、卡片依建立順序）補在後面。
+  // Build view items: 全部 | 現金 | ...each card。「全部」「現金」順序固定，
+  // 卡片彼此之間的順序可以在設定頁「卡片管理」拖拉自訂（dashboardOrder），
+  // 沒排序過或有新卡片還沒排進去的話，退回預設順序（依建立順序）補在後面。
   const viewItems = useMemo<ViewItem[]>(() => {
-    const sortable = [{ kind: 'cash' as const }, ...cards.map(card => ({ kind: 'card' as const, card }))]
-    if (!dashboardOrder) return [{ kind: 'all' }, ...sortable]
-
-    const tokenOf = (item: (typeof sortable)[number]) => item.kind === 'cash' ? 'cash' : item.card.id
-    const byToken = new Map(sortable.map(item => [tokenOf(item), item]))
-    const ordered: ViewItem[] = []
-    for (const token of dashboardOrder) {
-      const item = byToken.get(token)
-      if (item) { ordered.push(item); byToken.delete(token) }
+    if (!dashboardOrder) {
+      return [{ kind: 'all' }, { kind: 'cash' }, ...cards.map(card => ({ kind: 'card' as const, card }))]
     }
-    for (const item of sortable) {
-      if (byToken.has(tokenOf(item))) ordered.push(item)
+    const byId = new Map(cards.map(card => [card.id, card]))
+    const orderedCards: Card[] = []
+    for (const id of dashboardOrder) {
+      const card = byId.get(id)
+      if (card) { orderedCards.push(card); byId.delete(id) }
     }
-    return [{ kind: 'all' }, ...ordered]
+    for (const card of cards) {
+      if (byId.has(card.id)) orderedCards.push(card)
+    }
+    return [{ kind: 'all' }, { kind: 'cash' }, ...orderedCards.map(card => ({ kind: 'card' as const, card }))]
   }, [cards, dashboardOrder])
   const total = viewItems.length
   const safeIndex = viewIndex >= total ? 0 : viewIndex
@@ -341,61 +335,16 @@ export default function DashboardPage() {
     setViewIndex(i => (i - 1 + total) % total)
   }
 
-  async function handleSaveDashboardOrder(order: string[]) {
-    setDashboardOrder(order)
-    await fetch('/api/backend/users/me', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dashboard_order: JSON.stringify(order) }),
-    }).catch(() => {})
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
   }
-
-  function clearLongPressTimer() {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }
-
-  function handleDonutPointerDown(e: React.PointerEvent) {
-    pointerStart.current = { x: e.clientX, y: e.clientY }
-    longPressTriggered.current = false
-    clearLongPressTimer()
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true
-      if (navigator.vibrate) navigator.vibrate(15)
-      setOrderSheetOpen(true)
-    }, 500)
-  }
-
-  function handleDonutPointerMove(e: React.PointerEvent) {
-    if (!pointerStart.current) return
-    const dx = e.clientX - pointerStart.current.x
-    const dy = e.clientY - pointerStart.current.y
-    // 手指移動超過一點門檻就當作在滑動，不是長按不動，取消長按計時
-    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) clearLongPressTimer()
-  }
-
-  function handleDonutPointerUp(e: React.PointerEvent) {
-    clearLongPressTimer()
-    if (longPressTriggered.current || !pointerStart.current) {
-      pointerStart.current = null
-      return
-    }
-    const delta = pointerStart.current.x - e.clientX
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const delta = touchStartX.current - e.changedTouches[0].clientX
     if (Math.abs(delta) > 48) {
       delta > 0 ? goNext() : goPrev()
     }
-    pointerStart.current = null
-  }
-
-  // 長按觸發排序 sheet 後，放開手指瀏覽器還是會補發一個 click，這裡擋掉避免
-  // 誤觸連到 /stats。
-  function handleDonutClick(e: React.MouseEvent) {
-    if (longPressTriggered.current) {
-      e.preventDefault()
-      longPressTriggered.current = false
-    }
+    touchStartX.current = null
   }
 
   if (!isLoaded) {
@@ -483,12 +432,10 @@ export default function DashboardPage() {
       {/* ── Mobile: swipeable donut ────────────────────────── */}
       <div
         className="relative flex justify-center py-6 lg:py-4 select-none"
-        onPointerDown={handleDonutPointerDown}
-        onPointerMove={handleDonutPointerMove}
-        onPointerUp={handleDonutPointerUp}
-        onPointerCancel={() => { clearLongPressTimer(); pointerStart.current = null }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
-        <Link href={statsHref} onClick={handleDonutClick}>
+        <Link href={statsHref}>
           <DonutChart
             expense={expense}
             income={income}
@@ -502,7 +449,6 @@ export default function DashboardPage() {
         {currentView.kind === 'card' && currentView.card.type === 'easycard' && currentView.card.passExpiryDate && (
           <button
             onClick={() => setShowPassInfo(v => !v)}
-            onPointerDown={e => e.stopPropagation()}
             className="absolute right-8 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <BellIcon className="size-4" />
@@ -512,7 +458,6 @@ export default function DashboardPage() {
         {currentView.kind === 'card' && currentView.card.type === 'credit' && (
           <button
             onClick={() => setShowCreditPanel(v => !v)}
-            onPointerDown={e => e.stopPropagation()}
             className="absolute right-8 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <BellIcon className="size-4" />
@@ -605,11 +550,6 @@ export default function DashboardPage() {
           />
         ))}
       </div>
-      {cards.length > 0 && (
-        <p className="pb-1 text-center text-[10px] text-muted-foreground/70 lg:hidden">
-          長按上面的圓圈可以調整順序
-        </p>
-      )}
 
       {/* ── Action row ─────────────────────────────────────── */}
       <div className="flex items-center px-6 pb-4 lg:hidden">
@@ -811,13 +751,6 @@ export default function DashboardPage() {
 
       {/* ── Sheets ─────────────────────────────────────────── */}
       <AddCardSheet open={addCardOpen} onOpenChange={setAddCardOpen} />
-      <DashboardOrderSheet
-        open={orderSheetOpen}
-        onOpenChange={setOrderSheetOpen}
-        cards={cards}
-        initialOrder={dashboardOrder}
-        onSave={handleSaveDashboardOrder}
-      />
     </div>
   )
 }

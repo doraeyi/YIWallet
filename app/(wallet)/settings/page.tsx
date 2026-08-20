@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, UsersIcon, ShieldCheckIcon } from 'lucide-react'
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, UsersIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
 import { APP_VERSION } from '@/lib/version'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -27,6 +27,7 @@ interface UserProfile {
   name?: string
   picture?: string
   auto_accept_shared_shifts?: boolean
+  dashboard_order?: string | null
 }
 
 function GoogleStatusBanner() {
@@ -84,6 +85,13 @@ export default function SettingsPage() {
   const { cards, updateCard, removeCard, isLoaded: cardsLoaded } = useCards()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
   const [sharingJob, setSharingJob] = useState<Job | null>(null)
+
+  // 卡片排序（在卡片管理清單裡直接拖拉），null 代表使用者還沒在這次畫面裡拖過，
+  // 顯示順序退回用 profile.dashboard_order 算，拖過一次之後就以本地狀態為準，
+  // 避免每次 render 都要重新從 profile 字串算一次。
+  const [cardOrder, setCardOrder] = useState<string[] | null>(null)
+  const draggingCardRef = useRef<string | null>(null)
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
 
   // 個人資料
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -212,6 +220,67 @@ export default function SettingsPage() {
   useEffect(() => {
     api.fetchJobs().then(setJobs).catch(() => {}).finally(() => setJobsLoaded(true))
   }, [])
+
+  // 卡片管理清單裡的顯示順序：拖過的話用本地 cardOrder，沒拖過就從
+  // profile.dashboard_order 算，新卡片或還沒排序過的話補在最後面。
+  const orderedCards = useMemo(() => {
+    const defaultOrder = cards.map(c => c.id)
+    let base = cardOrder
+    if (!base) {
+      let saved: string[] | null = null
+      if (profile?.dashboard_order) {
+        try { saved = JSON.parse(profile.dashboard_order) } catch {}
+      }
+      if (saved) {
+        const known = new Set(defaultOrder)
+        const kept = saved.filter(id => known.has(id))
+        const missing = defaultOrder.filter(id => !kept.includes(id))
+        base = [...kept, ...missing]
+      } else {
+        base = defaultOrder
+      }
+    }
+    const byId = new Map(cards.map(c => [c.id, c]))
+    return base.map(id => byId.get(id)).filter((c): c is Card => !!c)
+  }, [cards, cardOrder, profile?.dashboard_order])
+
+  function handleCardPointerDown(e: React.PointerEvent, id: string) {
+    if (!cardOrder) setCardOrder(orderedCards.map(c => c.id))
+    draggingCardRef.current = id
+    setDraggingCardId(id)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  function handleCardPointerMove(e: React.PointerEvent) {
+    if (!draggingCardRef.current) return
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+    const overId = el?.closest<HTMLElement>('[data-card-drag-id]')?.dataset.cardDragId
+    if (!overId || overId === draggingCardRef.current) return
+    setCardOrder(prev => {
+      const list = prev ?? orderedCards.map(c => c.id)
+      const from = list.indexOf(draggingCardRef.current!)
+      const to = list.indexOf(overId)
+      if (from === -1 || to === -1 || from === to) return prev
+      const next = [...list]
+      next.splice(from, 1)
+      next.splice(to, 0, draggingCardRef.current!)
+      return next
+    })
+  }
+
+  async function handleCardPointerUp() {
+    if (!draggingCardRef.current) return
+    draggingCardRef.current = null
+    setDraggingCardId(null)
+    const order = cardOrder ?? orderedCards.map(c => c.id)
+    const encoded = JSON.stringify(order)
+    setProfile(p => p ? { ...p, dashboard_order: encoded } : p)
+    await fetch('/api/backend/users/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dashboard_order: encoded }),
+    }).catch(() => {})
+  }
 
   function handleSaveBudget() {
     const val = parseFloat(input)
@@ -531,36 +600,62 @@ export default function SettingsPage() {
           </button>
           {expandedFeature === 'cards' && (
             <div className={cn('border-t divide-y', cards.length > 3 && 'max-h-54 overflow-y-auto')}>
-              {cards.length === 0 ? (
+              {orderedCards.length === 0 ? (
                 <p className="px-4 py-4 text-center text-sm text-muted-foreground">尚未新增任何卡片</p>
-              ) : cards.map(card => {
-                const emoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
-                return (
-                  <div key={card.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white" style={{ backgroundColor: card.color }}>{emoji}</div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{card.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {card.type === 'debit' && card.balance != null && `餘額 $${card.balance}`}
-                        {card.type === 'easycard' && card.balance != null && `餘額 $${card.balance}`}
-                        {card.type === 'easycard' && card.balance != null && card.passExpiryDate && ' · '}
-                        {card.type === 'easycard' && card.passExpiryDate && `月票 ${card.passExpiryDate}`}
-                        {card.type === 'credit' && card.paymentDueDate && `繳費截止 ${card.paymentDueDate}`}
-                        {!card.balance && !card.passExpiryDate && !card.paymentDueDate && '尚未設定'}
-                      </p>
-                    </div>
-                    <button onClick={() => setEditingCard(card)} className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
-                      <PencilIcon className="size-4" />
-                    </button>
-                    <button
-                      onClick={async () => { if (!confirm(`確定刪除「${card.name}」？相關交易紀錄不受影響。`)) return; await removeCard(card.id) }}
-                      className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500"
-                    >
-                      <Trash2Icon className="size-4" />
-                    </button>
-                  </div>
-                )
-              })}
+              ) : (
+                <>
+                  {orderedCards.length > 1 && (
+                    <p className="px-4 pt-2.5 text-[11px] text-muted-foreground">拖右邊的把手可以調整卡片順序</p>
+                  )}
+                  {orderedCards.map(card => {
+                    const emoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
+                    return (
+                      <div
+                        key={card.id}
+                        data-card-drag-id={card.id}
+                        className={cn(
+                          'flex items-center gap-3 px-4 py-3 transition-transform',
+                          draggingCardId === card.id && 'scale-[1.01] bg-amber-50 dark:bg-amber-900/20',
+                        )}
+                      >
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white" style={{ backgroundColor: card.color }}>{emoji}</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{card.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {card.type === 'debit' && card.balance != null && `餘額 $${card.balance}`}
+                            {card.type === 'easycard' && card.balance != null && `餘額 $${card.balance}`}
+                            {card.type === 'easycard' && card.balance != null && card.passExpiryDate && ' · '}
+                            {card.type === 'easycard' && card.passExpiryDate && `月票 ${card.passExpiryDate}`}
+                            {card.type === 'credit' && card.paymentDueDate && `繳費截止 ${card.paymentDueDate}`}
+                            {!card.balance && !card.passExpiryDate && !card.paymentDueDate && '尚未設定'}
+                          </p>
+                        </div>
+                        <button onClick={() => setEditingCard(card)} className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+                          <PencilIcon className="size-4" />
+                        </button>
+                        <button
+                          onClick={async () => { if (!confirm(`確定刪除「${card.name}」？相關交易紀錄不受影響。`)) return; await removeCard(card.id) }}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500"
+                        >
+                          <Trash2Icon className="size-4" />
+                        </button>
+                        {orderedCards.length > 1 && (
+                          <span
+                            onPointerDown={e => handleCardPointerDown(e, card.id)}
+                            onPointerMove={handleCardPointerMove}
+                            onPointerUp={handleCardPointerUp}
+                            onPointerCancel={handleCardPointerUp}
+                            style={{ touchAction: 'none' }}
+                            className="flex size-8 shrink-0 cursor-grab items-center justify-center text-muted-foreground active:cursor-grabbing"
+                          >
+                            <GripVerticalIcon className="size-4" />
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
             </div>
           )}
 
