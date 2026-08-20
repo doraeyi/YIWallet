@@ -43,7 +43,17 @@ export default function RootLayout({
     <html
       lang="zh-TW"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* 在畫面渲染前先套用深色模式 class，避免先閃一下淺色再變深色（FOUC）。
+            用同步 inline script 而不是 useEffect，因為 useEffect 會晚一拍。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('yiwallet_theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {children}
         <ServiceWorkerRegistration />

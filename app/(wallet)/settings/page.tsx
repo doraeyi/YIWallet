@@ -15,6 +15,8 @@ import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
 import { JobShareSheet } from '@/components/wallet/job-share-sheet'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { useTheme, type ThemePref } from '@/hooks/use-theme'
+import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { Card } from '@/lib/types'
 
@@ -183,6 +185,14 @@ export default function SettingsPage() {
 
   // 推播通知
   const { permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, enable: enablePush, disable: disablePush } = usePushNotifications()
+
+  // 深色／淺色模式
+  const { theme, setTheme } = useTheme()
+  const THEME_OPTIONS: { key: ThemePref; label: string; icon: typeof SunIcon }[] = [
+    { key: 'light', label: '淺色', icon: SunIcon },
+    { key: 'dark', label: '深色', icon: MoonIcon },
+    { key: 'system', label: '跟隨系統', icon: MonitorIcon },
+  ]
 
   useEffect(() => {
     fetch('/api/backend/users/me')
@@ -456,6 +466,26 @@ export default function SettingsPage() {
             <span>編輯個人資料</span>
             <span className="text-base leading-none">›</span>
           </Link>
+        </div>
+
+        {/* ── 外觀 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">外觀</p>
+        <div className="overflow-hidden rounded-2xl bg-white p-3 shadow-sm dark:bg-card">
+          <div className="flex gap-2">
+            {THEME_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setTheme(opt.key)}
+                className={cn(
+                  'flex flex-1 flex-col items-center gap-1.5 rounded-xl py-3 text-xs font-medium transition-colors',
+                  theme === opt.key ? 'bg-amber-400 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                )}
+              >
+                <opt.icon className="size-4" />
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── 帳號 ── */}
