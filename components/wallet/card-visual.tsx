@@ -36,7 +36,7 @@ export function CardVisual({
   /** 疊在卡片右上角外側的內容，例如月票鈴鐺，位置跟著卡片走而不是外層容器 */
   overlay?: React.ReactNode
   /** 信用卡才有：同銀行共用額度時，背面改顯示這張卡自己的花費＋共用剩餘額度 */
-  creditBack?: { ownSpend: number; availableCredit: number; onViewDetail?: () => void }
+  creditBack?: { ownSpend: number; availableCredit: number }
 }) {
   const gradient = `linear-gradient(135deg, ${shadeColor(card.color, 18)}, ${shadeColor(card.color, -22)})`
   const backGradient = `linear-gradient(135deg, ${shadeColor(card.color, -8)}, ${shadeColor(card.color, -38)})`
@@ -95,14 +95,6 @@ export function CardVisual({
                 <span className="text-xs text-white/70">共用額度還剩</span>
                 <span className="text-xl font-bold">{formatCurrency(creditBack.availableCredit)}</span>
               </div>
-              {creditBack.onViewDetail && (
-                <button
-                  onClick={e => { e.stopPropagation(); creditBack.onViewDetail?.() }}
-                  className="mt-0.5 text-[11px] text-white/70 underline underline-offset-2 hover:text-white"
-                >
-                  查看帳單明細
-                </button>
-              )}
             </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-1 px-4">

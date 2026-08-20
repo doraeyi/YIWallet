@@ -112,7 +112,7 @@ interface ApiCard {
 
 function normalizeCard(c: ApiCard): Card {
   return {
-    id: c.id,
+    id: String(c.id),
     name: c.name,
     type: c.type,
     color: c.color,

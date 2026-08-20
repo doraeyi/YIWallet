@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils'
 import * as api from '@/lib/api'
 import { AddCardSheet } from '@/components/wallet/add-card-sheet'
 import { MonthNav } from '@/components/wallet/month-nav'
-import { CreditBillPanel } from '@/components/wallet/credit-bill-panel'
 import { CardVisual } from '@/components/wallet/card-visual'
 import { CardCreatedCelebration } from '@/components/wallet/card-created-celebration'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -131,9 +130,7 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<Card | null>(null)
   const [showPassInfo, setShowPassInfo] = useState(false)
   const [renewingPass, setRenewingPass] = useState(false)
-  const [showCreditPanel, setShowCreditPanel] = useState(false)
   const [creditSummary, setCreditSummary] = useState<api.BankCreditSummary | null>(null)
-  const [creditSummaryLoading, setCreditSummaryLoading] = useState(false)
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [showUnassigned, setShowUnassigned] = useState(false)
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
@@ -151,7 +148,7 @@ export default function DashboardPage() {
     localStorage.setItem('yiwallet_dismissed_unassigned', key)
   }
 
-  useEffect(() => { setShowPassInfo(false); setShowCreditPanel(false); setCardFlipped(false) }, [viewIndex])
+  useEffect(() => { setShowPassInfo(false); setCardFlipped(false) }, [viewIndex])
 
   // Touch swipe state
   const touchStartX = useRef<number | null>(null)
@@ -183,13 +180,10 @@ export default function DashboardPage() {
   const creditBankName = currentView.kind === 'card' && currentView.card.type === 'credit' ? currentView.card.bank : undefined
   const loadCreditSummary = useCallback(async () => {
     if (!creditBankName) { setCreditSummary(null); return }
-    setCreditSummaryLoading(true)
     try {
       setCreditSummary(await api.fetchBankCreditSummary(creditBankName))
     } catch {
       setCreditSummary(null)
-    } finally {
-      setCreditSummaryLoading(false)
     }
   }, [creditBankName])
 
@@ -447,11 +441,12 @@ export default function DashboardPage() {
             balanceLabel={centerLabel}
             balanceValue={centerValue}
             creditBack={
-              currentView.card.type === 'credit' && creditSummary
+              // billing_day 沒設定時後端 card_breakdown 每張卡都固定回 0（見後端註解），
+              // 這種情況不能信任分卡數字，退回卡片本身原本的餘額/本期消費顯示
+              currentView.card.type === 'credit' && creditSummary && creditSummary.billing_day != null
                 ? {
                     ownSpend: creditSummary.card_breakdown.find(c => String(c.card_id) === currentView.card.id)?.spend ?? 0,
                     availableCredit: creditSummary.available_credit,
-                    onViewDetail: () => setShowCreditPanel(true),
                   }
                 : undefined
             }
@@ -511,17 +506,6 @@ export default function DashboardPage() {
           </div>
         )
       })()}
-
-      {/* 信用卡帳單 popover */}
-      {showCreditPanel && creditBankName && (
-        <CreditBillPanel
-          bankName={creditBankName}
-          summary={creditSummary}
-          loading={creditSummaryLoading}
-          onClose={() => setShowCreditPanel(false)}
-          onRefresh={loadCreditSummary}
-        />
-      )}
 
       {/* Current view label + 設為常用 */}
       <div className="flex items-center justify-center gap-2 -mt-3 mb-2">
