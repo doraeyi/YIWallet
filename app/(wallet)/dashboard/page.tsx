@@ -446,17 +446,19 @@ export default function DashboardPage() {
             onFlip={() => setCardFlipped(v => !v)}
             balanceLabel={centerLabel}
             balanceValue={centerValue}
+            creditBack={
+              currentView.card.type === 'credit' && creditSummary
+                ? {
+                    ownSpend: creditSummary.card_breakdown.find(c => String(c.card_id) === currentView.card.id)?.spend ?? 0,
+                    availableCredit: creditSummary.available_credit,
+                    onViewDetail: () => setShowCreditPanel(true),
+                  }
+                : undefined
+            }
             overlay={
               (currentView.card.type === 'easycard' && currentView.card.passExpiryDate) ? (
                 <button
                   onClick={() => setShowPassInfo(v => !v)}
-                  className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm hover:text-foreground transition-colors"
-                >
-                  <BellIcon className="size-4" />
-                </button>
-              ) : currentView.card.type === 'credit' ? (
-                <button
-                  onClick={() => setShowCreditPanel(v => !v)}
                   className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm hover:text-foreground transition-colors"
                 >
                   <BellIcon className="size-4" />
