@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, XIcon, ImageIcon, CheckIcon } from 'lucide-react'
+import { ChevronLeftIcon, XIcon, ImageIcon, CheckIcon, RefreshCwIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency } from '@/lib/finance-utils'
 import { useCards } from '@/hooks/use-cards'
@@ -21,19 +21,29 @@ function formatDateTime(iso: string): string {
 }
 
 function BankScreenshotCard({
-  item, cards, dismissing, importing, onDismiss, onImport,
+  item, cards, dismissing, importing, reprocessing, onDismiss, onImport, onReprocess,
 }: {
   item: PendingBankScreenshot
   cards: { id: string; name: string }[]
   dismissing: boolean
   importing: boolean
+  reprocessing: boolean
   onDismiss: () => void
   onImport: (data: { amount: number; cardId: string | null; note: string | null; date: string | null }) => void
+  onReprocess: () => void
 }) {
   const recognized = item.ocrProcessed && item.parsedAmount != null
   const [amount, setAmount] = useState(item.parsedAmount != null ? String(item.parsedAmount) : '')
   const [cardId, setCardId] = useState(item.matchedCardId ?? '')
   const [note, setNote] = useState(item.parsedMerchant ?? '')
+
+  // 「重新辨識」成功後 item 會拿到新的解析結果，但這幾個欄位是使用者可能已經
+  // 手動改過的可編輯狀態，不會自動跟著 item 變，這裡專門同步這個情境。
+  useEffect(() => {
+    setAmount(item.parsedAmount != null ? String(item.parsedAmount) : '')
+    setCardId(item.matchedCardId ?? '')
+    setNote(item.parsedMerchant ?? '')
+  }, [item.parsedAmount, item.matchedCardId, item.parsedMerchant])
 
   const amountValue = parseFloat(amount)
   const canImport = !isNaN(amountValue) && amountValue > 0
@@ -68,10 +78,22 @@ function BankScreenshotCard({
         className="max-h-96 w-full object-contain bg-muted/20"
       />
       <div className="flex flex-col gap-2.5 p-4">
-        {recognized && (
+        {recognized ? (
           <p className="text-xs text-emerald-600">
             ✓ 已自動辨識{item.matchedCardName ? `，卡片對到「${item.matchedCardName}」` : item.parsedLastFour ? `（卡末四碼 ${item.parsedLastFour} 沒有對到已登記的卡片）` : ''}
           </p>
+        ) : (
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 dark:bg-amber-900/20">
+            <p className="text-xs text-amber-700 dark:text-amber-300">辨識不出來，可以重試或手動填下面的欄位</p>
+            <button
+              onClick={onReprocess}
+              disabled={reprocessing}
+              className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+            >
+              <RefreshCwIcon className={cn('size-3', reprocessing && 'animate-spin')} />
+              {reprocessing ? '辨識中…' : '重新辨識'}
+            </button>
+          </div>
         )}
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -128,6 +150,7 @@ export default function BankNotifyPage() {
   const [bankLoading, setBankLoading] = useState(true)
   const [dismissingId, setDismissingId] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
+  const [reprocessingId, setReprocessingId] = useState<string | null>(null)
 
   const [rosterItems, setRosterItems] = useState<api.PendingRosterPhoto[]>([])
   const [rosterLoading, setRosterLoading] = useState(true)
@@ -176,6 +199,16 @@ export default function BankNotifyPage() {
       await refetchTransactions()
     } finally {
       setImportingId(null)
+    }
+  }
+
+  async function handleReprocess(id: string) {
+    setReprocessingId(id)
+    try {
+      const updated = await api.reprocessPendingScreenshot(id)
+      setBankItems(prev => prev.map(i => i.id === id ? updated : i))
+    } finally {
+      setReprocessingId(null)
     }
   }
 
@@ -236,8 +269,10 @@ export default function BankNotifyPage() {
                 cards={cards}
                 dismissing={dismissingId === item.id}
                 importing={importingId === item.id}
+                reprocessing={reprocessingId === item.id}
                 onDismiss={() => handleDismiss(item.id)}
                 onImport={data => handleImport(item.id, data)}
+                onReprocess={() => handleReprocess(item.id)}
               />
             ))
           )}

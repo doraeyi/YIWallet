@@ -712,15 +712,8 @@ interface ApiPendingBankScreenshot {
   matched_card: { name: string } | null
 }
 
-export function bankScreenshotImageUrl(id: string): string {
-  return `${API}/bank-notify/pending/${id}/image`
-}
-
-export async function fetchPendingBankScreenshots(): Promise<PendingBankScreenshot[]> {
-  const res = await fetch(`${API}/bank-notify/pending`)
-  if (!res.ok) throw new Error('Failed to fetch pending bank screenshots')
-  const data: ApiPendingBankScreenshot[] = await res.json()
-  return data.map(s => ({
+function normalizePendingBankScreenshot(s: ApiPendingBankScreenshot): PendingBankScreenshot {
+  return {
     id: String(s.id),
     createdAt: s.created_at,
     ocrProcessed: s.ocr_processed,
@@ -730,7 +723,26 @@ export async function fetchPendingBankScreenshots(): Promise<PendingBankScreensh
     parsedTransactionAt: s.parsed_transaction_at,
     matchedCardId: s.matched_card_id != null ? String(s.matched_card_id) : null,
     matchedCardName: s.matched_card?.name ?? null,
-  }))
+  }
+}
+
+export function bankScreenshotImageUrl(id: string): string {
+  return `${API}/bank-notify/pending/${id}/image`
+}
+
+export async function fetchPendingBankScreenshots(): Promise<PendingBankScreenshot[]> {
+  const res = await fetch(`${API}/bank-notify/pending`)
+  if (!res.ok) throw new Error('Failed to fetch pending bank screenshots')
+  const data: ApiPendingBankScreenshot[] = await res.json()
+  return data.map(normalizePendingBankScreenshot)
+}
+
+// 第一次收到截圖時 OCR 失敗就不會重試（可能是 OCR.space 那次剛好逾時/出錯），
+// 讓使用者在畫面上手動點「重新辨識」對同一張截圖再跑一次。
+export async function reprocessPendingScreenshot(id: string): Promise<PendingBankScreenshot> {
+  const res = await fetch(`${API}/bank-notify/pending/${id}/reprocess`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to reprocess screenshot')
+  return normalizePendingBankScreenshot(await res.json())
 }
 
 export async function dismissBankScreenshot(id: string): Promise<void> {
