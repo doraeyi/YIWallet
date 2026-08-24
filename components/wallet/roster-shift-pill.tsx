@@ -101,7 +101,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
         <button
           type="button"
           className={cn(
-            'rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors',
+            'touch-manipulation rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors',
             isMatched ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-400' : 'bg-muted hover:bg-muted/70'
           )}
         >
@@ -123,7 +123,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
               value={date}
               onChange={e => setDate(e.target.value)}
               onPointerDown={e => e.stopPropagation()}
-              className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
+              className="w-full touch-manipulation rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
             />
             <div className="flex items-center gap-1.5">
               <input
@@ -131,7 +131,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
                 onPointerDown={e => e.stopPropagation()}
-                className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
+                className="w-full touch-manipulation rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
               />
               <span className="text-xs text-muted-foreground">–</span>
               <input
@@ -139,7 +139,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
                 onPointerDown={e => e.stopPropagation()}
-                className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
+                className="w-full touch-manipulation rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
               />
             </div>
             <input
@@ -173,7 +173,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
               onChange={e => handleMatchChange(e.target.value)}
               onPointerDown={e => e.stopPropagation()}
               disabled={saving}
-              className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-xs outline-none focus:border-ring disabled:opacity-50"
+              className="w-full touch-manipulation rounded-lg border bg-muted/30 px-2 py-1.5 text-xs outline-none focus:border-ring disabled:opacity-50"
             >
               <option value="">不標註</option>
               {myUserId && <option value={myUserId}>👤 這是我本人</option>}
