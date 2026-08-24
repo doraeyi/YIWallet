@@ -11,7 +11,7 @@ export default function WalletLayout({ children }: { children: React.ReactNode }
         <Sidebar />
 
         {/* Page content */}
-        <main className="flex flex-1 flex-col overflow-y-auto pb-20 lg:pb-0">
+        <main className="flex flex-1 flex-col overflow-y-auto pb-24 lg:pb-0">
           {children}
         </main>
 
