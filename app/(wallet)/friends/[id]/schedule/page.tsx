@@ -105,7 +105,12 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
       ) : shifts.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">對方目前沒有分享任何班表給你</div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-1 px-8 text-center">
+          <p className="text-sm text-muted-foreground">對方目前沒有分享任何班表給你</p>
+          <p className="text-xs text-muted-foreground/70">
+            請對方到「設定」→「工作管理」，點選要分享的工作，把你加入共享名單
+          </p>
+        </div>
       ) : (
         <div className="px-4 lg:px-6">
           <div className="mb-3 flex justify-center">
