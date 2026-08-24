@@ -72,13 +72,15 @@ export function MobileNav() {
       />
 
       {/* 懸浮的膠囊狀導覽列（比照 IG 改版後的樣式），離螢幕邊緣/底部都留距離，
-          不像舊版整條貼齊螢幕邊緣。中間的橘色新增按鈕維持原本凸出來的樣式。
-          往下滑內容時 collapsed 會變 true，整條稍微縮小；往上滑或回到頂部
-          會恢復原本大小。 */}
+          不像舊版整條貼齊螢幕邊緣。往下滑內容時整條膠囊用 CSS scale 等比例
+          縮小（圖示、文字、間距都是同一個 transform 的一部分，不是個別調整
+          尺寸），往上滑或回到頂部會恢復原本大小；中間橘色按鈕本來就是這個
+          膠囊的子元素，會跟著一起等比例縮小。 */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+22px)] lg:hidden">
         <div
           className={cn(
-            'flex w-full max-w-sm items-center rounded-full bg-background/95 px-1 shadow-lg shadow-black/10 ring-1 ring-foreground/10 backdrop-blur-md transition-all duration-200',
+            'flex w-full max-w-sm items-center rounded-full bg-background/95 px-1 shadow-lg shadow-black/10 ring-1 ring-foreground/10 backdrop-blur-md transition-transform duration-200 ease-out',
+            collapsed && 'scale-[0.88]'
           )}
         >
           {/* Left items */}
@@ -88,28 +90,10 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
-                className={cn(
-                  'flex flex-1 flex-col items-center text-xs font-medium transition-all duration-200',
-                  collapsed ? 'py-1.5' : 'py-2.5'
-                )}
+                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium"
               >
-                <Icon
-                  className={cn(
-                    'transition-all duration-200',
-                    collapsed ? 'size-4' : 'size-5',
-                    active ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                  strokeWidth={active ? 2.5 : 1.8}
-                />
-                <span
-                  className={cn(
-                    'overflow-hidden transition-all duration-200',
-                    collapsed ? 'mt-0 max-h-0 opacity-0' : 'mt-0.5 max-h-4 opacity-100',
-                    active ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                >
-                  {label}
-                </span>
+                <Icon className={cn('size-5', active ? 'text-primary' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
+                <span className={active ? 'text-primary' : 'text-muted-foreground'}>{label}</span>
               </Link>
             )
           })}
@@ -118,12 +102,9 @@ export function MobileNav() {
           <div className="flex flex-col items-center px-2">
             <button
               onClick={() => setSheetOpen(true)}
-              className={cn(
-                'mb-1 flex items-center justify-center rounded-full bg-amber-400 shadow-lg shadow-amber-400/30 transition-all duration-200 active:scale-95',
-                collapsed ? 'size-11 -translate-y-3' : 'size-14 -translate-y-4'
-              )}
+              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-amber-400 shadow-lg shadow-amber-400/30 active:scale-95 transition-transform"
             >
-              <PlusIcon className={cn('text-white transition-all duration-200', collapsed ? 'size-6' : 'size-7')} strokeWidth={2.5} />
+              <PlusIcon className="size-7 text-white" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -134,28 +115,10 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
-                className={cn(
-                  'flex flex-1 flex-col items-center text-xs font-medium transition-all duration-200',
-                  collapsed ? 'py-1.5' : 'py-2.5'
-                )}
+                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium"
               >
-                <Icon
-                  className={cn(
-                    'transition-all duration-200',
-                    collapsed ? 'size-4' : 'size-5',
-                    active ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                  strokeWidth={active ? 2.5 : 1.8}
-                />
-                <span
-                  className={cn(
-                    'overflow-hidden transition-all duration-200',
-                    collapsed ? 'mt-0 max-h-0 opacity-0' : 'mt-0.5 max-h-4 opacity-100',
-                    active ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                >
-                  {label}
-                </span>
+                <Icon className={cn('size-5', active ? 'text-primary' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
+                <span className={active ? 'text-primary' : 'text-muted-foreground'}>{label}</span>
               </Link>
             )
           })}
