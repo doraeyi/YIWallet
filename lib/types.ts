@@ -63,7 +63,6 @@ export interface Card {
   passExpiryDate?: string    // 悠遊卡月票到期日 YYYY-MM-DD
   paymentDueDate?: string    // 信用卡繳費截止日 YYYY-MM-DD
   reminderDay?: number       // 每月固定幾號提醒（不是提前幾天）
-  creditAccountId?: string
 }
 
 export interface ShiftPreset {
