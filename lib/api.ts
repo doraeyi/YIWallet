@@ -414,6 +414,7 @@ export interface RosterViewShift {
   shiftType: string | null
   note: string | null
   matchedUserId: string | null
+  materialized: boolean
 }
 
 export interface RosterUpload {
@@ -436,6 +437,7 @@ interface ApiRosterShift {
   shift_type: string | null
   note: string | null
   matched_user_id: number | null
+  materialized: boolean
 }
 
 interface ApiRosterUpload {
@@ -458,6 +460,7 @@ function normalizeRosterShift(s: ApiRosterShift): RosterViewShift {
     shiftType: s.shift_type,
     note: s.note,
     matchedUserId: s.matched_user_id != null ? String(s.matched_user_id) : null,
+    materialized: s.materialized,
   }
 }
 
@@ -474,6 +477,50 @@ export async function fetchRosterUploads(): Promise<RosterUpload[]> {
     createdAt: u.created_at,
     shifts: u.shifts.map(normalizeRosterShift),
   }))
+}
+
+// 事後把某一列標成／解除標成某個好友（或自己），null 代表解除標記。
+export async function matchRosterShift(shiftId: string, matchedUserId: string | null): Promise<RosterViewShift> {
+  const res = await fetch(`${API}/roster/shifts/${shiftId}/match`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ matched_user_id: matchedUserId ? Number(matchedUserId) : null }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '標註失敗')
+  }
+  return normalizeRosterShift(await res.json())
+}
+
+export async function updateRosterShift(shiftId: string, data: {
+  employeeName: string
+  date: string
+  startTime: string | null
+  endTime: string | null
+  note: string | null
+}): Promise<RosterViewShift> {
+  const res = await fetch(`${API}/roster/shifts/${shiftId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      employee_name: data.employeeName,
+      date: data.date,
+      start_time: data.startTime,
+      end_time: data.endTime,
+      note: data.note,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '更新失敗')
+  }
+  return normalizeRosterShift(await res.json())
+}
+
+export async function deleteRosterShift(shiftId: string): Promise<void> {
+  const res = await fetch(`${API}/roster/shifts/${shiftId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete roster shift')
 }
 
 // ── 信用卡帳單（BankCreditSetting）──────────────────────────────────
@@ -599,6 +646,13 @@ export async function acceptFriend(friendshipId: string): Promise<Friendship> {
   const res = await fetch(`${API}/friends/${friendshipId}/accept`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to accept friend request')
   return normalizeFriendship(await res.json())
+}
+
+// 拒絕一筆待接受的邀請、收回自己送出的邀請、或刪除一個已接受的好友——三種
+// 情境後端都是刪掉同一筆 Friendship。
+export async function deleteFriendship(friendshipId: string): Promise<void> {
+  const res = await fetch(`${API}/friends/${friendshipId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete friendship')
 }
 
 // ── Job sharing ───────────────────────────────────────────────────

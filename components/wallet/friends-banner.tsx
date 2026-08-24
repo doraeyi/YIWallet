@@ -14,6 +14,7 @@ export function FriendsBanner() {
   }, [])
 
   const accepted = friendships.filter(f => f.status === 'accepted')
+  const pendingIncomingCount = friendships.filter(f => f.status === 'pending' && f.incoming).length
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
@@ -35,8 +36,13 @@ export function FriendsBanner() {
           )
         })}
         <Link href="/friends" className="flex w-16 shrink-0 flex-col items-center gap-1.5">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <div className="relative flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <UserPlusIcon className="size-5" />
+            {pendingIncomingCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                {pendingIncomingCount > 9 ? '9+' : pendingIncomingCount}
+              </span>
+            )}
           </div>
           <span className="w-full truncate text-center text-[11px] text-muted-foreground">加好友</span>
         </Link>

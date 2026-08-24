@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, UserPlusIcon, ChevronRightIcon } from 'lucide-react'
+import { ChevronLeftIcon, UserPlusIcon, ChevronRightIcon, XIcon, Trash2Icon } from 'lucide-react'
 import * as api from '@/lib/api'
 import type { Friendship } from '@/lib/types'
 
@@ -43,6 +43,17 @@ export default function FriendsPage() {
 
   async function handleAccept(id: string) {
     await api.acceptFriend(id)
+    await load()
+  }
+
+  async function handleReject(id: string) {
+    await api.deleteFriendship(id)
+    await load()
+  }
+
+  async function handleRemoveFriend(id: string, name: string) {
+    if (!window.confirm(`確定要刪除好友「${name}」嗎？`)) return
+    await api.deleteFriendship(id)
     await load()
   }
 
@@ -92,19 +103,27 @@ export default function FriendsPage() {
               return (
                 <div key={f.id} className={i > 0 ? 'border-t' : ''}>
                   {isAccepted ? (
-                    <Link
-                      href={`/friends/${f.friend.id}/schedule`}
-                      className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40"
-                    >
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-400/15">
-                        {letter}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{f.friend.displayName}</p>
-                        <p className="truncate text-xs text-muted-foreground">{f.friend.email}</p>
-                      </div>
-                      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
-                    </Link>
+                    <div className="flex items-center gap-1 pr-2">
+                      <Link
+                        href={`/friends/${f.friend.id}/schedule`}
+                        className="flex flex-1 items-center gap-3 px-4 py-3.5 hover:bg-muted/40"
+                      >
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-400/15">
+                          {letter}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{f.friend.displayName}</p>
+                          <p className="truncate text-xs text-muted-foreground">{f.friend.email}</p>
+                        </div>
+                        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                      <button
+                        onClick={() => handleRemoveFriend(f.id, f.friend.displayName)}
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                      >
+                        <Trash2Icon className="size-4" />
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-3 px-4 py-3.5">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground">
@@ -114,12 +133,27 @@ export default function FriendsPage() {
                         <p className="truncate text-sm font-medium">{f.friend.displayName}</p>
                         <p className="truncate text-xs text-muted-foreground">{f.incoming ? '想加你好友' : '等待對方接受'}</p>
                       </div>
-                      {f.incoming && (
+                      {f.incoming ? (
+                        <>
+                          <button
+                            onClick={() => handleReject(f.id)}
+                            className="shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40"
+                          >
+                            拒絕
+                          </button>
+                          <button
+                            onClick={() => handleAccept(f.id)}
+                            className="shrink-0 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+                          >
+                            接受
+                          </button>
+                        </>
+                      ) : (
                         <button
-                          onClick={() => handleAccept(f.id)}
-                          className="shrink-0 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+                          onClick={() => handleReject(f.id)}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
                         >
-                          接受
+                          <XIcon className="size-4" />
                         </button>
                       )}
                     </div>

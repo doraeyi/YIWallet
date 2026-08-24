@@ -5,15 +5,20 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate, shiftTypeLabel } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
-import type { Job, Shift, ShiftPreset } from '@/lib/types'
+import type { Job, Shift, ShiftPreset, Friendship } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { FriendsBanner } from '@/components/wallet/friends-banner'
+import { RosterShiftPill } from '@/components/wallet/roster-shift-pill'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useTransactions } from '@/hooks/use-transactions'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+
+type TeamShiftPerson =
+  | { isMe: true; id: string; employeeName: string }
+  | { isMe: false; id: string; employeeName: string; shift: api.RosterViewShift }
 
 export default function SchedulePage() {
   const now = new Date()
@@ -29,6 +34,7 @@ export default function SchedulePage() {
   const [addingJob, setAddingJob] = useState<string | null>(null)
   const [myUserId, setMyUserId] = useState<string | null>(null)
   const [myName, setMyName] = useState<string | null>(null)
+  const [friends, setFriends] = useState<Friendship[]>([])
   const [holidays, setHolidays] = useState<Set<string>>(new Set())
   // 工作切換器：預設每個工作的班表/薪資分開顯示，只有使用者主動切成「全部」才合併顯示
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -61,6 +67,7 @@ export default function SchedulePage() {
         if (d?.name) setMyName(d.name)
       })
       .catch(() => {})
+    api.fetchFriendships().then(list => setFriends(list.filter(f => f.status === 'accepted'))).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -193,16 +200,16 @@ export default function SchedulePage() {
     return map
   }, [rosterUploads])
 
-  function teamShiftsFor(jobId: string, date: string) {
+  function teamShiftsFor(jobId: string, date: string): [string, TeamShiftPerson[]][] {
     const shiftsForJob = rosterShiftsByJob[jobId] ?? []
     // 匯入時已經標成自己的那幾列（matchedUserId === 我），改用下面「自己的班表」
     // 這筆資料顯示，這裡排除掉避免同一個人重複出現兩次。
     const working = shiftsForJob.filter(s => s.date === date && s.startTime && s.matchedUserId !== myUserId)
-    const grouped = new Map<string, { id: string; employeeName: string; isMe: boolean }[]>()
+    const grouped = new Map<string, TeamShiftPerson[]>()
     for (const s of working) {
       const key = s.shiftType ?? (s.startTime && s.endTime ? `${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}` : '其他')
       if (!grouped.has(key)) grouped.set(key, [])
-      grouped.get(key)!.push({ id: s.id, employeeName: s.employeeName, isMe: false })
+      grouped.get(key)!.push({ isMe: false, id: s.id, employeeName: s.employeeName, shift: s })
     }
 
     // 自己的班表（不管是匯入時標本人自動建立的，還是自己手動按早/晚班），
@@ -211,7 +218,7 @@ export default function SchedulePage() {
     if (mine) {
       const key = mine.shift_type ?? `${mine.start_time.slice(0, 5)}-${mine.end_time.slice(0, 5)}`
       if (!grouped.has(key)) grouped.set(key, [])
-      grouped.get(key)!.push({ id: `me-${mine.id}`, employeeName: myName ?? '我', isMe: true })
+      grouped.get(key)!.push({ isMe: true, id: `me-${mine.id}`, employeeName: myName ?? '我' })
     }
 
     return Array.from(grouped.entries())
@@ -379,16 +386,22 @@ export default function SchedulePage() {
                         <div key={label} className="flex items-start gap-2">
                           <span className="mt-1 shrink-0 text-[10px] font-semibold text-muted-foreground">{label}</span>
                           <div className="flex flex-wrap gap-1">
-                            {people.map(p => (
+                            {people.map(p => p.isMe ? (
                               <span
                                 key={p.id}
-                                className={cn(
-                                  'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                                  p.isMe ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-400' : 'bg-muted'
-                                )}
+                                className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-400/20 dark:text-amber-400"
                               >
                                 {p.employeeName}
                               </span>
+                            ) : (
+                              <RosterShiftPill
+                                key={p.id}
+                                shift={p.shift}
+                                friends={friends}
+                                myUserId={myUserId}
+                                onChanged={loadData}
+                                onDateChanged={setSelectedDate}
+                              />
                             ))}
                           </div>
                         </div>
