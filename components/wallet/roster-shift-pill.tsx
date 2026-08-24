@@ -122,6 +122,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
+              onPointerDown={e => e.stopPropagation()}
               className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
             />
             <div className="flex items-center gap-1.5">
@@ -129,6 +130,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
+                onPointerDown={e => e.stopPropagation()}
                 className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
               />
               <span className="text-xs text-muted-foreground">–</span>
@@ -136,6 +138,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
                 type="time"
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
+                onPointerDown={e => e.stopPropagation()}
                 className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-sm outline-none focus:border-ring"
               />
             </div>
@@ -168,6 +171,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
             <select
               value={shift.matchedUserId ?? ''}
               onChange={e => handleMatchChange(e.target.value)}
+              onPointerDown={e => e.stopPropagation()}
               disabled={saving}
               className="w-full rounded-lg border bg-muted/30 px-2 py-1.5 text-xs outline-none focus:border-ring disabled:opacity-50"
             >
