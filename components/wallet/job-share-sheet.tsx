@@ -86,7 +86,7 @@ export function JobShareSheet({ job, open, onOpenChange }: JobShareSheetProps) {
                   )}
                 >
                   <span className={cn(
-                    'absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform',
+                    'absolute top-0.5 left-0 size-5 rounded-full bg-white shadow transition-transform',
                     shared ? 'translate-x-[22px]' : 'translate-x-0.5',
                   )} />
                 </button>
