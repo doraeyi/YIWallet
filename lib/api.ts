@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota } from './types'
 
 const API = '/api/backend'
 
@@ -735,6 +735,20 @@ export async function updateOcrPermission(userId: string, canUseOcr: boolean): P
   })
   if (!res.ok) throw new Error('Failed to update OCR permission')
   return normalizeAdminUser(await res.json())
+}
+
+export async function deleteAdminUser(userId: string): Promise<void> {
+  const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail ?? 'Failed to delete user')
+  }
+}
+
+export async function fetchLineQuota(): Promise<LineQuota> {
+  const res = await fetch('/api/line/quota')
+  if (!res.ok) throw new Error('Failed to fetch LINE quota')
+  return res.json()
 }
 
 // ── 銀行通知截圖（LINE 轉傳的簡訊/App 通知截圖，待確認記帳）──────────────

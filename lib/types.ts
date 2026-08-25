@@ -137,3 +137,10 @@ export interface AdminUser {
   canUseOcr: boolean
   createdAt: string
 }
+
+/** LINE Bot 這個月的推播訊息用量（reply 訊息不計費，這裡只算 push） */
+export interface LineQuota {
+  type: 'limited' | 'none'
+  limit: number | null
+  used: number
+}
