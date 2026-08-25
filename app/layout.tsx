@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "./sw-register"
 import { UpdateBanner } from "@/components/wallet/update-banner";
@@ -47,8 +48,10 @@ export default function RootLayout({
     >
       <head>
         {/* 在畫面渲染前先套用深色模式 class，避免先閃一下淺色再變深色（FOUC）。
-            用同步 inline script 而不是 useEffect，因為 useEffect 會晚一拍。 */}
-        <script
+            用 beforeInteractive 而不是 useEffect，因為 useEffect 會晚一拍。 */}
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('yiwallet_theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
           }}
