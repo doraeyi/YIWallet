@@ -1,0 +1,7 @@
+venv
+__pycache__
+*.pyc
+_removed_*
+.env
+*firebase-adminsdk*.json
+yiwallet.service
