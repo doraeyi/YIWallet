@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HomeIcon, SettingsIcon, PlusIcon, WalletIcon, CalendarDaysIcon, LogOutIcon, ReceiptTextIcon } from 'lucide-react'
+import { HomeIcon, SettingsIcon, PlusIcon, WalletIcon, CalendarDaysIcon, LogOutIcon, ReceiptTextIcon, BarcodeIcon } from 'lucide-react'
 import { AddTransactionSheet } from './add-transaction-sheet'
 import { useTransactions } from '@/hooks/use-transactions'
+import { useMe } from '@/hooks/use-me'
 import { logout } from '@/app/actions/auth'
 import { cn } from '@/lib/utils'
 
@@ -13,13 +14,19 @@ const NAV_ITEMS = [
   { href: '/dashboard',   label: '首頁', icon: HomeIcon },
   { href: '/schedule',    label: '班表', icon: CalendarDaysIcon },
   { href: '/statements',  label: '對帳', icon: ReceiptTextIcon },
-  { href: '/settings',    label: '設定', icon: SettingsIcon },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { addTransaction } = useTransactions()
+  const { me } = useMe()
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(me?.canUseBarcode ? [{ href: '/barcode', label: '條碼查詢', icon: BarcodeIcon }] : []),
+    { href: '/settings', label: '設定', icon: SettingsIcon },
+  ]
 
   return (
     <>
@@ -47,7 +54,7 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="flex flex-1 flex-col gap-0.5 px-3 pt-2">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
               <Link

@@ -43,6 +43,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [togglingBarcodeId, setTogglingBarcodeId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [lineQuota, setLineQuota] = useState<LineQuota | null>(null)
@@ -80,6 +81,20 @@ export default function AdminPage() {
       setError(e instanceof Error ? e.message : '更新失敗')
     } finally {
       setTogglingId(null)
+    }
+  }
+
+  async function toggleBarcode(user: AdminUser) {
+    if (togglingBarcodeId) return
+    setTogglingBarcodeId(user.id)
+    setError(null)
+    try {
+      const updated = await api.updateBarcodePermission(user.id, !user.canUseBarcode)
+      setUsers(prev => prev.map(u => u.id === user.id ? updated : u))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '更新失敗')
+    } finally {
+      setTogglingBarcodeId(null)
     }
   }
 
@@ -178,7 +193,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">OCR 功能（排班表照片匯入）使用權限管理，預設所有使用者關閉。</p>
+        <p className="text-xs text-muted-foreground">OCR（排班表照片匯入）跟條碼查詢功能的使用權限管理，預設所有使用者關閉。</p>
 
         {error && (
           <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">{error}</p>
@@ -210,6 +225,22 @@ export default function AdminPage() {
                     <span className={cn(
                       'absolute top-0.5 left-0 size-5 rounded-full bg-white shadow transition-transform',
                       u.canUseOcr ? 'translate-x-[22px]' : 'translate-x-0.5'
+                    )} />
+                  </button>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <span className="text-[10px] text-muted-foreground">條碼權限</span>
+                  <button
+                    onClick={() => toggleBarcode(u)}
+                    disabled={togglingBarcodeId === u.id}
+                    className={cn(
+                      'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50',
+                      u.canUseBarcode ? 'bg-amber-400' : 'bg-muted'
+                    )}
+                  >
+                    <span className={cn(
+                      'absolute top-0.5 left-0 size-5 rounded-full bg-white shadow transition-transform',
+                      u.canUseBarcode ? 'translate-x-[22px]' : 'translate-x-0.5'
                     )} />
                   </button>
                 </div>

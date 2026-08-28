@@ -135,6 +135,7 @@ export interface AdminUser {
   email: string
   displayName: string
   canUseOcr: boolean
+  canUseBarcode: boolean
   createdAt: string
 }
 
@@ -143,4 +144,25 @@ export interface LineQuota {
   type: 'limited' | 'none'
   limit: number | null
   used: number
+}
+
+/** 目前登入使用者的個人資料，含各項功能權限旗標 */
+export interface MeProfile {
+  id: string
+  email: string | null
+  name: string | null
+  picture: string | null
+  canUseOcr: boolean
+  canUseBarcode: boolean
+  autoAcceptSharedShifts: boolean
+  dashboardOrder: string | null
+}
+
+/** 條碼查詢頁用的商品資料 */
+export interface Product {
+  id: string
+  type: string
+  code: string
+  name: string
+  event: string | null
 }

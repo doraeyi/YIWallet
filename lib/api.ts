@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product } from './types'
 
 const API = '/api/backend'
 
@@ -713,11 +713,19 @@ interface ApiAdminUser {
   email: string
   display_name: string
   can_use_ocr: boolean
+  can_use_barcode: boolean
   created_at: string
 }
 
 function normalizeAdminUser(u: ApiAdminUser): AdminUser {
-  return { id: u.id, email: u.email, displayName: u.display_name, canUseOcr: u.can_use_ocr, createdAt: u.created_at }
+  return {
+    id: u.id,
+    email: u.email,
+    displayName: u.display_name,
+    canUseOcr: u.can_use_ocr,
+    canUseBarcode: u.can_use_barcode,
+    createdAt: u.created_at,
+  }
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
@@ -737,6 +745,16 @@ export async function updateOcrPermission(userId: string, canUseOcr: boolean): P
   return normalizeAdminUser(await res.json())
 }
 
+export async function updateBarcodePermission(userId: string, canUseBarcode: boolean): Promise<AdminUser> {
+  const res = await fetch(`${API}/admin/users/${userId}/barcode-permission`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ can_use_barcode: canUseBarcode }),
+  })
+  if (!res.ok) throw new Error('Failed to update barcode permission')
+  return normalizeAdminUser(await res.json())
+}
+
 export async function deleteAdminUser(userId: string): Promise<void> {
   const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE' })
   if (!res.ok) {
@@ -749,6 +767,52 @@ export async function fetchLineQuota(): Promise<LineQuota> {
   const res = await fetch('/api/line/quota')
   if (!res.ok) throw new Error('Failed to fetch LINE quota')
   return res.json()
+}
+
+// ── 目前登入使用者（含各項功能權限旗標）──────────────────────────────
+
+interface ApiMeProfile {
+  id: number
+  email: string | null
+  name: string | null
+  picture: string | null
+  can_use_ocr: boolean
+  can_use_barcode: boolean
+  auto_accept_shared_shifts: boolean
+  dashboard_order: string | null
+}
+
+export async function fetchMe(): Promise<MeProfile> {
+  const res = await fetch(`${API}/users/me`)
+  if (!res.ok) throw new Error('Failed to fetch profile')
+  const d: ApiMeProfile = await res.json()
+  return {
+    id: String(d.id),
+    email: d.email,
+    name: d.name,
+    picture: d.picture,
+    canUseOcr: d.can_use_ocr,
+    canUseBarcode: d.can_use_barcode,
+    autoAcceptSharedShifts: d.auto_accept_shared_shifts,
+    dashboardOrder: d.dashboard_order,
+  }
+}
+
+// ── 條碼查詢（商品模糊搜尋，需要 can_use_barcode 權限）──────────────────
+
+interface ApiProduct {
+  id: number
+  type: string
+  code: string
+  name: string
+  event: string | null
+}
+
+export async function searchProducts(q: string): Promise<Product[]> {
+  const res = await fetch(`${API}/products/search?q=${encodeURIComponent(q)}`)
+  if (!res.ok) throw new Error('Failed to search products')
+  const data: ApiProduct[] = await res.json()
+  return data.map(p => ({ id: String(p.id), type: p.type, code: p.code, name: p.name, event: p.event }))
 }
 
 // ── 銀行通知截圖（LINE 轉傳的簡訊/App 通知截圖，待確認記帳）──────────────
