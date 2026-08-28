@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult, ProductDeal, ProductGroup, ProductGroupMember } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult, ProductDeal } from './types'
 
 const API = '/api/backend'
 
@@ -823,11 +823,20 @@ function normalizeImportResult(r: ApiProductImportResult): ProductImportResult {
   return { inserted: r.inserted, skipped: r.skipped, duplicateItemNos: r.duplicate_item_nos }
 }
 
-export async function searchProducts(q: string): Promise<Product[]> {
-  const res = await fetch(`${API}/products/search?q=${encodeURIComponent(q)}`)
+export async function searchProducts(q: string, event?: string): Promise<Product[]> {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  if (event) params.set('event', event)
+  const res = await fetch(`${API}/products/search?${params.toString()}`)
   if (!res.ok) throw new Error('Failed to search products')
   const data: ApiProduct[] = await res.json()
   return data.map(normalizeProduct)
+}
+
+export async function fetchProductEvents(): Promise<string[]> {
+  const res = await fetch(`${API}/products/events`)
+  if (!res.ok) throw new Error('Failed to fetch product events')
+  return res.json()
 }
 
 export async function createProducts(items: ProductInput[]): Promise<ProductImportResult> {
@@ -889,87 +898,28 @@ function normalizeProductDeal(d: ApiProductDeal): ProductDeal {
   }
 }
 
-export async function fetchDealProducts(groupId: string): Promise<ProductDeal[]> {
-  const res = await fetch(`${API}/products/deals?group_id=${encodeURIComponent(groupId)}`)
+export async function fetchDealProducts(jobId: string): Promise<ProductDeal[]> {
+  const res = await fetch(`${API}/products/deals?job_id=${encodeURIComponent(jobId)}`)
   if (!res.ok) throw new Error('Failed to fetch deal products')
   const data: ApiProductDeal[] = await res.json()
   return data.map(normalizeProductDeal)
 }
 
-export async function addDealProduct(productId: string, groupId: string): Promise<void> {
-  const res = await fetch(`${API}/products/${productId}/deal?group_id=${encodeURIComponent(groupId)}`, { method: 'POST' })
+export async function addDealProduct(productId: string, jobId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}/deal?job_id=${encodeURIComponent(jobId)}`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to add deal product')
 }
 
-export async function removeDealProduct(productId: string, groupId: string): Promise<void> {
-  const res = await fetch(`${API}/products/${productId}/deal?group_id=${encodeURIComponent(groupId)}`, { method: 'DELETE' })
+export async function removeDealProduct(productId: string, jobId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}/deal?job_id=${encodeURIComponent(jobId)}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to remove deal product')
 }
 
-interface ApiProductGroupMember {
-  user_id: number
-  display_name: string
-  status: string
-}
-
-interface ApiProductGroup {
-  id: number
-  name: string
-  owner_id: number
-  my_status: string
-  members: ApiProductGroupMember[]
-}
-
-function normalizeProductGroup(g: ApiProductGroup): ProductGroup {
-  return {
-    id: String(g.id),
-    name: g.name,
-    ownerId: String(g.owner_id),
-    myStatus: g.my_status as ProductGroup['myStatus'],
-    members: g.members.map(m => ({
-      userId: String(m.user_id), displayName: m.display_name, status: m.status as ProductGroupMember['status'],
-    })),
-  }
-}
-
-export async function fetchProductGroups(): Promise<ProductGroup[]> {
-  const res = await fetch(`${API}/product-groups`)
-  if (!res.ok) throw new Error('Failed to fetch product groups')
-  const data: ApiProductGroup[] = await res.json()
-  return data.map(normalizeProductGroup)
-}
-
-export async function createProductGroup(name: string): Promise<ProductGroup> {
-  const res = await fetch(`${API}/product-groups`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  })
-  if (!res.ok) throw new Error('Failed to create product group')
-  return normalizeProductGroup(await res.json())
-}
-
-export async function inviteToProductGroup(groupId: string, friendUserId: string): Promise<void> {
-  const res = await fetch(`${API}/product-groups/${groupId}/invite`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ friend_user_id: Number(friendUserId) }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    throw new Error(body?.detail ?? 'Failed to invite to group')
-  }
-}
-
-export async function acceptProductGroupInvite(groupId: string): Promise<ProductGroup> {
-  const res = await fetch(`${API}/product-groups/${groupId}/accept`, { method: 'POST' })
-  if (!res.ok) throw new Error('Failed to accept group invite')
-  return normalizeProductGroup(await res.json())
-}
-
-export async function leaveProductGroup(groupId: string): Promise<void> {
-  const res = await fetch(`${API}/product-groups/${groupId}/leave`, { method: 'DELETE' })
-  if (!res.ok) throw new Error('Failed to leave product group')
+export async function fetchSharedJobs(): Promise<Job[]> {
+  const res = await fetch(`${API}/jobs/shared-with-me`)
+  if (!res.ok) throw new Error('Failed to fetch shared jobs')
+  const data: ApiJob[] = await res.json()
+  return data.map(normalizeJob)
 }
 
 export async function updateProduct(productId: string, patch: Partial<ProductInput>): Promise<Product> {

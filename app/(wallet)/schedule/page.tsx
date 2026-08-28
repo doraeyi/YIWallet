@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
+import { UserPlusIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate, shiftTypeLabel } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
-import type { Job, Shift, ShiftPreset, Friendship } from '@/lib/types'
+import type { Job, Shift, ShiftPreset, Friendship, JobShare } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { MonthNav } from '@/components/wallet/month-nav'
-import { FriendsBanner } from '@/components/wallet/friends-banner'
 import { RosterShiftPill } from '@/components/wallet/roster-shift-pill'
+import { AvatarStack } from '@/components/wallet/avatar-stack'
+import { JobCoworkersDialog } from '@/components/wallet/job-coworkers-dialog'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -25,6 +27,7 @@ export default function SchedulePage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [jobs, setJobs] = useState<Job[]>([])
+  const [jobShares, setJobShares] = useState<Record<string, JobShare[]>>({})
   const [shifts, setShifts] = useState<Shift[]>([])
   const [rosterUploads, setRosterUploads] = useState<api.RosterUpload[]>([])
   const [matchedShifts, setMatchedShifts] = useState<api.MatchedRosterShift[]>([])
@@ -39,6 +42,7 @@ export default function SchedulePage() {
   // 工作切換器：預設每個工作的班表/薪資分開顯示，只有使用者主動切成「全部」才合併顯示
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [showAllJobs, setShowAllJobs] = useState(false)
+  const [coworkersDialogOpen, setCoworkersDialogOpen] = useState(false)
   const isDesktop = useIsDesktop()
   const { transactions, addTransaction, deleteTransaction } = useTransactions()
   const touchStartX = useRef<number | null>(null)
@@ -55,6 +59,12 @@ export default function SchedulePage() {
     setShifts(s)
     setRosterUploads(r)
     setLoading(false)
+
+    // 每份工作各自的共享名單，拿來畫月曆上方的同事頭像堆疊
+    const shareEntries = await Promise.all(
+      j.map(job => api.fetchJobShares(job.id).then(shares => [job.id, shares] as const).catch(() => [job.id, []] as const))
+    )
+    setJobShares(Object.fromEntries(shareEntries))
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
@@ -89,7 +99,7 @@ export default function SchedulePage() {
   }, [year])
 
   function salaryNote(job: Job) { return `${job.name} ${year}年${month}月薪資` }
-  function advancePrefix(job: Job) { return `${job.name} ${year}年${month}月領現` }
+  const advancePrefix = useCallback((job: Job) => `${job.name} ${year}年${month}月領現`, [year, month])
 
   function isSalaryAdded(job: Job) {
     return transactions.some(t => t.type === 'income' && t.note === salaryNote(job))
@@ -118,6 +128,8 @@ export default function SchedulePage() {
   const currentJobViewIndex = showAllJobs || jobs.length === 0
     ? 0
     : jobViewSequence.findIndex(v => v.kind === 'job' && v.job.id === (activeJobId ?? jobs[0]?.id))
+  const activeJob = jobs.find(j => j.id === (activeJobId ?? jobs[0]?.id)) ?? null
+  const activeJobCoworkers = activeJob ? (jobShares[activeJob.id] ?? []) : []
 
   function goToJobView(index: number) {
     const total = jobViewSequence.length
@@ -165,14 +177,21 @@ export default function SchedulePage() {
     return map
   }, [shiftsByDate, showAllJobs, activeJobId, jobs])
 
+  // 領現的月曆標記要照目前選的工作分開顯示，不然切到別的工作 tab 也會看到
+  // 這個月其他工作領過現的日期（note 判斷只看「領現 日期」結尾，沒有分工作）
   const advanceDates = useMemo(() => {
     const set = new Set<string>()
-    for (const t of transactions) {
-      const match = t.note.match(/領現 (\d{4}-\d{2}-\d{2})$/)
-      if (match) set.add(match[1])
+    const relevantJobs = showAllJobs || jobs.length <= 1 ? jobs : jobs.filter(j => j.id === (activeJobId ?? jobs[0]?.id))
+    for (const job of relevantJobs) {
+      const prefix = advancePrefix(job)
+      for (const t of transactions) {
+        if (t.type !== 'income' || !t.note.startsWith(prefix)) continue
+        const match = t.note.match(/領現 (\d{4}-\d{2}-\d{2})$/)
+        if (match) set.add(match[1])
+      }
     }
     return set
-  }, [transactions])
+  }, [transactions, jobs, showAllJobs, activeJobId, advancePrefix])
 
   // 好友幫我上傳班表、標成「這是我本人」的班，不綁定特定工作，跟目前選的工作 tab 無關
   const matchedShiftsByDate = useMemo(() => {
@@ -486,25 +505,42 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* 手機版目前檢視指示（可左右滑動切換），只在有多個工作時顯示 */}
-      {jobs.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5 pb-2 lg:hidden">
-          {jobViewSequence.map((view, i) => (
-            <span
-              key={view.kind === 'all' ? 'all' : view.job.id}
-              className={cn(
-                'h-1.5 rounded-full transition-all',
-                i === currentJobViewIndex ? 'w-4 bg-foreground' : 'w-1.5 bg-muted-foreground/30'
-              )}
-            />
-          ))}
-        </div>
-      )}
-
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
       ) : (
         <div className="px-4 lg:px-6" onTouchStart={handleJobTouchStart} onTouchEnd={handleJobTouchEnd}>
+          {/* 目前選中工作的公司名稱 + 同事頭像堆疊，取代原本擠在薪資卡片裡的公司名稱；
+              點頭像堆疊可以打開視窗看有誰、新增或移除同事 */}
+          {activeJob && (
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full" style={{ backgroundColor: activeJob.color }} />
+                <span className="text-sm font-semibold">{activeJob.name}</span>
+              </div>
+              {activeJobCoworkers.length > 0 ? (
+                <AvatarStack
+                  people={activeJobCoworkers.map(share => ({ id: share.sharedWith.id, displayName: share.sharedWith.displayName }))}
+                  onClick={() => setCoworkersDialogOpen(true)}
+                />
+              ) : (
+                <button
+                  onClick={() => setCoworkersDialogOpen(true)}
+                  className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/70"
+                >
+                  <UserPlusIcon className="size-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          <JobCoworkersDialog
+            job={coworkersDialogOpen ? activeJob : null}
+            shares={activeJobCoworkers}
+            friends={friends}
+            onOpenChange={setCoworkersDialogOpen}
+            onChanged={loadData}
+          />
+
           {/* Calendar */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
             <div className="grid grid-cols-7 border-b">
@@ -574,9 +610,20 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className="mt-4">
-            <FriendsBanner />
-          </div>
+          {/* 手機版目前檢視指示（可左右滑動切換），只在有多個工作時顯示 */}
+          {jobs.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5 pt-2 lg:hidden">
+              {jobViewSequence.map((view, i) => (
+                <span
+                  key={view.kind === 'all' ? 'all' : view.job.id}
+                  className={cn(
+                    'h-1.5 rounded-full transition-all',
+                    i === currentJobViewIndex ? 'w-4 bg-foreground' : 'w-1.5 bg-muted-foreground/30'
+                  )}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Salary preview */}
           {jobs.length > 0 && (
@@ -604,9 +651,7 @@ export default function SchedulePage() {
                 return (
                   <div key={job.id} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
                     <div className="flex items-center gap-2 border-b px-4 py-3">
-                      <span className="size-3 rounded-full" style={{ backgroundColor: job.color }} />
-                      <span className="text-sm font-semibold">{job.name}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {job.pay_type === 'hourly'
                           ? `${jobShifts.length} 班 · ${jobShifts.length * 8} 小時`
                           : `${jobShifts.length} 班`}

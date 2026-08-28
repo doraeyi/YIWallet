@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
-import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, UsersIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
 import { APP_VERSION } from '@/lib/version'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -13,7 +13,6 @@ import { logout } from '@/app/actions/auth'
 import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
-import { JobShareSheet } from '@/components/wallet/job-share-sheet'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useTheme, type ThemePref } from '@/hooks/use-theme'
 import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react'
@@ -84,7 +83,6 @@ export default function SettingsPage() {
   // 卡片管理
   const { cards, updateCard, removeCard, isLoaded: cardsLoaded } = useCards()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
-  const [sharingJob, setSharingJob] = useState<Job | null>(null)
 
   // 卡片排序（在卡片管理清單裡直接拖拉），null 代表使用者還沒在這次畫面裡拖過，
   // 顯示順序退回用 profile.dashboard_order 算，拖過一次之後就以本地狀態為準，
@@ -742,9 +740,6 @@ export default function SettingsPage() {
                           {job.pay_type === 'hourly' ? `時薪 ${formatCurrency(jobRate(job))}` : `月薪 ${formatCurrency(jobRate(job))}`}　每月 {job.payday} 號
                         </p>
                       </div>
-                      <button onClick={() => setSharingJob(job)} className="p-1.5 text-muted-foreground hover:text-indigo-500" title="共享設定">
-                        <UsersIcon className="size-4" />
-                      </button>
                       <button onClick={() => openEditJob(job)} className="p-1.5 text-muted-foreground hover:text-foreground">
                         <PencilIcon className="size-4" />
                       </button>
@@ -826,14 +821,6 @@ export default function SettingsPage() {
             open={!!editingCard}
             onOpenChange={open => { if (!open) setEditingCard(null) }}
             onSave={async (id, data) => { await updateCard(id, data) }}
-          />
-        )}
-
-        {sharingJob && (
-          <JobShareSheet
-            job={sharingJob}
-            open={!!sharingJob}
-            onOpenChange={open => { if (!open) setSharingJob(null) }}
           />
         )}
 

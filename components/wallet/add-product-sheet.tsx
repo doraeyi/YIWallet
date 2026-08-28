@@ -4,6 +4,9 @@ import { useRef, useState } from 'react'
 import { PlusIcon, Trash2Icon, UploadIcon, PencilLineIcon, ChevronLeftIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import * as api from '@/lib/api'
 import type { ProductInput, ProductImportResult } from '@/lib/types'
@@ -107,26 +110,28 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
     <div className="flex flex-col gap-4 p-5">
       {step === 'choose' && (
         <div className="flex flex-col gap-3">
-          <button
+          <Button
+            variant="outline"
             onClick={() => setStep('manual')}
-            className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4 text-left hover:bg-muted/50"
+            className="h-auto items-center justify-start gap-3 rounded-xl bg-muted/30 p-4 text-left font-normal hover:bg-muted/50"
           >
             <PencilLineIcon className="size-5 text-amber-500" />
             <div>
               <p className="text-sm font-semibold">手動輸入</p>
-              <p className="text-xs text-muted-foreground">一次填多筆品號、條碼、名稱</p>
+              <p className="text-xs font-normal text-muted-foreground">一次填多筆品號、條碼、名稱</p>
             </div>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setStep('csv')}
-            className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4 text-left hover:bg-muted/50"
+            className="h-auto items-center justify-start gap-3 rounded-xl bg-muted/30 p-4 text-left font-normal hover:bg-muted/50"
           >
             <UploadIcon className="size-5 text-amber-500" />
             <div>
               <p className="text-sm font-semibold">CSV 匯入</p>
-              <p className="text-xs text-muted-foreground">欄位：Type, ID, Name, Event</p>
+              <p className="text-xs font-normal text-muted-foreground">欄位：Type, ID, Name, Event</p>
             </div>
-          </button>
+          </Button>
         </div>
       )}
 
@@ -137,63 +142,61 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">第 {i + 1} 筆</span>
                 {rows.length > 1 && (
-                  <button onClick={() => removeRow(i)} className="text-muted-foreground hover:text-destructive">
+                  <Button variant="ghost" size="icon-xs" onClick={() => removeRow(i)} className="text-muted-foreground hover:text-destructive">
                     <Trash2Icon className="size-3.5" />
-                  </button>
+                  </Button>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input
+                <Input
                   value={row.itemNo}
                   onChange={e => updateRow(i, { itemNo: e.target.value })}
                   placeholder="品號（必填）"
-                  className="rounded-lg border bg-background px-2.5 py-2 text-sm outline-none focus:border-amber-400"
                 />
-                <select
-                  value={row.type}
-                  onChange={e => updateRow(i, { type: e.target.value })}
-                  className="rounded-lg border bg-background px-2.5 py-2 text-sm outline-none focus:border-amber-400"
-                >
-                  {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <Select value={row.type} onValueChange={v => updateRow(i, { type: v })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <input
+              <Input
                 value={row.code}
                 onChange={e => updateRow(i, { code: e.target.value })}
                 placeholder="條碼（必填）"
-                className="rounded-lg border bg-background px-2.5 py-2 text-sm outline-none focus:border-amber-400"
               />
-              <input
+              <Input
                 value={row.name}
                 onChange={e => updateRow(i, { name: e.target.value })}
                 placeholder="商品名稱（必填）"
-                className="rounded-lg border bg-background px-2.5 py-2 text-sm outline-none focus:border-amber-400"
               />
-              <input
+              <Input
                 value={row.event}
                 onChange={e => updateRow(i, { event: e.target.value })}
                 placeholder="備註（選填）"
-                className="rounded-lg border bg-background px-2.5 py-2 text-sm outline-none focus:border-amber-400"
               />
             </div>
           ))}
 
-          <button
+          <Button
+            variant="outline"
             onClick={() => setRows(prev => [...prev, emptyRow()])}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed py-2.5 text-sm text-muted-foreground hover:bg-muted/30"
+            className="h-auto justify-center gap-1.5 rounded-xl border-dashed py-2.5 text-sm font-normal text-muted-foreground hover:bg-muted/30"
           >
             <PlusIcon className="size-4" /> 新增一列
-          </button>
+          </Button>
 
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">{error}</p>}
 
-          <button
+          <Button
             onClick={submitManual}
             disabled={submitting}
-            className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            className="h-auto w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
           >
             {submitting ? '新增中…' : `儲存${rows.length > 1 ? ` ${rows.length} 筆` : ''}`}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -208,13 +211,13 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
             className="text-sm"
           />
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">{error}</p>}
-          <button
+          <Button
             onClick={submitCsv}
             disabled={!csvFile || submitting}
-            className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            className="h-auto w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
           >
             {submitting ? '匯入中…' : '上傳並匯入'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -229,12 +232,12 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
               </p>
             )}
           </div>
-          <button
+          <Button
             onClick={close}
-            className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500"
+            className="h-auto w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500"
           >
             完成
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -243,12 +246,14 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
   const header = (
     <div className="flex items-center justify-between border-b px-4 py-3">
       {step !== 'choose' && !result ? (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setStep('choose')}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+          className="rounded-full text-muted-foreground"
         >
           <ChevronLeftIcon className="size-4" />
-        </button>
+        </Button>
       ) : <div className="size-8" />}
       <span className="text-base font-semibold">{title}</span>
       <div className="size-8" />

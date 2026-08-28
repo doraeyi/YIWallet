@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { BellIcon, CalendarIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
+import { BellIcon, ReceiptTextIcon, BarcodeIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
@@ -136,6 +136,7 @@ export default function DashboardPage() {
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
   const [pendingNotifyCount, setPendingNotifyCount] = useState(0)
   const [dashboardOrder, setDashboardOrder] = useState<string[] | null>(null)
+  const [canUseBarcode, setCanUseBarcode] = useState(false)
   const [cardFlipped, setCardFlipped] = useState(false)
   const [justCreatedCard, setJustCreatedCard] = useState<Card | null>(null)
   // 用 lazy initializer 直接讀 localStorage，避免第一幀空窗導致 banner 閃現
@@ -200,7 +201,9 @@ export default function DashboardPage() {
     fetch('/api/backend/users/me')
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (!d?.dashboard_order) return
+        if (!d) return
+        setCanUseBarcode(!!d.can_use_barcode)
+        if (!d.dashboard_order) return
         try { setDashboardOrder(JSON.parse(d.dashboard_order)) } catch {}
       })
       .catch(() => {})
@@ -370,9 +373,14 @@ export default function DashboardPage() {
               </span>
             )}
           </Link>
-          <Link href="/schedule" className="hover:text-foreground">
-            <CalendarIcon className="size-5" />
+          <Link href="/statements" className="hover:text-foreground">
+            <ReceiptTextIcon className="size-5" />
           </Link>
+          {canUseBarcode && (
+            <Link href="/barcode" className="hover:text-foreground">
+              <BarcodeIcon className="size-5" />
+            </Link>
+          )}
         </div>
       </div>
 

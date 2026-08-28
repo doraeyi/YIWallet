@@ -3,20 +3,20 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HomeIcon, SettingsIcon, PlusIcon, CalendarDaysIcon, ReceiptTextIcon, BarcodeIcon } from 'lucide-react'
+import { HomeIcon, SettingsIcon, PlusIcon, CalendarDaysIcon, UsersIcon } from 'lucide-react'
 import { AddTransactionSheet } from './add-transaction-sheet'
 import { useTransactions } from '@/hooks/use-transactions'
-import { useMe } from '@/hooks/use-me'
 import { cn } from '@/lib/utils'
 
+// 對帳、條碼查詢移到 /dashboard 右上角了，底部導覽列這裡改放好友
 const LEFT_ITEMS  = [
   { href: '/dashboard', label: '首頁', icon: HomeIcon },
   { href: '/schedule',  label: '班表', icon: CalendarDaysIcon },
 ]
-const BASE_RIGHT_ITEMS = [
-  { href: '/statements',  label: '對帳', icon: ReceiptTextIcon },
+const RIGHT_ITEMS = [
+  { href: '/friends',  label: '好友', icon: UsersIcon },
+  { href: '/settings', label: '設定', icon: SettingsIcon },
 ]
-const SETTINGS_ITEM = { href: '/settings', label: '設定', icon: SettingsIcon }
 
 // 滾動多少距離才觸發縮小/恢復，避免一點點抖動就一直切換
 const SCROLL_THRESHOLD = 8
@@ -27,7 +27,6 @@ export function MobileNav() {
   const [collapsed, setCollapsed] = useState(false)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const { addTransaction } = useTransactions()
-  const { me } = useMe()
   const lastScrollY = useRef(0)
 
   // 手機鍵盤打開時，瀏覽器會把畫面捲動、擠壓可視範圍去讓輸入框露出來，
@@ -51,12 +50,6 @@ export function MobileNav() {
       document.removeEventListener('focusout', onFocusOut)
     }
   }, [])
-
-  const rightItems = [
-    ...BASE_RIGHT_ITEMS,
-    ...(me?.canUseBarcode ? [{ href: '/barcode', label: '條碼', icon: BarcodeIcon }] : []),
-    SETTINGS_ITEM,
-  ]
 
   // 比照 IG：往下滑（看更多內容）導覽列縮小一點，往上滑（往回看）恢復原本
   // 大小。layout.tsx 裡 <main> 雖然有 overflow-y-auto，但外層是 min-h-dvh
@@ -145,7 +138,7 @@ export function MobileNav() {
           </div>
 
           {/* Right items */}
-          {rightItems.map(({ href, label, icon: Icon }) => {
+          {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
               <Link

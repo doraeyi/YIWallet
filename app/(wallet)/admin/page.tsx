@@ -15,6 +15,8 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import * as api from '@/lib/api'
 import type { AdminUser, LineQuota } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -214,44 +216,30 @@ export default function AdminPage() {
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-0.5">
                   <span className="text-[10px] text-muted-foreground">OCR 權限</span>
-                  <button
-                    onClick={() => toggleOcr(u)}
+                  <Switch
+                    checked={u.canUseOcr}
+                    onCheckedChange={() => toggleOcr(u)}
                     disabled={togglingId === u.id}
-                    className={cn(
-                      'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50',
-                      u.canUseOcr ? 'bg-amber-400' : 'bg-muted'
-                    )}
-                  >
-                    <span className={cn(
-                      'absolute top-0.5 left-0 size-5 rounded-full bg-white shadow transition-transform',
-                      u.canUseOcr ? 'translate-x-[22px]' : 'translate-x-0.5'
-                    )} />
-                  </button>
+                  />
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-0.5">
                   <span className="text-[10px] text-muted-foreground">條碼權限</span>
-                  <button
-                    onClick={() => toggleBarcode(u)}
+                  <Switch
+                    checked={u.canUseBarcode}
+                    onCheckedChange={() => toggleBarcode(u)}
                     disabled={togglingBarcodeId === u.id}
-                    className={cn(
-                      'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50',
-                      u.canUseBarcode ? 'bg-amber-400' : 'bg-muted'
-                    )}
-                  >
-                    <span className={cn(
-                      'absolute top-0.5 left-0 size-5 rounded-full bg-white shadow transition-transform',
-                      u.canUseBarcode ? 'translate-x-[22px]' : 'translate-x-0.5'
-                    )} />
-                  </button>
+                  />
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       disabled={removingId === u.id}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-full text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                      className="shrink-0 rounded-full text-destructive hover:bg-destructive/10"
                     >
                       <Trash2Icon className="size-4" />
-                    </button>
+                    </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>

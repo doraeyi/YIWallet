@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "./sw-register"
 import { UpdateBanner } from "@/components/wallet/update-banner";
+import { SplashScreen } from "@/components/splash-screen";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        <SplashScreen />
         {children}
         <ServiceWorkerRegistration />
         <UpdateBanner />

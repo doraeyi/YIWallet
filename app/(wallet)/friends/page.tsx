@@ -2,9 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, UserPlusIcon, ChevronRightIcon, XIcon, Trash2Icon } from 'lucide-react'
+import { ChevronLeftIcon, UserPlusIcon, ChevronRightIcon, XIcon, Trash2Icon, BriefcaseIcon } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import * as api from '@/lib/api'
-import type { Friendship } from '@/lib/types'
+import type { Friendship, Job, JobShare, FriendUser } from '@/lib/types'
+import { FriendJobsDialog } from '@/components/wallet/friend-jobs-dialog'
 
 export default function FriendsPage() {
   const [friendships, setFriendships] = useState<Friendship[]>([])
@@ -12,6 +26,11 @@ export default function FriendsPage() {
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 我自己的工作、跟每份工作各自的分享名單，拿來在列表顯示「他掛在哪個公司底下」，
+  // 也給 FriendJobsDialog 用來切換要不要分享給某個好友
+  const [myJobs, setMyJobs] = useState<Job[]>([])
+  const [sharesByJob, setSharesByJob] = useState<Record<string, JobShare[]>>({})
+  const [dialogFriend, setDialogFriend] = useState<FriendUser | null>(null)
 
   async function load() {
     setLoading(true)
@@ -24,7 +43,21 @@ export default function FriendsPage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  async function loadJobsAndShares() {
+    try {
+      const jobs = await api.fetchJobs()
+      const shareLists = await Promise.all(
+        jobs.map(job => api.fetchJobShares(job.id).catch(() => []))
+      )
+      setMyJobs(jobs)
+      setSharesByJob(Object.fromEntries(jobs.map((job, i) => [job.id, shareLists[i]])))
+    } catch {
+      setMyJobs([])
+      setSharesByJob({})
+    }
+  }
+
+  useEffect(() => { load(); loadJobsAndShares() }, [])
 
   async function handleSend() {
     if (!email.trim() || sending) return
@@ -51,10 +84,19 @@ export default function FriendsPage() {
     await load()
   }
 
-  async function handleRemoveFriend(id: string, name: string) {
-    if (!window.confirm(`確定要刪除好友「${name}」嗎？`)) return
+  async function handleRemoveFriend(id: string) {
     await api.deleteFriendship(id)
     await load()
+  }
+
+  // 每個好友被我分享了哪些工作（公司），從 myJobs + sharesByJob 現算，不用另外存
+  const jobNamesByFriend: Record<string, string[]> = {}
+  for (const job of myJobs) {
+    for (const share of sharesByJob[job.id] ?? []) {
+      const list = jobNamesByFriend[share.sharedWith.id] ?? []
+      list.push(job.name)
+      jobNamesByFriend[share.sharedWith.id] = list
+    }
   }
 
   return (
@@ -66,25 +108,33 @@ export default function FriendsPage() {
         <h1 className="text-xl font-bold">好友</h1>
       </div>
 
+      <FriendJobsDialog
+        friend={dialogFriend}
+        jobs={myJobs}
+        sharesByJob={sharesByJob}
+        onOpenChange={o => { if (!o) setDialogFriend(null) }}
+        onChanged={loadJobsAndShares}
+      />
+
       <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:max-w-lg lg:px-6">
         {/* 加好友 */}
         <div className="flex gap-2">
-          <input
+          <Input
             value={email}
             onChange={e => setEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
             type="email"
             placeholder="輸入對方 email 加好友"
-            className="flex-1 rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
+            className="flex-1"
           />
-          <button
+          <Button
             onClick={handleSend}
             disabled={sending || !email.trim()}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            className="h-auto gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
           >
             <UserPlusIcon className="size-4" />
             {sending ? '送出中…' : '邀請'}
-          </button>
+          </Button>
         </div>
         {error && (
           <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">{error}</p>
@@ -100,6 +150,7 @@ export default function FriendsPage() {
             {friendships.map((f, i) => {
               const letter = f.friend.displayName.charAt(0).toUpperCase() || '?'
               const isAccepted = f.status === 'accepted'
+              const jobNames = jobNamesByFriend[f.friend.id] ?? []
               return (
                 <div key={f.id} className={i > 0 ? 'border-t' : ''}>
                   {isAccepted ? (
@@ -114,15 +165,46 @@ export default function FriendsPage() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{f.friend.displayName}</p>
                           <p className="truncate text-xs text-muted-foreground">{f.friend.email}</p>
+                          {jobNames.length > 0 && (
+                            <p className="mt-0.5 truncate text-[11px] text-amber-600 dark:text-amber-400">
+                              🏢 {jobNames.join('、')}
+                            </p>
+                          )}
                         </div>
                         <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
                       </Link>
-                      <button
-                        onClick={() => handleRemoveFriend(f.id, f.friend.displayName)}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setDialogFriend(f.friend)}
+                        className="shrink-0 rounded-full text-muted-foreground"
+                        title="分享班表"
                       >
-                        <Trash2Icon className="size-4" />
-                      </button>
+                        <BriefcaseIcon className="size-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="shrink-0 rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                          >
+                            <Trash2Icon className="size-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>刪除好友「{f.friend.displayName}」？</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              會一併移除彼此分享的班表，此操作無法復原。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction variant="destructive" onClick={() => handleRemoveFriend(f.id)}>刪除</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   ) : (
                     <div className="flex items-center gap-3 px-4 py-3.5">
@@ -135,26 +217,31 @@ export default function FriendsPage() {
                       </div>
                       {f.incoming ? (
                         <>
-                          <button
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleReject(f.id)}
-                            className="shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40"
+                            className="shrink-0 rounded-lg font-medium text-muted-foreground"
                           >
                             拒絕
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() => handleAccept(f.id)}
-                            className="shrink-0 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+                            className="shrink-0 rounded-lg bg-amber-400 font-semibold text-white hover:bg-amber-500"
                           >
                             接受
-                          </button>
+                          </Button>
                         </>
                       ) : (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => handleReject(f.id)}
-                          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                          className="shrink-0 rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
                         >
                           <XIcon className="size-4" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
