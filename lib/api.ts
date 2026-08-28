@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult, ProductDeal, ProductGroup, ProductGroupMember } from './types'
 
 const API = '/api/backend'
 
@@ -867,6 +867,129 @@ export async function addFavoriteProduct(productId: string): Promise<void> {
 export async function removeFavoriteProduct(productId: string): Promise<void> {
   const res = await fetch(`${API}/products/${productId}/favorite`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to remove favorite product')
+}
+
+interface ApiProductDeal {
+  deal_id: number
+  id: number
+  item_no: string | null
+  type: string
+  code: string
+  name: string
+  event: string | null
+  added_by_id: number
+  added_by_name: string
+  mine: boolean
+}
+
+function normalizeProductDeal(d: ApiProductDeal): ProductDeal {
+  return {
+    id: String(d.id), itemNo: d.item_no, type: d.type, code: d.code, name: d.name, event: d.event,
+    dealId: String(d.deal_id), addedById: String(d.added_by_id), addedByName: d.added_by_name, mine: d.mine,
+  }
+}
+
+export async function fetchDealProducts(groupId: string): Promise<ProductDeal[]> {
+  const res = await fetch(`${API}/products/deals?group_id=${encodeURIComponent(groupId)}`)
+  if (!res.ok) throw new Error('Failed to fetch deal products')
+  const data: ApiProductDeal[] = await res.json()
+  return data.map(normalizeProductDeal)
+}
+
+export async function addDealProduct(productId: string, groupId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}/deal?group_id=${encodeURIComponent(groupId)}`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to add deal product')
+}
+
+export async function removeDealProduct(productId: string, groupId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}/deal?group_id=${encodeURIComponent(groupId)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to remove deal product')
+}
+
+interface ApiProductGroupMember {
+  user_id: number
+  display_name: string
+  status: string
+}
+
+interface ApiProductGroup {
+  id: number
+  name: string
+  owner_id: number
+  my_status: string
+  members: ApiProductGroupMember[]
+}
+
+function normalizeProductGroup(g: ApiProductGroup): ProductGroup {
+  return {
+    id: String(g.id),
+    name: g.name,
+    ownerId: String(g.owner_id),
+    myStatus: g.my_status as ProductGroup['myStatus'],
+    members: g.members.map(m => ({
+      userId: String(m.user_id), displayName: m.display_name, status: m.status as ProductGroupMember['status'],
+    })),
+  }
+}
+
+export async function fetchProductGroups(): Promise<ProductGroup[]> {
+  const res = await fetch(`${API}/product-groups`)
+  if (!res.ok) throw new Error('Failed to fetch product groups')
+  const data: ApiProductGroup[] = await res.json()
+  return data.map(normalizeProductGroup)
+}
+
+export async function createProductGroup(name: string): Promise<ProductGroup> {
+  const res = await fetch(`${API}/product-groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error('Failed to create product group')
+  return normalizeProductGroup(await res.json())
+}
+
+export async function inviteToProductGroup(groupId: string, friendUserId: string): Promise<void> {
+  const res = await fetch(`${API}/product-groups/${groupId}/invite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ friend_user_id: Number(friendUserId) }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail ?? 'Failed to invite to group')
+  }
+}
+
+export async function acceptProductGroupInvite(groupId: string): Promise<ProductGroup> {
+  const res = await fetch(`${API}/product-groups/${groupId}/accept`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to accept group invite')
+  return normalizeProductGroup(await res.json())
+}
+
+export async function leaveProductGroup(groupId: string): Promise<void> {
+  const res = await fetch(`${API}/product-groups/${groupId}/leave`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to leave product group')
+}
+
+export async function updateProduct(productId: string, patch: Partial<ProductInput>): Promise<Product> {
+  const res = await fetch(`${API}/products/${productId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      item_no: patch.itemNo, type: patch.type, code: patch.code, name: patch.name, event: patch.event,
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail ?? 'Failed to update product')
+  }
+  return normalizeProduct(await res.json())
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete product')
 }
 
 // ── 銀行通知截圖（LINE 轉傳的簡訊/App 通知截圖，待確認記帳）──────────────

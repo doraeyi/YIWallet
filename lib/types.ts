@@ -183,3 +183,27 @@ export interface ProductImportResult {
   skipped: number
   duplicateItemNos: string[]
 }
+
+/** 砍貨專區裡的一筆——跟同群組成員共用，同一件商品被不同人標會各自出現一筆 */
+export interface ProductDeal extends Product {
+  dealId: string
+  addedById: string
+  addedByName: string
+  mine: boolean
+}
+
+/** 砍貨專區的群組成員 */
+export interface ProductGroupMember {
+  userId: string
+  displayName: string
+  status: 'pending' | 'accepted'
+}
+
+/** 砍貨專區群組——邀請好友加入，對方要接受才算數 */
+export interface ProductGroup {
+  id: string
+  name: string
+  ownerId: string
+  myStatus: 'pending' | 'accepted' | 'none'
+  members: ProductGroupMember[]
+}

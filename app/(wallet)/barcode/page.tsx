@@ -1,86 +1,22 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import JsBarcode from 'jsbarcode'
-import { ChevronLeftIcon, BarcodeIcon, SearchIcon, PlusIcon, StarIcon } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ChevronLeftIcon, BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon } from 'lucide-react'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
+import { useProductGroups } from '@/hooks/use-product-groups'
 import { AddProductSheet } from '@/components/wallet/add-product-sheet'
+import { ProductCard } from '@/components/wallet/product-card'
+import { ProductDetailDialog } from '@/components/wallet/product-detail-dialog'
+import { GroupPickerButton } from '@/components/wallet/group-picker-button'
 import * as api from '@/lib/api'
 import type { Product } from '@/lib/types'
-import { cn } from '@/lib/utils'
-
-function barcodeFormat(type: string): string {
-  switch (type.toUpperCase()) {
-    case 'EAN13': return 'EAN13'
-    case 'EAN8': return 'EAN8'
-    case 'UPCA': return 'UPC'
-    case 'UPCE': return 'UPCE'
-    default: return 'CODE128'
-  }
-}
-
-interface ProductBarcodeProps {
-  product: Product
-  height?: number
-  width?: number
-  fontSize?: number
-}
-
-function ProductBarcode({ product, height = 40, width = 1.5, fontSize = 12 }: ProductBarcodeProps) {
-  const svgRef = useRef<SVGSVGElement>(null)
-
-  useEffect(() => {
-    if (!svgRef.current) return
-    try {
-      JsBarcode(svgRef.current, product.code, {
-        format: barcodeFormat(product.type),
-        displayValue: true,
-        height,
-        margin: 0,
-        width,
-        fontSize,
-      })
-    } catch {
-      // 條碼格式跟資料對不起來時安靜失敗，畫面上就是空白
-    }
-  }, [product.code, product.type, height, width, fontSize])
-
-  return <svg ref={svgRef} className="w-full" />
-}
-
-interface ProductCardProps {
-  product: Product
-  favorite: boolean
-  onToggleFavorite: () => void
-  onZoom: () => void
-}
-
-function ProductCard({ product, favorite, onToggleFavorite, onZoom }: ProductCardProps) {
-  return (
-    <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-sm dark:bg-card">
-      <div className="flex items-start justify-between gap-1">
-        <div className="min-w-0">
-          {product.itemNo && <p className="text-[10px] text-muted-foreground">品號 {product.itemNo}</p>}
-          <p className="line-clamp-2 text-xs font-medium break-all">{product.name}</p>
-        </div>
-        <button onClick={onToggleFavorite} className="shrink-0 text-muted-foreground hover:text-amber-500">
-          <StarIcon className={cn('size-4', favorite && 'fill-amber-400 text-amber-400')} />
-        </button>
-      </div>
-      {/* 條碼本身固定白底黑線，深色模式下才掃得到；點下去可以放大方便結帳掃描 */}
-      <button onClick={onZoom} className="rounded-lg bg-white p-1.5">
-        <ProductBarcode product={product} />
-      </button>
-    </div>
-  )
-}
 
 export default function BarcodePage() {
   const { me, loading: meLoading } = useMe()
-  const { favorites, isFavorite, toggleFavorite } = useProductFavorites()
+  const { favorites, isFavorite, toggleFavorite, reload: reloadFavorites } = useProductFavorites()
+  const { groups } = useProductGroups()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Product[]>([])
   const [searching, setSearching] = useState(false)
@@ -102,6 +38,21 @@ export default function BarcodePage() {
     const timer = setTimeout(() => runSearch(keyword), 250)
     return () => clearTimeout(timer)
   }, [query, runSearch])
+
+  function handleProductUpdated(updated: Product) {
+    setResults(prev => prev.map(p => p.id === updated.id ? updated : p))
+    setZoomProduct(updated)
+    reloadFavorites()
+  }
+
+  function handleProductDeleted(productId: string) {
+    setResults(prev => prev.filter(p => p.id !== productId))
+    reloadFavorites()
+  }
+
+  function addToGroup(product: Product, groupId: string) {
+    api.addDealProduct(product.id, groupId).catch(() => {})
+  }
 
   if (meLoading) {
     return (
@@ -129,6 +80,12 @@ export default function BarcodePage() {
           <BarcodeIcon className="size-5 text-amber-500" />
           條碼查詢
         </h1>
+        <Link
+          href="/barcode/deals"
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+        >
+          <TagIcon className="size-5" />
+        </Link>
         <button
           onClick={() => setAddOpen(true)}
           className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
@@ -143,20 +100,12 @@ export default function BarcodePage() {
         onImported={() => runSearch(query.trim())}
       />
 
-      <Dialog open={!!zoomProduct} onOpenChange={o => { if (!o) setZoomProduct(null) }}>
-        <DialogContent className="max-w-xs">
-          <DialogTitle className="sr-only">條碼放大</DialogTitle>
-          {zoomProduct && (
-            <div className="flex flex-col items-center gap-2 py-4">
-              {zoomProduct.itemNo && <p className="text-xs text-muted-foreground">品號 {zoomProduct.itemNo}</p>}
-              <p className="text-center text-sm font-medium">{zoomProduct.name}</p>
-              <div className="mt-2 w-full rounded-lg bg-white p-3">
-                <ProductBarcode product={zoomProduct} height={90} width={2.5} fontSize={16} />
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ProductDetailDialog
+        product={zoomProduct}
+        onOpenChange={o => { if (!o) setZoomProduct(null) }}
+        onUpdated={handleProductUpdated}
+        onDeleted={handleProductDeleted}
+      />
 
       <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">
         <div className="relative">
@@ -170,24 +119,35 @@ export default function BarcodePage() {
           />
         </div>
 
-        {favorites.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <StarIcon className="size-3.5 fill-amber-400 text-amber-400" /> 常用
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {favorites.map(p => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  favorite
-                  onToggleFavorite={() => toggleFavorite(p)}
-                  onZoom={() => setZoomProduct(p)}
-                />
-              ))}
+        {(() => {
+          // 沒有搜尋字串時顯示全部常用；有搜尋字串時只顯示「常用裡也符合這次搜尋」的項目，
+          // 不相關的常用不該因為它被收藏就一直出現
+          const matchedIds = new Set(results.map(r => r.id))
+          const visibleFavorites = query.trim().length === 0
+            ? favorites
+            : favorites.filter(f => matchedIds.has(f.id))
+
+          if (visibleFavorites.length === 0) return null
+          return (
+            <div className="flex flex-col gap-2">
+              <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                <StarIcon className="size-3.5 fill-amber-400 text-amber-400" /> 常用
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {visibleFavorites.map(p => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    favorite
+                    onToggleFavorite={() => toggleFavorite(p)}
+                    dealButton={<GroupPickerButton groups={groups} onAddToGroup={groupId => addToGroup(p, groupId)} />}
+                    onZoom={() => setZoomProduct(p)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {query.trim().length === 0 ? (
           favorites.length === 0 && (
@@ -212,6 +172,7 @@ export default function BarcodePage() {
                       product={p}
                       favorite={false}
                       onToggleFavorite={() => toggleFavorite(p)}
+                      dealButton={<GroupPickerButton groups={groups} onAddToGroup={groupId => addToGroup(p, groupId)} />}
                       onZoom={() => setZoomProduct(p)}
                     />
                   ))}

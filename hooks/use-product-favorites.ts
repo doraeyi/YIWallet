@@ -9,9 +9,13 @@ import type { Product } from '@/lib/types'
 export function useProductFavorites() {
   const [favorites, setFavorites] = useState<Product[]>([])
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     api.fetchFavoriteProducts().then(setFavorites).catch(() => setFavorites([]))
   }, [])
+
+  useEffect(() => {
+    reload()
+  }, [reload])
 
   const isFavorite = useCallback((id: string) => favorites.some(f => f.id === id), [favorites])
 
@@ -27,5 +31,5 @@ export function useProductFavorites() {
     })
   }, [])
 
-  return { favorites, isFavorite, toggleFavorite }
+  return { favorites, isFavorite, toggleFavorite, reload }
 }

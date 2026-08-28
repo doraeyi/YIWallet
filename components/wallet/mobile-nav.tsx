@@ -25,9 +25,32 @@ export function MobileNav() {
   const pathname = usePathname()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
   const { addTransaction } = useTransactions()
   const { me } = useMe()
   const lastScrollY = useRef(0)
+
+  // 手機鍵盤打開時，瀏覽器會把畫面捲動、擠壓可視範圍去讓輸入框露出來，
+  // 這台 fixed 定位的導覽列會跟著亂飄／被鍵盤蓋住一部分。與其硬跟瀏覽器
+  // 的鍵盤行為打架，鍵盤打開時直接把整條導覽列滑到畫面外，關閉鍵盤後
+  // 再滑回來，比較符合大部分 App 的習慣。
+  useEffect(() => {
+    function isTextInput(target: EventTarget | null) {
+      return target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+    }
+    function onFocusIn(e: FocusEvent) {
+      if (isTextInput(e.target)) setKeyboardOpen(true)
+    }
+    function onFocusOut(e: FocusEvent) {
+      if (isTextInput(e.target)) setKeyboardOpen(false)
+    }
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
+    return () => {
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
+    }
+  }, [])
 
   const rightItems = [
     ...BASE_RIGHT_ITEMS,
@@ -84,7 +107,12 @@ export function MobileNav() {
           縮小（圖示、文字、間距都是同一個 transform 的一部分，不是個別調整
           尺寸），往上滑或回到頂部會恢復原本大小；中間橘色按鈕本來就是這個
           膠囊的子元素，會跟著一起等比例縮小。 */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+22px)] lg:hidden">
+      <nav
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+22px)] transition-transform duration-150 ease-out lg:hidden',
+          keyboardOpen && 'translate-y-full'
+        )}
+      >
         <div
           className={cn(
             'flex w-full max-w-sm items-center rounded-full bg-background/95 px-1 shadow-lg shadow-black/10 ring-1 ring-foreground/10 backdrop-blur-md transition-transform duration-200 ease-out',
