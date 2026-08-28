@@ -161,8 +161,25 @@ export interface MeProfile {
 /** 條碼查詢頁用的商品資料 */
 export interface Product {
   id: string
+  itemNo: string | null
   type: string
   code: string
   name: string
   event: string | null
+}
+
+/** 新增商品時單筆的輸入內容（品號為必填，用來擋重複） */
+export interface ProductInput {
+  itemNo: string
+  type: string
+  code: string
+  name: string
+  event?: string
+}
+
+/** 手動新增／CSV 匯入商品後的結果摘要 */
+export interface ProductImportResult {
+  inserted: number
+  skipped: number
+  duplicateItemNos: string[]
 }

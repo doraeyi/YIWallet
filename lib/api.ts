@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult } from './types'
 
 const API = '/api/backend'
 
@@ -802,17 +802,71 @@ export async function fetchMe(): Promise<MeProfile> {
 
 interface ApiProduct {
   id: number
+  item_no: string | null
   type: string
   code: string
   name: string
   event: string | null
 }
 
+function normalizeProduct(p: ApiProduct): Product {
+  return { id: String(p.id), itemNo: p.item_no, type: p.type, code: p.code, name: p.name, event: p.event }
+}
+
+interface ApiProductImportResult {
+  inserted: number
+  skipped: number
+  duplicate_item_nos: string[]
+}
+
+function normalizeImportResult(r: ApiProductImportResult): ProductImportResult {
+  return { inserted: r.inserted, skipped: r.skipped, duplicateItemNos: r.duplicate_item_nos }
+}
+
 export async function searchProducts(q: string): Promise<Product[]> {
   const res = await fetch(`${API}/products/search?q=${encodeURIComponent(q)}`)
   if (!res.ok) throw new Error('Failed to search products')
   const data: ApiProduct[] = await res.json()
-  return data.map(p => ({ id: String(p.id), type: p.type, code: p.code, name: p.name, event: p.event }))
+  return data.map(normalizeProduct)
+}
+
+export async function createProducts(items: ProductInput[]): Promise<ProductImportResult> {
+  const res = await fetch(`${API}/products/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items: items.map(p => ({
+        item_no: p.itemNo, type: p.type, code: p.code, name: p.name, event: p.event ?? null,
+      })),
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to create products')
+  return normalizeImportResult(await res.json())
+}
+
+export async function importProductsCsv(file: File): Promise<ProductImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${API}/products/import`, { method: 'POST', body: formData })
+  if (!res.ok) throw new Error('Failed to import products')
+  return normalizeImportResult(await res.json())
+}
+
+export async function fetchFavoriteProducts(): Promise<Product[]> {
+  const res = await fetch(`${API}/products/favorites`)
+  if (!res.ok) throw new Error('Failed to fetch favorite products')
+  const data: ApiProduct[] = await res.json()
+  return data.map(normalizeProduct)
+}
+
+export async function addFavoriteProduct(productId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}/favorite`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to add favorite product')
+}
+
+export async function removeFavoriteProduct(productId: string): Promise<void> {
+  const res = await fetch(`${API}/products/${productId}/favorite`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to remove favorite product')
 }
 
 // ── 銀行通知截圖（LINE 轉傳的簡訊/App 通知截圖，待確認記帳）──────────────
