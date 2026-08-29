@@ -11,6 +11,7 @@ import { ProductCard } from '@/components/wallet/product-card'
 import { ProductDetailDialog } from '@/components/wallet/product-detail-dialog'
 import { JobCoworkersDialog } from '@/components/wallet/job-coworkers-dialog'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import * as api from '@/lib/api'
 import type { Product, JobShare, Friendship } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -18,10 +19,8 @@ import { cn } from '@/lib/utils'
 export default function BarcodeDealsPage() {
   const { me, loading: meLoading } = useMe()
   const { isFavorite, toggleFavorite, reload: reloadFavorites } = useProductFavorites()
-  // 目前先假設一個人只會用到一份工作，直接用第一份（自己的或別人分享給
-  // 我的），不用另外選
-  const { jobs, loading: jobsLoading } = useAccessibleJobs()
-  const activeJob = jobs[0] ?? null
+  // 有多份工作（自己的 + 別人分享的）時讓使用者自己選要看哪份的砍貨專區
+  const { jobs, loading: jobsLoading, activeJob, activeJobId, setActiveJobId } = useAccessibleJobs()
   // 自己擁有的工作一定能管理同事名單；被分享的工作要看有沒有被授權 can_manage
   const canManageCoworkers = !!activeJob && (activeJob.userId === me?.id || activeJob.canManage)
 
@@ -32,11 +31,10 @@ export default function BarcodeDealsPage() {
   const [friendships, setFriendships] = useState<Friendship[]>([])
   const [coworkersOpen, setCoworkersOpen] = useState(false)
 
-  const activeJobId = activeJob?.id ?? null
   const loadJobShares = useCallback(() => {
-    if (!activeJobId) return
-    api.fetchJobShares(activeJobId).then(setJobShares).catch(() => setJobShares([]))
-  }, [activeJobId])
+    if (!activeJob) return
+    api.fetchJobShares(activeJob.id).then(setJobShares).catch(() => setJobShares([]))
+  }, [activeJob])
 
   useEffect(() => {
     loadJobShares()
@@ -133,6 +131,17 @@ export default function BarcodeDealsPage() {
         <p className="text-xs text-muted-foreground">
           跟這份工作的同事共用（工作擁有者 + 有分享班表的人），只要有條碼查詢權限就看得到彼此標的商品。
         </p>
+
+        {jobs.length > 1 && (
+          <Select value={activeJobId ?? activeJob?.id} onValueChange={setActiveJobId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="選擇工作" />
+            </SelectTrigger>
+            <SelectContent>
+              {jobs.map(job => <SelectItem key={job.id} value={job.id}>{job.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
 
         {!activeJob ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">

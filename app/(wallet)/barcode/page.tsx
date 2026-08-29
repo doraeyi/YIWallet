@@ -43,8 +43,7 @@ export default function BarcodePage() {
   const { favorites, isFavorite, toggleFavorite, reload: reloadFavorites } = useProductFavorites()
   // 目前先假設一個人只會用到一份工作，直接拿第一份（自己的或別人分享給我的）
   // 當砍貨目標，不用另外選
-  const { jobs } = useAccessibleJobs()
-  const activeJob = jobs[0] ?? null
+  const { jobs, activeJob, activeJobId, setActiveJobId } = useAccessibleJobs()
   const { isDealMarked, toggleDeal } = useProductDeals(activeJob?.id ?? null)
   const [query, setQuery] = useState('')
   const [events, setEvents] = useState<string[]>([])
@@ -186,6 +185,17 @@ export default function BarcodePage() {
       />
 
       <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">
+        {jobs.length > 1 && (
+          <Select value={activeJobId ?? activeJob?.id} onValueChange={setActiveJobId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="標記到哪份工作的砍貨專區" />
+            </SelectTrigger>
+            <SelectContent>
+              {jobs.map(job => <SelectItem key={job.id} value={job.id}>{job.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+
         <div className="flex gap-2">
           <InputGroup className="min-w-0 flex-1">
             <InputGroupAddon>
