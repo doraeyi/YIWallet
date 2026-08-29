@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
-import { UserPlusIcon } from 'lucide-react'
+import { UserPlusIcon, LockIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate, shiftTypeLabel } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
-import type { Job, Shift, ShiftPreset, Friendship, JobShare } from '@/lib/types'
+import type { Job, Shift, ShiftPreset, Friendship, JobShare, FriendShift } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { RosterShiftPill } from '@/components/wallet/roster-shift-pill'
@@ -26,9 +26,12 @@ export default function SchedulePage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [jobs, setJobs] = useState<Job[]>([])
+  const [ownJobs, setOwnJobs] = useState<Job[]>([])
+  const [sharedJobs, setSharedJobs] = useState<Job[]>([])
   const [jobShares, setJobShares] = useState<Record<string, JobShare[]>>({})
   const [shifts, setShifts] = useState<Shift[]>([])
+  // 別人分享給我、我目前選中在看的那份工作的班表——唯讀，不是我自己的 Shift 資料
+  const [sharedShifts, setSharedShifts] = useState<FriendShift[]>([])
   const [rosterUploads, setRosterUploads] = useState<api.RosterUpload[]>([])
   const [matchedShifts, setMatchedShifts] = useState<api.MatchedRosterShift[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,19 +53,23 @@ export default function SchedulePage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     // /schedule 一次回傳使用者所有班表（後端不支援年月篩選），月份切換只是前端換篩選範圍，不用重打 API
-    const [j, s, r] = await Promise.all([
+    const [j, sj, s, r] = await Promise.all([
       api.fetchJobs().catch(() => [] as Job[]),
+      api.fetchSharedJobs().catch(() => [] as Job[]),
       api.fetchShifts().catch(() => [] as Shift[]),
       api.fetchRosterUploads().catch(() => [] as api.RosterUpload[]),
     ])
-    setJobs(j)
+    setOwnJobs(j)
+    setSharedJobs(sj)
     setShifts(s)
     setRosterUploads(r)
     setLoading(false)
 
-    // 每份工作各自的共享名單，拿來畫月曆上方的同事頭像堆疊
+    // 自己的工作一定看得到共享名單；別人分享給我的工作，只有被授權管理
+    // 才看得到——沒授權打了也只會拿到 403，直接跳過不打。
+    const shareableJobs = [...j, ...sj.filter(job => job.canManage)]
     const shareEntries = await Promise.all(
-      j.map(job => api.fetchJobShares(job.id).then(shares => [job.id, shares] as const).catch(() => [job.id, []] as const))
+      shareableJobs.map(job => api.fetchJobShares(job.id).then(shares => [job.id, shares] as const).catch(() => [job.id, []] as const))
     )
     setJobShares(Object.fromEntries(shareEntries))
   }, [])
@@ -120,6 +127,11 @@ export default function SchedulePage() {
     else setMonth(m => m + 1)
   }
 
+  // 工作切換器混合「自己的工作」跟「別人分享給我的工作」，自己的排前面。
+  // 分享來的只能唯讀查看，不能排班/算薪資，跟自己的工作區分開來。
+  const jobs = useMemo(() => [...ownJobs, ...sharedJobs], [ownJobs, sharedJobs])
+  const ownJobIds = useMemo(() => new Set(ownJobs.map(j => j.id)), [ownJobs])
+
   // 手機版拿掉工作切換 tab，改左右滑動；「全部」也算序列裡的一格，跟桌機版 tab 順序一致
   const jobViewSequence = useMemo(
     () => [{ kind: 'all' as const }, ...jobs.map(job => ({ kind: 'job' as const, job }))],
@@ -129,6 +141,8 @@ export default function SchedulePage() {
     ? 0
     : jobViewSequence.findIndex(v => v.kind === 'job' && v.job.id === (activeJobId ?? jobs[0]?.id))
   const activeJob = jobs.find(j => j.id === (activeJobId ?? jobs[0]?.id)) ?? null
+  const isOwnActiveJob = !!activeJob && ownJobIds.has(activeJob.id)
+  const canManageActiveJobCoworkers = !!activeJob && (isOwnActiveJob || activeJob.canManage)
   const activeJobCoworkers = activeJob ? (jobShares[activeJob.id] ?? []) : []
 
   function goToJobView(index: number) {
@@ -165,8 +179,39 @@ export default function SchedulePage() {
     return map
   }, [shifts])
 
-  // 月曆格子顯示用：預設只顯示目前選中工作的班表，切到「全部」才顯示合併結果
+  // 別人分享給我的工作，班表資料來源不是我自己的 shifts（我在那份工作底下
+  // 根本沒有自己的 Shift 紀錄），要另外拿對方的唯讀班表；切到自己的工作/全部
+  // 就不用抓。
+  useEffect(() => {
+    if (!activeJob || isOwnActiveJob) return
+    api.fetchFriendShifts(activeJob.userId).then(setSharedShifts).catch(() => setSharedShifts([]))
+  }, [activeJob, isOwnActiveJob])
+
+  const sharedShiftsByDate = useMemo(() => {
+    const map: Record<string, Shift[]> = {}
+    for (const s of sharedShifts) {
+      if (activeJob && s.job?.id !== activeJob.id) continue
+      const d = s.date.slice(0, 10)
+      if (!map[d]) map[d] = []
+      map[d].push({
+        id: s.id,
+        job_id: s.job?.id ?? null,
+        job_name: s.job?.name ?? null,
+        job_color: s.job?.color ?? null,
+        date: s.date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        shift_type: s.shift_type,
+        note: s.note,
+      })
+    }
+    return map
+  }, [sharedShifts, activeJob])
+
+  // 月曆格子顯示用：預設只顯示目前選中工作的班表，切到「全部」才顯示合併結果；
+  // 選到別人分享給我的工作則改顯示對方的唯讀班表。
   const visibleShiftsByDate = useMemo(() => {
+    if (activeJob && !isOwnActiveJob && !showAllJobs) return sharedShiftsByDate
     if (showAllJobs || jobs.length <= 1) return shiftsByDate
     const jobId = activeJobId ?? jobs[0]?.id
     const map: Record<string, Shift[]> = {}
@@ -175,7 +220,7 @@ export default function SchedulePage() {
       if (filtered.length) map[date] = filtered
     }
     return map
-  }, [shiftsByDate, showAllJobs, activeJobId, jobs])
+  }, [shiftsByDate, sharedShiftsByDate, showAllJobs, activeJobId, activeJob, isOwnActiveJob, jobs])
 
   // 領現的月曆標記要照目前選的工作分開顯示，不然切到別的工作 tab 也會看到
   // 這個月其他工作領過現的日期（note 判斷只看「領現 日期」結尾，沒有分工作）
@@ -206,6 +251,10 @@ export default function SchedulePage() {
   const selectedShifts = useMemo(
     () => (selectedDate ? (shiftsByDate[selectedDate] ?? []) : []),
     [selectedDate, shiftsByDate]
+  )
+  const selectedSharedShifts = useMemo(
+    () => (selectedDate ? (sharedShiftsByDate[selectedDate] ?? []) : []),
+    [selectedDate, sharedShiftsByDate]
   )
 
   // 從 LINE 傳照片匯入的團隊班表（同事名字，非本 App 使用者），依 job_id 分組給日期詳情用
@@ -327,6 +376,38 @@ export default function SchedulePage() {
   }
 
   const dialogContent = selectedDate && (() => {
+    // 選到別人分享給我的工作（不是自己的）：只顯示唯讀的班次資訊，不能排班/領現
+    if (activeJob && !isOwnActiveJob && !showAllJobs) {
+      return (
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto">
+          <div className="border-b px-4 py-3 sticky top-0 bg-white dark:bg-card z-10">
+            <p className="text-center text-base font-semibold">
+              {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日・{activeJob.name}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 p-4">
+            {selectedSharedShifts.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">這天沒有排班</p>
+            ) : (
+              selectedSharedShifts.map(s => (
+                <div key={s.id} className="flex items-center gap-3 rounded-xl border px-3 py-2.5">
+                  <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: activeJob.color }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}</p>
+                  </div>
+                  {s.shift_type && (
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {shiftTypeLabel(s.shift_type)}
+                    </span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )
+    }
+
     const dateAdvances = transactions.filter(t => t.note.endsWith(`領現 ${selectedDate}`))
     return (
       <div className="flex flex-col max-h-[80vh] overflow-y-auto">
@@ -339,10 +420,10 @@ export default function SchedulePage() {
           )}
         </div>
         <div className="flex flex-col gap-3 p-4">
-          {jobs.length === 0 ? (
+          {ownJobs.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">請先在設定中新增工作</p>
           ) : (
-            (showAllJobs || jobs.length <= 1 ? jobs : jobs.filter(j => j.id === (activeJobId ?? jobs[0].id))).map(job => {
+            (showAllJobs ? ownJobs : ownJobs.filter(j => j.id === (activeJobId ?? ownJobs[0].id))).map(job => {
               const hasShift = selectedShifts.some(s => s.job_id === job.id)
               const advanceTx = getAdvanceTx(job, selectedDate)
               return (
@@ -497,6 +578,7 @@ export default function SchedulePage() {
                   >
                     <span className="size-1.5 rounded-full" style={{ backgroundColor: selected ? '#fff' : job.color }} />
                     {job.name}
+                    {!ownJobIds.has(job.id) && <LockIcon className="size-2.5" />}
                   </button>
                 )
               })}
@@ -516,19 +598,26 @@ export default function SchedulePage() {
               <div className="flex items-center gap-2">
                 <span className="size-2.5 rounded-full" style={{ backgroundColor: activeJob.color }} />
                 <span className="text-sm font-semibold">{activeJob.name}</span>
+                {!isOwnActiveJob && (
+                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                    <LockIcon className="size-3" />唯讀
+                  </span>
+                )}
               </div>
-              {activeJobCoworkers.length > 0 ? (
-                <AvatarStack
-                  people={activeJobCoworkers.map(share => ({ id: share.sharedWith.id, displayName: share.sharedWith.displayName }))}
-                  onClick={() => setCoworkersDialogOpen(true)}
-                />
-              ) : (
-                <button
-                  onClick={() => setCoworkersDialogOpen(true)}
-                  className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/70"
-                >
-                  <UserPlusIcon className="size-4" />
-                </button>
+              {canManageActiveJobCoworkers && (
+                activeJobCoworkers.length > 0 ? (
+                  <AvatarStack
+                    people={activeJobCoworkers.map(share => ({ id: share.sharedWith.id, displayName: share.sharedWith.displayName }))}
+                    onClick={() => setCoworkersDialogOpen(true)}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setCoworkersDialogOpen(true)}
+                    className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/70"
+                  >
+                    <UserPlusIcon className="size-4" />
+                  </button>
+                )
               )}
             </div>
           )}
@@ -539,7 +628,7 @@ export default function SchedulePage() {
             friends={friends}
             onOpenChange={setCoworkersDialogOpen}
             onChanged={loadData}
-            canGrantManage
+            canGrantManage={isOwnActiveJob}
           />
 
           {/* Calendar */}
@@ -626,14 +715,14 @@ export default function SchedulePage() {
             </div>
           )}
 
-          {/* Salary preview */}
-          {jobs.length > 0 && (
+          {/* Salary preview——別人分享給我的工作看不到薪資，那是對方的薪資不是我的 */}
+          {isOwnActiveJob && (
             <div className="mt-4 flex flex-col gap-3">
               <p className="text-sm font-semibold">本月薪資預估</p>
 
               {(() => {
                 // 薪資一律只顯示目前切換器選中的那個工作，不受「全部」合併顯示影響——每份工作的薪資本來就該分開算
-                const job = jobs.find(j => j.id === (activeJobId ?? jobs[0].id))
+                const job = activeJob
                 if (!job) return null
                 const monthPrefix = `${year}-${String(month).padStart(2, '0')}`
                 const jobShifts = shifts.filter(s => s.job_id === job.id && s.date.startsWith(monthPrefix))
