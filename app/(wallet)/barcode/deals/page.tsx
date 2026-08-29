@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, TagIcon } from 'lucide-react'
+import { ChevronLeftIcon, TagIcon, RefreshCwIcon } from 'lucide-react'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
 import { useAccessibleJobs } from '@/hooks/use-accessible-jobs'
 import { useProductDeals } from '@/hooks/use-product-deals'
 import { ProductCard } from '@/components/wallet/product-card'
 import { ProductDetailDialog } from '@/components/wallet/product-detail-dialog'
+import { Button } from '@/components/ui/button'
 import type { Product } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +23,12 @@ export default function BarcodeDealsPage() {
 
   const { deals, toggleDeal, reload: reloadDeals } = useProductDeals(activeJob?.id ?? null)
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  function handleRefresh() {
+    setRefreshing(true)
+    Promise.all([reloadDeals(), reloadFavorites()]).finally(() => setRefreshing(false))
+  }
 
   function handleProductUpdated() {
     reloadDeals()
@@ -59,6 +66,18 @@ export default function BarcodeDealsPage() {
           <TagIcon className="size-5 text-sky-500" />
           砍貨專區
         </h1>
+        {!jobsLoading && activeJob && (
+          <span className="text-xs text-muted-foreground">共 {deals.length} 筆</span>
+        )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="rounded-full text-muted-foreground"
+        >
+          <RefreshCwIcon className={cn('size-4', refreshing && 'animate-spin')} />
+        </Button>
       </div>
 
       <ProductDetailDialog

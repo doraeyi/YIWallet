@@ -11,8 +11,8 @@ export function useProductDeals(jobId: string | null) {
   const [deals, setDeals] = useState<ProductDeal[]>([])
 
   const reload = useCallback(() => {
-    if (!jobId) return
-    api.fetchDealProducts(jobId).then(setDeals).catch(() => setDeals([]))
+    if (!jobId) return Promise.resolve()
+    return api.fetchDealProducts(jobId).then(setDeals).catch(() => setDeals([]))
   }, [jobId])
 
   useEffect(() => {

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon } from 'lucide-react'
+import { ChevronLeftIcon, BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
 import { useAccessibleJobs } from '@/hooks/use-accessible-jobs'
@@ -14,6 +15,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import * as api from '@/lib/api'
 import type { Product } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 // Radix Select 不支援空字串當選項值，「全部」用這個代稱，對外仍轉回空字串
 const ALL_EVENTS = 'all'
@@ -51,10 +53,17 @@ export default function BarcodePage() {
   const [searching, setSearching] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null)
+  const [totalCount, setTotalCount] = useState<number | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadTotalCount = useCallback(() => {
+    return api.fetchProductCount().then(setTotalCount).catch(() => {})
+  }, [])
 
   useEffect(() => {
     api.fetchProductEvents().then(setEvents).catch(() => setEvents([]))
-  }, [])
+    loadTotalCount()
+  }, [loadTotalCount])
 
   const runSearch = useCallback((keyword: string, event: string) => {
     if (keyword.length === 0 && !event) return
@@ -81,6 +90,16 @@ export default function BarcodePage() {
   function handleProductDeleted(productId: string) {
     setResults(prev => prev.filter(p => p.id !== productId))
     reloadFavorites()
+  }
+
+  function handleRefresh() {
+    setRefreshing(true)
+    const keyword = query.trim()
+    Promise.all([
+      loadTotalCount(),
+      reloadFavorites(),
+      keyword || selectedEvent ? api.searchProducts(keyword, selectedEvent).then(setResults).catch(() => {}) : Promise.resolve(),
+    ]).finally(() => setRefreshing(false))
   }
 
   if (meLoading) {
@@ -125,6 +144,9 @@ export default function BarcodePage() {
           <BarcodeIcon className="size-5 text-amber-500" />
           條碼查詢
         </h1>
+        {totalCount !== null && (
+          <span className="text-xs text-muted-foreground">共 {totalCount} 筆</span>
+        )}
         <Link
           href="/barcode/deals"
           className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
@@ -137,6 +159,15 @@ export default function BarcodePage() {
         >
           <PlusIcon className="size-5" />
         </button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="rounded-full text-muted-foreground"
+        >
+          <RefreshCwIcon className={cn('size-4', refreshing && 'animate-spin')} />
+        </Button>
       </div>
 
       <AddProductSheet

@@ -833,6 +833,12 @@ function normalizeImportResult(r: ApiProductImportResult): ProductImportResult {
   }
 }
 
+export async function fetchProductCount(): Promise<number> {
+  const res = await fetch(`${API}/products/count`)
+  if (!res.ok) throw new Error('Failed to fetch product count')
+  return res.json()
+}
+
 export async function searchProducts(q: string, event?: string): Promise<Product[]> {
   const params = new URLSearchParams()
   if (q) params.set('q', q)

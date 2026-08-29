@@ -10,7 +10,7 @@ export function useProductFavorites() {
   const [favorites, setFavorites] = useState<Product[]>([])
 
   const reload = useCallback(() => {
-    api.fetchFavoriteProducts().then(setFavorites).catch(() => setFavorites([]))
+    return api.fetchFavoriteProducts().then(setFavorites).catch(() => setFavorites([]))
   }, [])
 
   useEffect(() => {
