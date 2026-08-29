@@ -68,11 +68,11 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
 
   async function submitManual() {
     const complete: ProductInput[] = rows
-      .filter(r => r.itemNo.trim() && r.code.trim() && r.name.trim())
+      .filter(r => (r.itemNo.trim() || r.code.trim()) && r.name.trim())
       .map(r => ({ itemNo: r.itemNo.trim(), type: r.type, code: r.code.trim(), name: r.name.trim(), event: r.event.trim() || undefined }))
 
     if (complete.length === 0) {
-      setError('至少要有一筆填完品號、條碼、名稱')
+      setError('至少要有一筆填完名稱，品號或條碼至少要填一個')
       return
     }
 
@@ -151,7 +151,7 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
                 <Input
                   value={row.itemNo}
                   onChange={e => updateRow(i, { itemNo: e.target.value })}
-                  placeholder="品號（必填）"
+                  placeholder="品號（跟條碼至少填一個）"
                 />
                 <Select value={row.type} onValueChange={v => updateRow(i, { type: v })}>
                   <SelectTrigger className="w-full">
@@ -165,7 +165,7 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
               <Input
                 value={row.code}
                 onChange={e => updateRow(i, { code: e.target.value })}
-                placeholder="條碼（必填）"
+                placeholder="條碼（跟品號至少填一個）"
               />
               <Input
                 value={row.name}
