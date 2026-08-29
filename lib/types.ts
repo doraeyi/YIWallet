@@ -181,7 +181,10 @@ export interface ProductInput {
 export interface ProductImportResult {
   inserted: number
   skipped: number
+  updated: number
   duplicateItemNos: string[]
+  invalid: number
+  invalidNames: string[]
 }
 
 /** 砍貨專區裡的一筆——跟同一份工作（Job）的擁有者/被分享班表的人共用，

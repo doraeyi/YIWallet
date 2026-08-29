@@ -816,11 +816,21 @@ function normalizeProduct(p: ApiProduct): Product {
 interface ApiProductImportResult {
   inserted: number
   skipped: number
+  updated: number
   duplicate_item_nos: string[]
+  invalid: number
+  invalid_names: string[]
 }
 
 function normalizeImportResult(r: ApiProductImportResult): ProductImportResult {
-  return { inserted: r.inserted, skipped: r.skipped, duplicateItemNos: r.duplicate_item_nos }
+  return {
+    inserted: r.inserted,
+    skipped: r.skipped,
+    updated: r.updated,
+    duplicateItemNos: r.duplicate_item_nos,
+    invalid: r.invalid,
+    invalidNames: r.invalid_names,
+  }
 }
 
 export async function searchProducts(q: string, event?: string): Promise<Product[]> {

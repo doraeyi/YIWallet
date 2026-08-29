@@ -225,10 +225,19 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
         <div className="flex flex-col gap-3">
           <div className="rounded-xl bg-emerald-50 p-4 text-sm dark:bg-emerald-900/20">
             <p className="font-semibold text-emerald-700 dark:text-emerald-400">✅ 新增 {result.inserted} 筆</p>
+            {result.updated > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">已更新 {result.updated} 筆既有商品的檔期</p>
+            )}
             {result.skipped > 0 && (
               <p className="mt-1 text-xs text-muted-foreground">
-                略過 {result.skipped} 筆重複品號
+                品號已存在、略過新增 {result.skipped} 筆
                 {result.duplicateItemNos.length > 0 && `（${result.duplicateItemNos.slice(0, 10).join('、')}${result.skipped > 10 ? '…' : ''}）`}
+              </p>
+            )}
+            {result.invalid > 0 && (
+              <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                {result.invalid} 筆商品名稱開頭抓不到 6 位數品號，已略過（需要手動新增這幾筆）
+                {result.invalidNames.length > 0 && `：${result.invalidNames.slice(0, 5).join('、')}${result.invalid > 5 ? '…' : ''}`}
               </p>
             )}
           </div>

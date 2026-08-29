@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, Trash2Icon } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, Trash2Icon, XIcon } from 'lucide-react'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -111,8 +111,14 @@ export function ProductDetailDialog({ product, list = [], onNavigate, onOpenChan
 
   return (
     <Dialog open={!!product} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xs">
+      <DialogContent className="max-w-xs" showCloseButton={false}>
         <DialogTitle className="sr-only">商品詳情</DialogTitle>
+        <DialogClose asChild>
+          <Button variant="ghost" size="icon-sm" className="absolute top-0 right-0">
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </Button>
+        </DialogClose>
 
         {product && !editing && (
           <div
