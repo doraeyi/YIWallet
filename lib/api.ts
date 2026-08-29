@@ -874,7 +874,7 @@ export async function fetchProductEvents(): Promise<string[]> {
 }
 
 export async function createProducts(items: ProductInput[]): Promise<ProductImportResult> {
-  const res = await fetch(`${API}/products/`, {
+  const res = await fetch(`${API}/products`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
