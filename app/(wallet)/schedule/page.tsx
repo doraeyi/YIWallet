@@ -238,15 +238,17 @@ export default function SchedulePage() {
     return set
   }, [transactions, jobs, showAllJobs, activeJobId, advancePrefix])
 
-  // 好友幫我上傳班表、標成「這是我本人」的班，不綁定特定工作，跟目前選的工作 tab 無關
+  // 好友幫我上傳班表、標成「這是我本人」的班——切到「全部」才混在一起看，
+  // 選單一個工作 tab 時只顯示屬於那份工作的，不會每個 tab 都看到同一筆提示
   const matchedShiftsByDate = useMemo(() => {
     const map: Record<string, api.MatchedRosterShift[]> = {}
-    for (const s of matchedShifts) {
+    const relevant = showAllJobs || !activeJob ? matchedShifts : matchedShifts.filter(s => s.jobId === activeJob.id)
+    for (const s of relevant) {
       if (!map[s.date]) map[s.date] = []
       map[s.date].push(s)
     }
     return map
-  }, [matchedShifts])
+  }, [matchedShifts, showAllJobs, activeJob])
 
   const selectedShifts = useMemo(
     () => (selectedDate ? (shiftsByDate[selectedDate] ?? []) : []),
@@ -386,7 +388,7 @@ export default function SchedulePage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 p-4">
-            {selectedSharedShifts.length === 0 ? (
+            {selectedSharedShifts.length === 0 && (matchedShiftsByDate[selectedDate] ?? []).length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">這天沒有排班</p>
             ) : (
               selectedSharedShifts.map(s => (
@@ -403,6 +405,20 @@ export default function SchedulePage() {
                 </div>
               ))
             )}
+
+            {/* 我自己在這份工作的排班（來自好友幫我上傳、標成本人的班表），這是我自己的資料，唯讀也看得到 */}
+            {(matchedShiftsByDate[selectedDate] ?? []).map(s => (
+              <div key={s.id} className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 dark:border-violet-400/20 dark:bg-violet-400/10">
+                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: activeJob.color }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">
+                    {shiftTypeLabel(s.shiftType) ?? (s.startTime ? s.startTime.slice(0, 5) : '')}
+                    {s.startTime && s.endTime && ` ${s.startTime.slice(0, 5)} - ${s.endTime.slice(0, 5)}`}
+                  </p>
+                  <p className="text-xs text-violet-700 dark:text-violet-400">我的班</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )

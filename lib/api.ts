@@ -383,14 +383,22 @@ export interface MatchedRosterShift {
   startTime: string | null
   endTime: string | null
   shiftType: string | null
+  jobId: string | null
 }
 
 // 好友幫我上傳班表、把某一列標成「這是我本人」時，不用等我自己上傳同一份班表
 export async function fetchMatchedRosterShifts(start: string, end: string): Promise<MatchedRosterShift[]> {
   const res = await fetch(`${API}/roster/shifts/matched-to-me?start=${start}&end=${end}`)
   if (!res.ok) throw new Error('Failed to fetch matched roster shifts')
-  const data: { id: number; date: string; start_time: string | null; end_time: string | null; shift_type: string | null }[] = await res.json()
-  return data.map(s => ({ id: String(s.id), date: s.date, startTime: s.start_time, endTime: s.end_time, shiftType: s.shift_type }))
+  const data: { id: number; date: string; start_time: string | null; end_time: string | null; shift_type: string | null; job_id: number | null }[] = await res.json()
+  return data.map(s => ({
+    id: String(s.id),
+    date: s.date,
+    startTime: s.start_time,
+    endTime: s.end_time,
+    shiftType: s.shift_type,
+    jobId: s.job_id != null ? String(s.job_id) : null,
+  }))
 }
 
 export interface RosterOcrResult {
