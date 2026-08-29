@@ -743,8 +743,11 @@ export default function SchedulePage() {
                         </span>
                       ))}
                       {dayMatchedShifts.length > 0 && (
-                        <span className="truncate rounded bg-violet-100 px-1 py-0.5 text-[10px] font-semibold leading-none text-violet-700 dark:bg-violet-400/20 dark:text-violet-400">
-                          好友排 {shiftTypeLabel(dayMatchedShifts[0].shiftType) ?? dayMatchedShifts[0].startTime?.slice(0, 5)}
+                        <span
+                          className="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none text-white"
+                          style={{ backgroundColor: jobs.find(j => j.id === dayMatchedShifts[0].jobId)?.color ?? '#9CA3AF' }}
+                        >
+                          {shiftTypeLabel(dayMatchedShifts[0].shiftType) ?? dayMatchedShifts[0].startTime?.slice(0, 5)}
                         </span>
                       )}
                       {advanceDates.has(dateStr) && (
