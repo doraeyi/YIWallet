@@ -28,9 +28,12 @@ interface JobCoworkersDialogProps {
   /** 只有工作真正的擁有者能授權/收回別人管理同事名單的權限，被授權管理的人
    * 自己打開這個彈窗時看不到、也不能再往下授權給別人。 */
   canGrantManage?: boolean
+  /** 工作擁有者的顯示名稱，讓被授權管理的人也看得到「誰是最高權限」——
+   * 如果自己就是擁有者（canGrantManage）就直接顯示「你」，不用傳這個。 */
+  ownerName?: string
 }
 
-export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChanged, canGrantManage = false }: JobCoworkersDialogProps) {
+export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChanged, canGrantManage = false, ownerName }: JobCoworkersDialogProps) {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   async function handleRemove(friendId: string) {
@@ -68,6 +71,7 @@ export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChang
 
   const sharedIds = new Set(shares.map(s => s.sharedWith.id))
   const candidates = friends.filter(f => f.status === 'accepted' && !sharedIds.has(f.friend.id))
+  const ownerLabel = canGrantManage ? '你' : (ownerName ?? '工作擁有者')
 
   return (
     <Dialog open={!!job} onOpenChange={onOpenChange}>
@@ -75,6 +79,16 @@ export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChang
         <DialogTitle className="text-base font-semibold">{job?.name} 的同事</DialogTitle>
 
         <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2.5 rounded-xl px-1 py-1.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-xs font-bold text-white">
+              {ownerLabel.charAt(0).toUpperCase() || '?'}
+            </div>
+            <span className="flex-1 truncate text-sm">{ownerLabel}</span>
+            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+              最高權限
+            </span>
+          </div>
+
           {shares.length === 0 ? (
             <p className="py-2 text-center text-xs text-muted-foreground">還沒有分享給任何人</p>
           ) : (

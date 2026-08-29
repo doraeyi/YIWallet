@@ -142,6 +142,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
         friends={friendships}
         onOpenChange={setCoworkersOpen}
         onChanged={loadJobShares}
+        ownerName={friendName}
       />
 
       {loading ? (
