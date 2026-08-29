@@ -32,6 +32,8 @@ export default function SchedulePage() {
   const [shifts, setShifts] = useState<Shift[]>([])
   // 別人分享給我、我目前選中在看的那份工作的班表——唯讀，不是我自己的 Shift 資料
   const [sharedShifts, setSharedShifts] = useState<FriendShift[]>([])
+  // 同一份被分享工作的團隊班表（同事名字），不限於自己上傳的批次
+  const [sharedTeamShifts, setSharedTeamShifts] = useState<api.RosterViewShift[]>([])
   const [rosterUploads, setRosterUploads] = useState<api.RosterUpload[]>([])
   const [matchedShifts, setMatchedShifts] = useState<api.MatchedRosterShift[]>([])
   const [loading, setLoading] = useState(true)
@@ -187,6 +189,20 @@ export default function SchedulePage() {
     api.fetchFriendShifts(activeJob.userId).then(setSharedShifts).catch(() => setSharedShifts([]))
   }, [activeJob, isOwnActiveJob])
 
+  // 別人分享給我的工作，團隊班表（同事名字）也要看整份工作的，不限於自己
+  // 上傳的批次，這樣才看得到其他同事，不只自己被標記到的那幾筆
+  const reloadSharedTeamShifts = useCallback(() => {
+    if (!activeJob || isOwnActiveJob) return
+    const lastDay = new Date(year, month, 0).getDate()
+    const start = `${year}-${String(month).padStart(2, '0')}-01`
+    const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    api.fetchTeamShiftsForJob(activeJob.id, start, end).then(setSharedTeamShifts).catch(() => setSharedTeamShifts([]))
+  }, [activeJob, isOwnActiveJob, year, month])
+
+  useEffect(() => {
+    reloadSharedTeamShifts()
+  }, [reloadSharedTeamShifts])
+
   const sharedShiftsByDate = useMemo(() => {
     const map: Record<string, Shift[]> = {}
     for (const s of sharedShifts) {
@@ -259,7 +275,8 @@ export default function SchedulePage() {
     [selectedDate, sharedShiftsByDate]
   )
 
-  // 從 LINE 傳照片匯入的團隊班表（同事名字，非本 App 使用者），依 job_id 分組給日期詳情用
+  // 從 LINE 傳照片匯入的團隊班表（同事名字，非本 App 使用者），依 job_id 分組給日期詳情用；
+  // 別人分享給我的工作另外併入該工作整批的團隊班表（不限於自己上傳的批次）
   const rosterShiftsByJob = useMemo(() => {
     const map: Record<string, api.RosterViewShift[]> = {}
     for (const u of rosterUploads) {
@@ -267,8 +284,11 @@ export default function SchedulePage() {
       if (!map[u.jobId]) map[u.jobId] = []
       map[u.jobId].push(...u.shifts)
     }
+    if (activeJob && !isOwnActiveJob && sharedTeamShifts.length > 0) {
+      map[activeJob.id] = [...(map[activeJob.id] ?? []), ...sharedTeamShifts]
+    }
     return map
-  }, [rosterUploads])
+  }, [rosterUploads, activeJob, isOwnActiveJob, sharedTeamShifts])
 
   function teamShiftsFor(jobId: string, date: string): [string, TeamShiftPerson[]][] {
     const shiftsForJob = rosterShiftsByJob[jobId] ?? []
@@ -419,6 +439,29 @@ export default function SchedulePage() {
                 </div>
               </div>
             ))}
+
+            {/* 團隊班表：這份工作當天還有誰上班，不限於自己上傳的批次 */}
+            {teamShiftsFor(activeJob.id, selectedDate).length > 0 && (
+              <div className="mt-1 flex flex-col gap-2 border-t pt-3">
+                {teamShiftsFor(activeJob.id, selectedDate).map(([label, people]) => (
+                  <div key={label} className="flex items-start gap-2">
+                    <span className="mt-1 shrink-0 text-[10px] font-semibold text-muted-foreground">{label}</span>
+                    <div className="flex flex-wrap gap-1">
+                      {people.filter(p => !p.isMe).map(p => (
+                        <RosterShiftPill
+                          key={p.id}
+                          shift={p.shift}
+                          friends={friends}
+                          myUserId={myUserId}
+                          onChanged={reloadSharedTeamShifts}
+                          onDateChanged={setSelectedDate}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )

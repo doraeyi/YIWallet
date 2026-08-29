@@ -480,6 +480,15 @@ function normalizeRosterShift(s: ApiRosterShift): RosterViewShift {
   }
 }
 
+// 別人分享給我的工作，團隊班表要看整份工作的（不限於自己上傳的批次），
+// 只要對這份工作有存取權限（擁有者或被分享）就看得到
+export async function fetchTeamShiftsForJob(jobId: string, start: string, end: string): Promise<RosterViewShift[]> {
+  const res = await fetch(`${API}/roster/shifts?job_id=${jobId}&start=${start}&end=${end}`)
+  if (!res.ok) throw new Error('Failed to fetch team shifts')
+  const data: ApiRosterShift[] = await res.json()
+  return data.map(normalizeRosterShift)
+}
+
 export async function fetchRosterUploads(): Promise<RosterUpload[]> {
   const res = await fetch(`${API}/roster/uploads`)
   if (!res.ok) throw new Error('Failed to fetch roster uploads')
