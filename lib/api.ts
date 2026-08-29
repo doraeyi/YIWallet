@@ -194,6 +194,7 @@ interface ApiShiftPreset {
 
 interface ApiJob {
   id: number
+  user_id: number
   name: string
   color: string
   pay_type: 'hourly' | 'monthly'
@@ -205,10 +206,17 @@ interface ApiJob {
   welfare_fee: number
   created_at: string
   presets: ApiShiftPreset[]
+  can_manage: boolean
 }
 
 function normalizeJob(j: ApiJob): Job {
-  return { ...j, id: String(j.id), presets: j.presets.map(p => ({ ...p, id: String(p.id) })) }
+  return {
+    ...j,
+    id: String(j.id),
+    userId: String(j.user_id),
+    presets: j.presets.map(p => ({ ...p, id: String(p.id) })),
+    canManage: j.can_manage,
+  }
 }
 
 export async function fetchJobs(): Promise<Job[]> {
@@ -218,7 +226,7 @@ export async function fetchJobs(): Promise<Job[]> {
   return data.map(normalizeJob)
 }
 
-export async function createJob(data: Omit<Job, 'id' | 'created_at' | 'presets'>): Promise<Job> {
+export async function createJob(data: Omit<Job, 'id' | 'userId' | 'created_at' | 'presets' | 'canManage'>): Promise<Job> {
   const res = await fetch(`${API}/jobs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -228,7 +236,7 @@ export async function createJob(data: Omit<Job, 'id' | 'created_at' | 'presets'>
   return normalizeJob(await res.json())
 }
 
-export async function updateJob(id: string, data: Omit<Job, 'id' | 'created_at' | 'presets'>): Promise<Job> {
+export async function updateJob(id: string, data: Omit<Job, 'id' | 'userId' | 'created_at' | 'presets' | 'canManage'>): Promise<Job> {
   const res = await fetch(`${API}/jobs/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -660,13 +668,14 @@ export async function deleteFriendship(friendshipId: string): Promise<void> {
 interface ApiJobShare {
   id: string
   shared_with: ApiUser
+  can_manage: boolean
 }
 
 export async function fetchJobShares(jobId: string): Promise<JobShare[]> {
   const res = await fetch(`${API}/jobs/${jobId}/shares`)
   if (!res.ok) throw new Error('Failed to fetch job shares')
   const data: ApiJobShare[] = await res.json()
-  return data.map(s => ({ id: s.id, sharedWith: normalizeUser(s.shared_with) }))
+  return data.map(s => ({ id: s.id, sharedWith: normalizeUser(s.shared_with), canManage: s.can_manage }))
 }
 
 export async function addJobShare(jobId: string, friendId: string): Promise<void> {
@@ -677,6 +686,15 @@ export async function addJobShare(jobId: string, friendId: string): Promise<void
 export async function removeJobShare(jobId: string, friendId: string): Promise<void> {
   const res = await fetch(`${API}/jobs/${jobId}/shares/${friendId}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to remove job share')
+}
+
+export async function setJobShareManage(jobId: string, friendId: string, canManage: boolean): Promise<void> {
+  const res = await fetch(`${API}/jobs/${jobId}/shares/${friendId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ can_manage: canManage }),
+  })
+  if (!res.ok) throw new Error('Failed to update job share manage permission')
 }
 
 // ── 好友分享班表（唯讀）──────────────────────────────────────────────

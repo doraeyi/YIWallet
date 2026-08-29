@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, TagIcon, RefreshCwIcon } from 'lucide-react'
+import { ChevronLeftIcon, TagIcon, RefreshCwIcon, UsersIcon } from 'lucide-react'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
 import { useAccessibleJobs } from '@/hooks/use-accessible-jobs'
 import { useProductDeals } from '@/hooks/use-product-deals'
 import { ProductCard } from '@/components/wallet/product-card'
 import { ProductDetailDialog } from '@/components/wallet/product-detail-dialog'
+import { JobCoworkersDialog } from '@/components/wallet/job-coworkers-dialog'
 import { Button } from '@/components/ui/button'
-import type { Product } from '@/lib/types'
+import * as api from '@/lib/api'
+import type { Product, JobShare, Friendship } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export default function BarcodeDealsPage() {
@@ -20,10 +22,29 @@ export default function BarcodeDealsPage() {
   // 我的），不用另外選
   const { jobs, loading: jobsLoading } = useAccessibleJobs()
   const activeJob = jobs[0] ?? null
+  // 自己擁有的工作一定能管理同事名單；被分享的工作要看有沒有被授權 can_manage
+  const canManageCoworkers = !!activeJob && (activeJob.userId === me?.id || activeJob.canManage)
 
   const { deals, toggleDeal, reload: reloadDeals } = useProductDeals(activeJob?.id ?? null)
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [jobShares, setJobShares] = useState<JobShare[]>([])
+  const [friendships, setFriendships] = useState<Friendship[]>([])
+  const [coworkersOpen, setCoworkersOpen] = useState(false)
+
+  const activeJobId = activeJob?.id ?? null
+  const loadJobShares = useCallback(() => {
+    if (!activeJobId) return
+    api.fetchJobShares(activeJobId).then(setJobShares).catch(() => setJobShares([]))
+  }, [activeJobId])
+
+  useEffect(() => {
+    loadJobShares()
+  }, [loadJobShares])
+
+  useEffect(() => {
+    api.fetchFriendships().then(list => setFriendships(list.filter(f => f.status === 'accepted'))).catch(() => {})
+  }, [])
 
   function handleRefresh() {
     setRefreshing(true)
@@ -69,6 +90,16 @@ export default function BarcodeDealsPage() {
         {!jobsLoading && activeJob && (
           <span className="text-xs text-muted-foreground">共 {deals.length} 筆</span>
         )}
+        {canManageCoworkers && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setCoworkersOpen(true)}
+            className="rounded-full text-muted-foreground"
+          >
+            <UsersIcon className="size-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon-sm"
@@ -87,6 +118,15 @@ export default function BarcodeDealsPage() {
         onOpenChange={o => { if (!o) setZoomProduct(null) }}
         onUpdated={handleProductUpdated}
         onDeleted={handleProductDeleted}
+      />
+
+      <JobCoworkersDialog
+        job={coworkersOpen ? activeJob : null}
+        shares={jobShares}
+        friends={friendships}
+        onOpenChange={setCoworkersOpen}
+        onChanged={loadJobShares}
+        canGrantManage={!!activeJob && activeJob.userId === me?.id}
       />
 
       <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">

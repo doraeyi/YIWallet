@@ -74,6 +74,7 @@ export interface ShiftPreset {
 
 export interface Job {
   id: string
+  userId: string
   name: string
   color: string
   pay_type: 'hourly' | 'monthly'
@@ -85,6 +86,8 @@ export interface Job {
   welfare_fee: number
   created_at: string
   presets: ShiftPreset[]
+  /** 只有「別人分享給我」的工作（GET /jobs/shared-with-me）才會實際填這個值 */
+  canManage: boolean
 }
 
 export interface Shift {
@@ -116,6 +119,7 @@ export interface Friendship {
 export interface JobShare {
   id: string
   sharedWith: FriendUser
+  canManage: boolean
 }
 
 /** 好友分享出來的班表，唯讀，只帶顯示需要的欄位（沒有薪資等敏感資料） */

@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect, useMemo, use } from 'react'
+import { useState, useEffect, useMemo, useCallback, use } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ChevronLeftIcon } from 'lucide-react'
+import { ChevronLeftIcon, UsersIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { shiftTypeLabel } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
-import type { FriendShift } from '@/lib/types'
+import type { FriendShift, Job, JobShare, Friendship } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { JobCoworkersDialog } from '@/components/wallet/job-coworkers-dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
@@ -27,6 +29,10 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const isDesktop = useIsDesktop()
+  const [managedJob, setManagedJob] = useState<Job | null>(null)
+  const [jobShares, setJobShares] = useState<JobShare[]>([])
+  const [friendships, setFriendships] = useState<Friendship[]>([])
+  const [coworkersOpen, setCoworkersOpen] = useState(false)
 
   useEffect(() => {
     api.fetchFriendShifts(friendId)
@@ -34,6 +40,24 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
       .catch(() => setShifts([]))
       .finally(() => setLoading(false))
   }, [friendId])
+
+  // 這位好友分享給我的工作裡，如果有一份我被授權可以管理同事名單，就讓我
+  // 在這頁直接加人/踢人，不用跑去對方的 /schedule 頁面（反正我也看不到）。
+  useEffect(() => {
+    api.fetchSharedJobs()
+      .then(jobs => setManagedJob(jobs.find(j => j.userId === friendId && j.canManage) ?? null))
+      .catch(() => setManagedJob(null))
+    api.fetchFriendships().then(list => setFriendships(list.filter(f => f.status === 'accepted'))).catch(() => {})
+  }, [friendId])
+
+  const loadJobShares = useCallback(() => {
+    if (!managedJob) return
+    api.fetchJobShares(managedJob.id).then(setJobShares).catch(() => setJobShares([]))
+  }, [managedJob])
+
+  useEffect(() => {
+    loadJobShares()
+  }, [loadJobShares])
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -99,8 +123,26 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
         <Link href="/friends" className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeftIcon className="size-5" />
         </Link>
-        <h1 className="text-xl font-bold">{friendName} 的班表</h1>
+        <h1 className="flex-1 text-xl font-bold">{friendName} 的班表</h1>
+        {managedJob && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setCoworkersOpen(true)}
+            className="rounded-full text-muted-foreground"
+          >
+            <UsersIcon className="size-4" />
+          </Button>
+        )}
       </div>
+
+      <JobCoworkersDialog
+        job={coworkersOpen ? managedJob : null}
+        shares={jobShares}
+        friends={friendships}
+        onOpenChange={setCoworkersOpen}
+        onChanged={loadJobShares}
+      />
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>

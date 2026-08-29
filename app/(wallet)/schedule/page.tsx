@@ -539,6 +539,7 @@ export default function SchedulePage() {
             friends={friends}
             onOpenChange={setCoworkersDialogOpen}
             onChanged={loadData}
+            canGrantManage
           />
 
           {/* Calendar */}

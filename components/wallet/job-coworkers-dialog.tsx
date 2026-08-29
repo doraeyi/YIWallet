@@ -15,6 +15,7 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import * as api from '@/lib/api'
 import type { Job, JobShare, Friendship } from '@/lib/types'
 
@@ -24,9 +25,12 @@ interface JobCoworkersDialogProps {
   friends: Friendship[]
   onOpenChange: (open: boolean) => void
   onChanged: () => void
+  /** 只有工作真正的擁有者能授權/收回別人管理同事名單的權限，被授權管理的人
+   * 自己打開這個彈窗時看不到、也不能再往下授權給別人。 */
+  canGrantManage?: boolean
 }
 
-export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChanged }: JobCoworkersDialogProps) {
+export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChanged, canGrantManage = false }: JobCoworkersDialogProps) {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   async function handleRemove(friendId: string) {
@@ -51,6 +55,17 @@ export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChang
     }
   }
 
+  async function handleManageChange(friendId: string, canManage: boolean) {
+    if (!job || busyId) return
+    setBusyId(friendId)
+    try {
+      await api.setJobShareManage(job.id, friendId, canManage)
+      onChanged()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const sharedIds = new Set(shares.map(s => s.sharedWith.id))
   const candidates = friends.filter(f => f.status === 'accepted' && !sharedIds.has(f.friend.id))
 
@@ -69,6 +84,16 @@ export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChang
                   {share.sharedWith.displayName.charAt(0).toUpperCase() || '?'}
                 </div>
                 <span className="flex-1 truncate text-sm">{share.sharedWith.displayName}</span>
+                {canGrantManage && (
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span className="text-[10px] text-muted-foreground">管理權限</span>
+                    <Switch
+                      checked={share.canManage}
+                      onCheckedChange={v => handleManageChange(share.sharedWith.id, v)}
+                      disabled={busyId === share.sharedWith.id}
+                    />
+                  </div>
+                )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
