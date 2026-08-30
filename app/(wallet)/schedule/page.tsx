@@ -147,6 +147,15 @@ export default function SchedulePage() {
   const canManageActiveJobCoworkers = !!activeJob && (isOwnActiveJob || activeJob.canManage)
   const activeJobCoworkers = activeJob ? (jobShares[activeJob.id] ?? []) : []
 
+  // 加人/踢人/切換管理權限只影響目前這份工作的共享名單，不用整頁重載
+  // （工作列表、班表、團隊班表都跟這件事無關），減少不必要的重新抓取
+  const reloadActiveJobShares = useCallback(() => {
+    if (!activeJob) return
+    api.fetchJobShares(activeJob.id)
+      .then(shares => setJobShares(prev => ({ ...prev, [activeJob.id]: shares })))
+      .catch(() => {})
+  }, [activeJob])
+
   function goToJobView(index: number) {
     const total = jobViewSequence.length
     const view = jobViewSequence[(index + total) % total]
@@ -686,7 +695,7 @@ export default function SchedulePage() {
             shares={activeJobCoworkers}
             friends={friends}
             onOpenChange={setCoworkersDialogOpen}
-            onChanged={loadData}
+            onChanged={reloadActiveJobShares}
             canGrantManage={isOwnActiveJob}
           />
 
