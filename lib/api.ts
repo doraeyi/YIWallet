@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult, ProductDeal } from './types'
+import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile, Product, ProductInput, ProductImportResult, ProductDeal, XuhanKeyword } from './types'
 
 const API = '/api/backend'
 
@@ -1069,4 +1069,62 @@ export async function importPendingScreenshot(id: string, data: { amount: number
     }),
   })
   if (!res.ok) throw new Error('Failed to import screenshot')
+}
+
+// ── 手順查詢（爬自 xuhan.app，需要 can_use_barcode 權限）──────────────────
+
+interface ApiXuhanStep {
+  text: string
+  image_url: string
+}
+
+interface ApiXuhanKeywordItem {
+  id: string
+  machine_name: string | null
+  steps: ApiXuhanStep[]
+  image_url: string | null
+  sort_order: number
+}
+
+interface ApiXuhanKeyword {
+  id: string
+  title: string
+  tags: string | null
+  image_url: string | null
+  pinned: boolean
+  hidden: boolean
+  items: ApiXuhanKeywordItem[]
+}
+
+function normalizeXuhanKeyword(k: ApiXuhanKeyword): XuhanKeyword {
+  return {
+    id: k.id,
+    title: k.title,
+    tags: k.tags,
+    imageUrl: k.image_url,
+    pinned: k.pinned,
+    hidden: k.hidden,
+    items: k.items.map(item => ({
+      id: item.id,
+      machineName: item.machine_name,
+      steps: item.steps.map(s => ({ text: s.text, imageUrl: s.image_url })),
+      imageUrl: item.image_url,
+      sortOrder: item.sort_order,
+    })),
+  }
+}
+
+export async function fetchXuhanKeywords(q = ''): Promise<XuhanKeyword[]> {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  const res = await fetch(`${API}/xuhan/keywords?${params.toString()}`)
+  if (!res.ok) throw new Error('Failed to fetch xuhan keywords')
+  const data: ApiXuhanKeyword[] = await res.json()
+  return data.map(normalizeXuhanKeyword)
+}
+
+export async function triggerXuhanScrape(): Promise<{ keywords: number; items: number }> {
+  const res = await fetch(`${API}/xuhan/scrape`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to scrape xuhan')
+  return res.json()
 }

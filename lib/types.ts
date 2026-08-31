@@ -199,3 +199,29 @@ export interface ProductDeal extends Product {
   addedByName: string
   mine: boolean
 }
+
+/** 手順查詢的一個步驟（爬自 xuhan.app），image_url 可能是空字串代表沒有圖 */
+export interface XuhanStep {
+  text: string
+  imageUrl: string
+}
+
+/** 手順查詢裡的一張步驟卡（一台機器/一個作法），可能有好幾張同屬一個商品 */
+export interface XuhanKeywordItem {
+  id: string
+  machineName: string | null
+  steps: XuhanStep[]
+  imageUrl: string | null
+  sortOrder: number
+}
+
+/** 手順查詢的商品，items 是按順序排好的步驟卡 */
+export interface XuhanKeyword {
+  id: string
+  title: string
+  tags: string | null
+  imageUrl: string | null
+  pinned: boolean
+  hidden: boolean
+  items: XuhanKeywordItem[]
+}

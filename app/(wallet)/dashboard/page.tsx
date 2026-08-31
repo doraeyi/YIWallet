@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { BellIcon, ReceiptTextIcon, BarcodeIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
+import { BellIcon, ReceiptTextIcon, BarcodeIcon, BookOpenIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
@@ -379,6 +379,11 @@ export default function DashboardPage() {
           {canUseBarcode && (
             <Link href="/barcode" className="hover:text-foreground">
               <BarcodeIcon className="size-5" />
+            </Link>
+          )}
+          {canUseBarcode && (
+            <Link href="/procedures" className="hover:text-foreground">
+              <BookOpenIcon className="size-5" />
             </Link>
           )}
         </div>
