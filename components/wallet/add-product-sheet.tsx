@@ -137,56 +137,59 @@ export function AddProductSheet({ open, onOpenChange, onImported }: AddProductSh
 
       {step === 'manual' && !result && (
         <div className="flex flex-col gap-3">
-          {rows.map((row, i) => (
-            <div key={i} className="flex flex-col gap-2 rounded-xl border bg-muted/30 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">第 {i + 1} 筆</span>
-                {rows.length > 1 && (
-                  <Button variant="ghost" size="icon-xs" onClick={() => removeRow(i)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2Icon className="size-3.5" />
-                  </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {rows.map((row, i) => (
+              <div key={i} className="flex w-64 shrink-0 flex-col gap-2 rounded-xl border bg-muted/30 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">第 {i + 1} 筆</span>
+                  {rows.length > 1 && (
+                    <Button variant="ghost" size="icon-xs" onClick={() => removeRow(i)} className="text-muted-foreground hover:text-destructive">
+                      <Trash2Icon className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={row.itemNo}
+                    onChange={e => updateRow(i, { itemNo: e.target.value })}
+                    placeholder="品號（跟條碼至少填一個）"
+                  />
+                  <Select value={row.type} onValueChange={v => updateRow(i, { type: v })}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TYPE_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Input
-                  value={row.itemNo}
-                  onChange={e => updateRow(i, { itemNo: e.target.value })}
-                  placeholder="品號（跟條碼至少填一個）"
+                  value={row.code}
+                  onChange={e => updateRow(i, { code: e.target.value })}
+                  placeholder="條碼（跟品號至少填一個）"
                 />
-                <Select value={row.type} onValueChange={v => updateRow(i, { type: v })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TYPE_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={row.name}
+                  onChange={e => updateRow(i, { name: e.target.value })}
+                  placeholder="商品名稱（必填）"
+                />
+                <Input
+                  value={row.event}
+                  onChange={e => updateRow(i, { event: e.target.value })}
+                  placeholder="備註（選填）"
+                />
               </div>
-              <Input
-                value={row.code}
-                onChange={e => updateRow(i, { code: e.target.value })}
-                placeholder="條碼（跟品號至少填一個）"
-              />
-              <Input
-                value={row.name}
-                onChange={e => updateRow(i, { name: e.target.value })}
-                placeholder="商品名稱（必填）"
-              />
-              <Input
-                value={row.event}
-                onChange={e => updateRow(i, { event: e.target.value })}
-                placeholder="備註（選填）"
-              />
-            </div>
-          ))}
+            ))}
 
-          <Button
-            variant="outline"
-            onClick={() => setRows(prev => [...prev, emptyRow()])}
-            className="h-auto justify-center gap-1.5 rounded-xl border-dashed py-2.5 text-sm font-normal text-muted-foreground hover:bg-muted/30"
-          >
-            <PlusIcon className="size-4" /> 新增一列
-          </Button>
+            <button
+              type="button"
+              onClick={() => setRows(prev => [...prev, emptyRow()])}
+              className="flex w-16 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-muted-foreground hover:bg-muted/30"
+            >
+              <PlusIcon className="size-4" />
+              <span className="text-xs">新增一列</span>
+            </button>
+          </div>
 
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">{error}</p>}
 
