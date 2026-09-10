@@ -28,6 +28,12 @@ function formatEventLabel(label: string): string {
   return `${mm}/${dd} ${rest}`
 }
 
+// 純數字輸入時，只當品號查，不要因為條碼包含這串數字就一起撈出來
+function filterByKeyword(data: Product[], keyword: string): Product[] {
+  if (!/^\d+$/.test(keyword)) return data
+  return data.filter(p => (p.itemNo && p.itemNo.includes(keyword)) || p.name.includes(keyword))
+}
+
 // 已經標到砍貨專區的商品，圖示直接消失（目前先假設一人一份工作，不用再選）
 function DealButton({ show, onToggle }: { show: boolean; onToggle: () => void }) {
   if (!show) return null
@@ -68,7 +74,7 @@ export default function BarcodePage() {
     if (keyword.length === 0 && !event) return
     setSearching(true)
     api.searchProducts(keyword, event)
-      .then(setResults)
+      .then(data => setResults(filterByKeyword(data, keyword)))
       .catch(() => setResults([]))
       .finally(() => setSearching(false))
   }, [])
@@ -97,7 +103,7 @@ export default function BarcodePage() {
     Promise.all([
       loadTotalCount(),
       reloadFavorites(),
-      keyword || selectedEvent ? api.searchProducts(keyword, selectedEvent).then(setResults).catch(() => {}) : Promise.resolve(),
+      keyword || selectedEvent ? api.searchProducts(keyword, selectedEvent).then(data => setResults(filterByKeyword(data, keyword))).catch(() => {}) : Promise.resolve(),
     ]).finally(() => setRefreshing(false))
   }
 
