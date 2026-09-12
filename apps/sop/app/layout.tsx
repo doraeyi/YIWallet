@@ -23,6 +23,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "SOP／條碼查詢",
   description: "手順（SOP）查詢與條碼查詢工具",
+  applicationName: "SOP查詢",
+  icons: { icon: '/icons/logo.png', apple: '/icons/logo.png' },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SOP查詢",
+  },
+  formatDetection: { telephone: false },
 };
 
 export default function RootLayout({
