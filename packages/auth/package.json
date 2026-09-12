@@ -1,0 +1,18 @@
+{
+  "name": "@yiwallet/auth",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "jose": "^6.2.2"
+  },
+  "peerDependencies": {
+    "next": "16.2.1"
+  },
+  "devDependencies": {
+    "next": "16.2.1",
+    "typescript": "^5"
+  }
+}
