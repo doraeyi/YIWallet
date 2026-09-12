@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* packages/ui 是透過 node_modules 的 workspace symlink 引用進來的，Tailwind v4
+   預設的自動掃描不會進到 node_modules 裡面找 class，要明講才會把共用元件用到的
+   class（例如 Select/Dialog 的定位、底色）一起產生出來，不然這些元件會整個沒有樣式。 */
+@source "../../../packages/ui/src";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
