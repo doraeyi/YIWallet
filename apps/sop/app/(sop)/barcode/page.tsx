@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon } from 'lucide-react'
+import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, ListIcon, ScanBarcodeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
@@ -20,6 +20,12 @@ import { cn } from '@/lib/utils'
 // Radix Select 不支援空字串當選項值，「全部」用這個代稱，對外仍轉回空字串
 const ALL_EVENTS = 'all'
 
+const MODE_STORAGE_KEY = 'sop_barcode_mode'
+type ViewMode = 'detailed' | 'simple'
+
+// 簡易模式一次把全部商品載進來後純前端篩選，結果一樣先限制筆數避免畫面卡頓
+const SIMPLE_MODE_LIMIT = 100
+
 // 檔期標籤原始格式是「YYYYMMDD_說明」，畫面上顯示成「MM/DD 說明」比較好讀
 function formatEventLabel(label: string): string {
   const match = label.match(/^(\d{4})(\d{2})(\d{2})_(.+)$/)
@@ -32,6 +38,27 @@ function formatEventLabel(label: string): string {
 function filterByKeyword(data: Product[], keyword: string): Product[] {
   if (!/^\d+$/.test(keyword)) return data
   return data.filter(p => (p.itemNo && p.itemNo.includes(keyword)) || p.name.includes(keyword))
+}
+
+// event 欄位可能用「/」分隔多個標籤、結尾可能帶 _NNN 流水號，比對前先拆乾淨
+// （跟後端 routers/products.py 的 _clean_event_labels 邏輯保持一致）
+function cleanEventLabels(raw: string | null): string[] {
+  if (!raw) return []
+  return raw.split('/').filter(Boolean).map(part => part.replace(/_\d{3}$/, ''))
+}
+
+// 把符合關鍵字的部分標亮，比對邏輯跟 7-11howhowfun 那個查詢頁一樣快、純前端做
+function highlightMatch(text: string, keyword: string) {
+  if (!keyword) return text
+  const idx = text.toLowerCase().indexOf(keyword.toLowerCase())
+  if (idx === -1) return text
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="rounded-sm bg-amber-200 text-inherit dark:bg-amber-400/40">{text.slice(idx, idx + keyword.length)}</mark>
+      {text.slice(idx + keyword.length)}
+    </>
+  )
 }
 
 // 已經標到砍貨專區的商品，圖示直接消失（目前先假設一人一份工作，不用再選）
@@ -51,6 +78,7 @@ export default function BarcodePage() {
   // 當砍貨目標，不用另外選
   const { jobs, activeJob, activeJobId, setActiveJobId } = useAccessibleJobs()
   const { isDealMarked, toggleDeal } = useProductDeals(activeJob?.id ?? null)
+  const [mode, setMode] = useState<ViewMode>('detailed')
   const [query, setQuery] = useState('')
   const [events, setEvents] = useState<string[]>([])
   const [selectedEvent, setSelectedEvent] = useState('')
@@ -60,6 +88,36 @@ export default function BarcodePage() {
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null)
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [allProducts, setAllProducts] = useState<Product[] | null>(null)
+  const [allProductsLoading, setAllProductsLoading] = useState(false)
+
+  // 記住使用者上次選的模式，下次進來直接沿用
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(MODE_STORAGE_KEY)
+      if (saved === 'simple' || saved === 'detailed') setMode(saved)
+    } catch {}
+  }, [])
+
+  function changeMode(next: ViewMode) {
+    setMode(next)
+    try { localStorage.setItem(MODE_STORAGE_KEY, next) } catch {}
+  }
+
+  const loadAllProducts = useCallback(() => {
+    setAllProductsLoading(true)
+    return api.fetchAllProducts()
+      .then(setAllProducts)
+      .catch(() => setAllProducts([]))
+      .finally(() => setAllProductsLoading(false))
+  }, [])
+
+  // 簡易模式第一次切進來才載入全部商品，載過就快取著、不用每次切換都重抓
+  useEffect(() => {
+    if (mode === 'simple' && allProducts === null && !allProductsLoading) {
+      loadAllProducts()
+    }
+  }, [mode, allProducts, allProductsLoading, loadAllProducts])
 
   const loadTotalCount = useCallback(() => {
     return api.fetchProductCount().then(setTotalCount).catch(() => {})
@@ -79,21 +137,36 @@ export default function BarcodePage() {
       .finally(() => setSearching(false))
   }, [])
 
+  // 簡易模式不用打 API，純前端在已經載好的全部商品裡篩選，體感速度快很多
+  const simpleResults = useMemo(() => {
+    if (mode !== 'simple' || !allProducts) return []
+    const keyword = query.trim().toLowerCase()
+    if (!keyword && !selectedEvent) return []
+    return allProducts.filter(p => {
+      const matchesKeyword = !keyword || p.name.toLowerCase().includes(keyword) || (p.itemNo?.toLowerCase().includes(keyword) ?? false)
+      const matchesEvent = !selectedEvent || cleanEventLabels(p.event).includes(selectedEvent)
+      return matchesKeyword && matchesEvent
+    })
+  }, [mode, allProducts, query, selectedEvent])
+
   useEffect(() => {
+    if (mode !== 'detailed') return
     const keyword = query.trim()
     if (keyword.length === 0 && !selectedEvent) return
     const timer = setTimeout(() => runSearch(keyword, selectedEvent), 250)
     return () => clearTimeout(timer)
-  }, [query, selectedEvent, runSearch])
+  }, [mode, query, selectedEvent, runSearch])
 
   function handleProductUpdated(updated: Product) {
     setResults(prev => prev.map(p => p.id === updated.id ? updated : p))
+    setAllProducts(prev => prev && prev.map(p => p.id === updated.id ? updated : p))
     setZoomProduct(updated)
     reloadFavorites()
   }
 
   function handleProductDeleted(productId: string) {
     setResults(prev => prev.filter(p => p.id !== productId))
+    setAllProducts(prev => prev && prev.filter(p => p.id !== productId))
     reloadFavorites()
   }
 
@@ -103,7 +176,9 @@ export default function BarcodePage() {
     Promise.all([
       loadTotalCount(),
       reloadFavorites(),
-      keyword || selectedEvent ? api.searchProducts(keyword, selectedEvent).then(data => setResults(filterByKeyword(data, keyword))).catch(() => {}) : Promise.resolve(),
+      mode === 'simple'
+        ? loadAllProducts()
+        : (keyword || selectedEvent ? api.searchProducts(keyword, selectedEvent).then(data => setResults(filterByKeyword(data, keyword))).catch(() => {}) : Promise.resolve()),
     ]).finally(() => setRefreshing(false))
   }
 
@@ -135,7 +210,7 @@ export default function BarcodePage() {
   const nonFavoriteResults = results.filter(p => !isFavorite(p.id))
 
   // 放大檢視時左右滑動要能在「畫面上實際看得到的商品」之間切換，順序跟畫面一致
-  const swipeList = [...visibleFavorites, ...nonFavoriteResults]
+  const swipeList = mode === 'simple' ? simpleResults : [...visibleFavorites, ...nonFavoriteResults]
 
   return (
     <div className="flex flex-col">
@@ -173,7 +248,7 @@ export default function BarcodePage() {
       <AddProductSheet
         open={addOpen}
         onOpenChange={setAddOpen}
-        onImported={() => runSearch(query.trim(), selectedEvent)}
+        onImported={() => mode === 'simple' ? loadAllProducts() : runSearch(query.trim(), selectedEvent)}
       />
 
       <ProductDetailDialog
@@ -196,6 +271,28 @@ export default function BarcodePage() {
             </SelectContent>
           </Select>
         )}
+
+        {/* 簡易模式：純文字清單、純前端篩選，速度快；條碼模式：卡片 + 條碼圖，可收藏/標記砍貨 */}
+        <div className="flex gap-1 self-start rounded-full bg-muted p-0.5">
+          <button
+            onClick={() => changeMode('simple')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+              mode === 'simple' ? 'bg-white text-foreground shadow-sm dark:bg-card' : 'text-muted-foreground'
+            )}
+          >
+            <ListIcon className="size-3.5" /> 簡易模式
+          </button>
+          <button
+            onClick={() => changeMode('detailed')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+              mode === 'detailed' ? 'bg-white text-foreground shadow-sm dark:bg-card' : 'text-muted-foreground'
+            )}
+          >
+            <ScanBarcodeIcon className="size-3.5" /> 條碼模式
+          </button>
+        </div>
 
         <div className="flex gap-2">
           <InputGroup className="min-w-0 flex-1">
@@ -227,54 +324,88 @@ export default function BarcodePage() {
           )}
         </div>
 
-        {visibleFavorites.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <StarIcon className="size-3.5 fill-amber-400 text-amber-400" /> 常用
+        {mode === 'simple' ? (
+          allProductsLoading && !allProducts ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">載入商品目錄中…</p>
+          ) : !hasActiveSearch ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              輸入關鍵字或選擇檔期開始搜尋{allProducts && `（共 ${allProducts.length} 筆商品可查）`}
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {visibleFavorites.map(p => (
-                <ProductCard
+          ) : simpleResults.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">查無符合的商品</p>
+          ) : (
+            <div className="flex flex-col divide-y overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card dark:divide-border">
+              {simpleResults.slice(0, SIMPLE_MODE_LIMIT).map(p => (
+                <button
                   key={p.id}
-                  product={p}
-                  favorite
-                  onToggleFavorite={() => toggleFavorite(p)}
-                  dealButton={<DealButton show={!!activeJob && !isDealMarked(p.id)} onToggle={() => toggleDeal(p)} />}
-                  onZoom={() => setZoomProduct(p)}
-                />
+                  onClick={() => setZoomProduct(p)}
+                  className="flex flex-col gap-0.5 px-4 py-2.5 text-left hover:bg-muted/40"
+                >
+                  <div className="flex items-baseline gap-2">
+                    {p.itemNo && <span className="text-xs text-muted-foreground">{highlightMatch(p.itemNo, query.trim())}</span>}
+                    {p.event && <span className="ml-auto text-[10px] text-muted-foreground">{p.event}</span>}
+                  </div>
+                  <span className="text-sm font-medium">{highlightMatch(p.name, query.trim())}</span>
+                </button>
               ))}
             </div>
-          </div>
-        )}
-
-        {!hasActiveSearch ? (
-          visibleFavorites.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">輸入關鍵字或選擇檔期開始搜尋</p>
           )
-        ) : searching ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">搜尋中…</p>
-        ) : results.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">查無符合的商品</p>
-        ) : nonFavoriteResults.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {visibleFavorites.length > 0 && <p className="text-xs font-medium text-muted-foreground">搜尋結果</p>}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {nonFavoriteResults.map(p => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  favorite={false}
-                  onToggleFavorite={() => toggleFavorite(p)}
-                  dealButton={<DealButton show={!!activeJob && !isDealMarked(p.id)} onToggle={() => toggleDeal(p)} />}
-                  onZoom={() => setZoomProduct(p)}
-                />
-              ))}
-            </div>
-          </div>
+        ) : (
+          <>
+            {visibleFavorites.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                  <StarIcon className="size-3.5 fill-amber-400 text-amber-400" /> 常用
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {visibleFavorites.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      favorite
+                      onToggleFavorite={() => toggleFavorite(p)}
+                      dealButton={<DealButton show={!!activeJob && !isDealMarked(p.id)} onToggle={() => toggleDeal(p)} />}
+                      onZoom={() => setZoomProduct(p)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!hasActiveSearch ? (
+              visibleFavorites.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">輸入關鍵字或選擇檔期開始搜尋</p>
+              )
+            ) : searching ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">搜尋中…</p>
+            ) : results.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">查無符合的商品</p>
+            ) : nonFavoriteResults.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {visibleFavorites.length > 0 && <p className="text-xs font-medium text-muted-foreground">搜尋結果</p>}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {nonFavoriteResults.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      favorite={false}
+                      onToggleFavorite={() => toggleFavorite(p)}
+                      dealButton={<DealButton show={!!activeJob && !isDealMarked(p.id)} onToggle={() => toggleDeal(p)} />}
+                      onZoom={() => setZoomProduct(p)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {results.length === 60 && (
+              <p className="text-center text-xs text-muted-foreground">結果過多，僅顯示前 60 筆，請輸入更精確的關鍵字</p>
+            )}
+          </>
         )}
 
-        {results.length === 60 && (
-          <p className="text-center text-xs text-muted-foreground">結果過多，僅顯示前 60 筆，請輸入更精確的關鍵字</p>
+        {mode === 'simple' && simpleResults.length > SIMPLE_MODE_LIMIT && (
+          <p className="text-center text-xs text-muted-foreground">結果過多，僅顯示前 {SIMPLE_MODE_LIMIT} 筆，請輸入更精確的關鍵字</p>
         )}
       </div>
     </div>

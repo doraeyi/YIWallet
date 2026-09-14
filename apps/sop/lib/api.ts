@@ -195,6 +195,15 @@ export async function searchProducts(q: string, event?: string): Promise<Product
   return data.map(normalizeProduct)
 }
 
+// 簡易模式用：一次把整個商品目錄載到前端，之後純前端做即時篩選，
+// 不用每次打字都打一次 API，體感速度接近 7-11howhowfun 那種整批資料嵌在頁面裡的作法。
+export async function fetchAllProducts(): Promise<Product[]> {
+  const res = await fetch(`${API}/products/all`)
+  if (!res.ok) throw new Error('Failed to fetch all products')
+  const data: ApiProduct[] = await res.json()
+  return data.map(normalizeProduct)
+}
+
 export async function fetchProductEvents(): Promise<string[]> {
   const res = await fetch(`${API}/products/events`)
   if (!res.ok) throw new Error('Failed to fetch product events')
