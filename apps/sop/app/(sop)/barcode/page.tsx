@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, ListIcon, ScanBarcodeIcon, CloudDownloadIcon } from 'lucide-react'
+import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, PackageSearchIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils'
 // Radix Select 不支援空字串當選項值，「全部」用這個代稱，對外仍轉回空字串
 const ALL_EVENTS = 'all'
 
-const MODE_STORAGE_KEY = 'sop_barcode_mode'
+// 目前先只開放簡易模式（純文字清單、純前端篩選）。「條碼模式」（卡片+條碼圖+
+// 收藏/砍貨）的程式碼都還在，之後要重新開放的話，把 mode 改回可切換、UI 加
+// 個切換器就好，不用重寫。
 type ViewMode = 'detailed' | 'simple'
 
 // 簡易模式一次把全部商品載進來後純前端篩選，結果一樣先限制筆數避免畫面卡頓
@@ -55,7 +57,7 @@ function highlightMatch(text: string, keyword: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded-sm bg-amber-200 text-inherit dark:bg-amber-400/40">{text.slice(idx, idx + keyword.length)}</mark>
+      <mark className="rounded bg-amber-200 px-0.5 text-inherit dark:bg-amber-400/40">{text.slice(idx, idx + keyword.length)}</mark>
       {text.slice(idx + keyword.length)}
     </>
   )
@@ -78,7 +80,7 @@ export default function BarcodePage() {
   // 當砍貨目標，不用另外選
   const { jobs, activeJob, activeJobId, setActiveJobId } = useAccessibleJobs()
   const { isDealMarked, toggleDeal } = useProductDeals(activeJob?.id ?? null)
-  const [mode, setMode] = useState<ViewMode>('detailed')
+  const [mode] = useState<ViewMode>('simple')
   const [query, setQuery] = useState('')
   const [events, setEvents] = useState<string[]>([])
   const [selectedEvent, setSelectedEvent] = useState('')
@@ -88,23 +90,9 @@ export default function BarcodePage() {
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null)
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState('')
   const [allProducts, setAllProducts] = useState<Product[] | null>(null)
   const [allProductsLoading, setAllProductsLoading] = useState(false)
-  const [scraping, setScraping] = useState(false)
-  const [scrapeMessage, setScrapeMessage] = useState('')
-
-  // 記住使用者上次選的模式，下次進來直接沿用
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(MODE_STORAGE_KEY)
-      if (saved === 'simple' || saved === 'detailed') setMode(saved)
-    } catch {}
-  }, [])
-
-  function changeMode(next: ViewMode) {
-    setMode(next)
-    try { localStorage.setItem(MODE_STORAGE_KEY, next) } catch {}
-  }
 
   const loadAllProducts = useCallback(() => {
     setAllProductsLoading(true)
@@ -124,21 +112,6 @@ export default function BarcodePage() {
   const loadTotalCount = useCallback(() => {
     return api.fetchProductCount().then(setTotalCount).catch(() => {})
   }, [])
-
-  async function handleScrape() {
-    setScraping(true)
-    setScrapeMessage('')
-    try {
-      const result = await api.triggerSevenElevenScrape()
-      setScrapeMessage(`新增 ${result.inserted} 筆、補了 ${result.updated} 筆分類、略過 ${result.skipped} 筆已存在的`)
-      await loadTotalCount()
-      if (mode === 'simple') await loadAllProducts()
-    } catch {
-      setScrapeMessage('抓取失敗，稍後再試')
-    } finally {
-      setScraping(false)
-    }
-  }
 
   useEffect(() => {
     api.fetchProductEvents().then(setEvents).catch(() => setEvents([]))
@@ -187,16 +160,27 @@ export default function BarcodePage() {
     reloadFavorites()
   }
 
-  function handleRefresh() {
+  // 重整 = 重新從 7-11howhowfun 抓一次最新資料，再把畫面上的商品目錄/筆數刷新——
+  // 兩件事合成一個按鈕，不用另外多放一個爬蟲圖示。
+  async function handleRefresh() {
     setRefreshing(true)
+    setRefreshMessage('')
+    try {
+      const result = await api.triggerSevenElevenScrape()
+      setRefreshMessage(`新增 ${result.inserted} 筆、補了 ${result.updated} 筆分類`)
+    } catch {
+      setRefreshMessage('抓取失敗，稍後再試')
+    }
+
     const keyword = query.trim()
-    Promise.all([
+    await Promise.all([
       loadTotalCount(),
       reloadFavorites(),
       mode === 'simple'
         ? loadAllProducts()
         : (keyword || selectedEvent ? api.searchProducts(keyword, selectedEvent).then(data => setResults(filterByKeyword(data, keyword))).catch(() => {}) : Promise.resolve()),
-    ]).finally(() => setRefreshing(false))
+    ])
+    setRefreshing(false)
   }
 
   if (meLoading) {
@@ -231,50 +215,90 @@ export default function BarcodePage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 px-4 pt-6 pb-4 lg:mx-auto lg:w-full lg:max-w-2xl">
-        <h1 className="flex flex-1 items-center gap-1.5 text-xl font-bold">
-          <BarcodeIcon className="size-5 text-amber-500" />
-          條碼查詢
-        </h1>
-        {totalCount !== null && (
-          <span className="text-xs text-muted-foreground">共 {totalCount} 筆</span>
-        )}
-        <Link
-          href="/barcode/deals"
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-        >
-          <TagIcon className="size-5" />
-        </Link>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-        >
-          <PlusIcon className="size-5" />
-        </button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleScrape}
-          disabled={scraping}
-          title="重新從 7-11howhowfun 抓一次商品清單"
-          className="rounded-full text-muted-foreground"
-        >
-          <CloudDownloadIcon className={cn('size-4', scraping && 'animate-pulse')} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="rounded-full text-muted-foreground"
-        >
-          <RefreshCwIcon className={cn('size-4', refreshing && 'animate-spin')} />
-        </Button>
-      </div>
+      <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-3 px-4 pt-6 pb-4 lg:mx-auto lg:w-full lg:max-w-2xl">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-amber-400 to-amber-500 text-white shadow-sm shadow-amber-400/30">
+            <BarcodeIcon className="size-5" />
+          </span>
+          <div className="flex flex-1 flex-col leading-tight">
+            <h1 className="text-lg font-bold">條碼查詢</h1>
+            {totalCount !== null && (
+              <span className="text-xs text-muted-foreground">共 {totalCount.toLocaleString()} 筆商品</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/barcode/deals"
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <TagIcon className="size-4.5" />
+            </Link>
+            <button
+              onClick={() => setAddOpen(true)}
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <PlusIcon className="size-4.5" />
+            </button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="重新從 7-11howhowfun 抓一次商品清單"
+              className="size-9 rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCwIcon className={cn('size-4.5', refreshing && 'animate-spin')} />
+            </Button>
+          </div>
+        </div>
 
-      {scrapeMessage && (
-        <p className="px-4 pb-2 text-center text-xs text-muted-foreground lg:mx-auto lg:w-full lg:max-w-2xl">{scrapeMessage}</p>
-      )}
+        {refreshMessage && (
+          <p className="px-4 pb-3 text-center text-xs text-muted-foreground lg:mx-auto lg:w-full lg:max-w-2xl">{refreshMessage}</p>
+        )}
+
+        <div className="flex flex-col gap-2.5 px-4 pb-4 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">
+          {jobs.length > 1 && (
+            <Select value={activeJobId ?? activeJob?.id} onValueChange={setActiveJobId}>
+              <SelectTrigger className="w-full rounded-2xl">
+                <SelectValue placeholder="標記到哪份工作的砍貨專區" />
+              </SelectTrigger>
+              <SelectContent>
+                {jobs.map(job => <SelectItem key={job.id} value={job.id}>{job.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+
+          <div className="flex gap-2">
+            <InputGroup className="min-w-0 flex-1 rounded-2xl border-transparent bg-muted/60 shadow-none focus-within:border-ring focus-within:bg-background focus-within:shadow-sm">
+              <InputGroupAddon>
+                <SearchIcon className="text-muted-foreground" />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="輸入品號或商品名稱搜尋"
+              />
+            </InputGroup>
+
+            {events.length > 0 && (
+              <Select
+                value={selectedEvent || ALL_EVENTS}
+                onValueChange={v => setSelectedEvent(v === ALL_EVENTS ? '' : v)}
+              >
+                <SelectTrigger className="w-28 shrink-0 rounded-2xl border-transparent bg-muted/60">
+                  <SelectValue placeholder="檔期" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_EVENTS}>檔期：全部</SelectItem>
+                  {events.map(ev => (
+                    <SelectItem key={ev} value={ev}>{formatEventLabel(ev)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+      </div>
 
       <AddProductSheet
         open={addOpen}
@@ -291,95 +315,56 @@ export default function BarcodePage() {
         onDeleted={handleProductDeleted}
       />
 
-      <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">
-        {jobs.length > 1 && (
-          <Select value={activeJobId ?? activeJob?.id} onValueChange={setActiveJobId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="標記到哪份工作的砍貨專區" />
-            </SelectTrigger>
-            <SelectContent>
-              {jobs.map(job => <SelectItem key={job.id} value={job.id}>{job.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
-
-        {/* 簡易模式：純文字清單、純前端篩選，速度快；條碼模式：卡片 + 條碼圖，可收藏/標記砍貨 */}
-        <div className="flex gap-1 self-start rounded-full bg-muted p-0.5">
-          <button
-            onClick={() => changeMode('simple')}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-              mode === 'simple' ? 'bg-white text-foreground shadow-sm dark:bg-card' : 'text-muted-foreground'
-            )}
-          >
-            <ListIcon className="size-3.5" /> 簡易模式
-          </button>
-          <button
-            onClick={() => changeMode('detailed')}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-              mode === 'detailed' ? 'bg-white text-foreground shadow-sm dark:bg-card' : 'text-muted-foreground'
-            )}
-          >
-            <ScanBarcodeIcon className="size-3.5" /> 條碼模式
-          </button>
-        </div>
-
-        <div className="flex gap-2">
-          <InputGroup className="min-w-0 flex-1">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="輸入品號或商品名稱搜尋"
-            />
-          </InputGroup>
-
-          {events.length > 0 && (
-            <Select
-              value={selectedEvent || ALL_EVENTS}
-              onValueChange={v => setSelectedEvent(v === ALL_EVENTS ? '' : v)}
-            >
-              <SelectTrigger className="w-28 shrink-0">
-                <SelectValue placeholder="檔期" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_EVENTS}>檔期：全部</SelectItem>
-                {events.map(ev => (
-                  <SelectItem key={ev} value={ev}>{formatEventLabel(ev)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
+      <div className="flex flex-col gap-4 px-4 pt-4 pb-6 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">
         {mode === 'simple' ? (
           allProductsLoading && !allProducts ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">載入商品目錄中…</p>
-          ) : !hasActiveSearch ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              輸入關鍵字或選擇檔期開始搜尋{allProducts && `（共 ${allProducts.length} 筆商品可查）`}
-            </p>
-          ) : simpleResults.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">查無符合的商品</p>
-          ) : (
-            <div className="flex flex-col divide-y overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card dark:divide-border">
-              {simpleResults.slice(0, SIMPLE_MODE_LIMIT).map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setZoomProduct(p)}
-                  className="flex flex-col gap-0.5 px-4 py-2.5 text-left hover:bg-muted/40"
-                >
-                  <div className="flex items-baseline gap-2">
-                    {p.itemNo && <span className="text-xs text-muted-foreground">{highlightMatch(p.itemNo, query.trim())}</span>}
-                    {p.event && <span className="ml-auto text-[10px] text-muted-foreground">{p.event}</span>}
-                  </div>
-                  <span className="text-sm font-medium">{highlightMatch(p.name, query.trim())}</span>
-                </button>
-              ))}
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <PackageSearchIcon className="size-10 animate-pulse text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">載入商品目錄中…</p>
             </div>
+          ) : !hasActiveSearch ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center">
+              <PackageSearchIcon className="size-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">輸入關鍵字或選擇檔期開始搜尋</p>
+              {allProducts && <p className="text-xs text-muted-foreground/70">共 {allProducts.length.toLocaleString()} 筆商品可查</p>}
+            </div>
+          ) : simpleResults.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center">
+              <PackageSearchIcon className="size-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">查無符合的商品</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs font-medium text-muted-foreground">找到 {simpleResults.length.toLocaleString()} 筆</p>
+              <div className="flex flex-col divide-y overflow-hidden rounded-2xl border bg-white shadow-sm dark:divide-border dark:bg-card">
+                {simpleResults.slice(0, SIMPLE_MODE_LIMIT).map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setZoomProduct(p)}
+                    className="flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-amber-50/60 active:bg-amber-50 dark:hover:bg-amber-400/5 dark:active:bg-amber-400/10"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        {p.itemNo && (
+                          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                            {highlightMatch(p.itemNo, query.trim())}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 truncate text-sm font-medium">{highlightMatch(p.name, query.trim())}</p>
+                    </div>
+                    {p.event && (
+                      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
+                        {p.event}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {simpleResults.length > SIMPLE_MODE_LIMIT && (
+                <p className="text-center text-xs text-muted-foreground">結果過多，僅顯示前 {SIMPLE_MODE_LIMIT} 筆，請輸入更精確的關鍵字</p>
+              )}
+            </>
           )
         ) : (
           <>
@@ -433,10 +418,6 @@ export default function BarcodePage() {
               <p className="text-center text-xs text-muted-foreground">結果過多，僅顯示前 60 筆，請輸入更精確的關鍵字</p>
             )}
           </>
-        )}
-
-        {mode === 'simple' && simpleResults.length > SIMPLE_MODE_LIMIT && (
-          <p className="text-center text-xs text-muted-foreground">結果過多，僅顯示前 {SIMPLE_MODE_LIMIT} 筆，請輸入更精確的關鍵字</p>
         )}
       </div>
     </div>
