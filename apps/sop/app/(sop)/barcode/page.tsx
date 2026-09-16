@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, ListIcon, ScanBarcodeIcon } from 'lucide-react'
+import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, ListIcon, ScanBarcodeIcon, CloudDownloadIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
@@ -90,6 +90,8 @@ export default function BarcodePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [allProducts, setAllProducts] = useState<Product[] | null>(null)
   const [allProductsLoading, setAllProductsLoading] = useState(false)
+  const [scraping, setScraping] = useState(false)
+  const [scrapeMessage, setScrapeMessage] = useState('')
 
   // 記住使用者上次選的模式，下次進來直接沿用
   useEffect(() => {
@@ -122,6 +124,21 @@ export default function BarcodePage() {
   const loadTotalCount = useCallback(() => {
     return api.fetchProductCount().then(setTotalCount).catch(() => {})
   }, [])
+
+  async function handleScrape() {
+    setScraping(true)
+    setScrapeMessage('')
+    try {
+      const result = await api.triggerSevenElevenScrape()
+      setScrapeMessage(`新增 ${result.inserted} 筆、補了 ${result.updated} 筆分類、略過 ${result.skipped} 筆已存在的`)
+      await loadTotalCount()
+      if (mode === 'simple') await loadAllProducts()
+    } catch {
+      setScrapeMessage('抓取失敗，稍後再試')
+    } finally {
+      setScraping(false)
+    }
+  }
 
   useEffect(() => {
     api.fetchProductEvents().then(setEvents).catch(() => setEvents([]))
@@ -237,6 +254,16 @@ export default function BarcodePage() {
         <Button
           variant="ghost"
           size="icon-sm"
+          onClick={handleScrape}
+          disabled={scraping}
+          title="重新從 7-11howhowfun 抓一次商品清單"
+          className="rounded-full text-muted-foreground"
+        >
+          <CloudDownloadIcon className={cn('size-4', scraping && 'animate-pulse')} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={handleRefresh}
           disabled={refreshing}
           className="rounded-full text-muted-foreground"
@@ -244,6 +271,10 @@ export default function BarcodePage() {
           <RefreshCwIcon className={cn('size-4', refreshing && 'animate-spin')} />
         </Button>
       </div>
+
+      {scrapeMessage && (
+        <p className="px-4 pb-2 text-center text-xs text-muted-foreground lg:mx-auto lg:w-full lg:max-w-2xl">{scrapeMessage}</p>
+      )}
 
       <AddProductSheet
         open={addOpen}

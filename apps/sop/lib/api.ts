@@ -232,6 +232,14 @@ export async function importProductsCsv(file: File): Promise<ProductImportResult
   return normalizeImportResult(await res.json())
 }
 
+// 重新從 7-11howhowfun.netlify.app 抓一次商品清單，補進資料庫（已存在的品號不會動，
+// 只有原本沒有分類時才補上）
+export async function triggerSevenElevenScrape(): Promise<ProductImportResult> {
+  const res = await fetch(`${API}/products/scrape-7eleven`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to scrape 7-eleven products')
+  return normalizeImportResult(await res.json())
+}
+
 export async function fetchFavoriteProducts(): Promise<Product[]> {
   const res = await fetch(`${API}/products/favorites`)
   if (!res.ok) throw new Error('Failed to fetch favorite products')
