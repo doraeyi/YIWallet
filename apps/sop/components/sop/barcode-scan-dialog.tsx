@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CameraOffIcon } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { CameraOffIcon, XIcon } from 'lucide-react'
 
 const SCANNER_ELEMENT_ID = 'sop-barcode-scan-region'
 
@@ -12,10 +11,12 @@ interface BarcodeScanDialogProps {
   onScanned: (code: string) => void
 }
 
-// 用手機鏡頭掃實體商品上的條碼，掃到後把值丟給呼叫端（目前用來自動填「編輯
-// 商品」的條碼欄位，取代手動打 13 位數）。只負責「掃到什麼」，不負責判斷
-// 這個條碼對應哪個商品——那件事沒有現成的對照表可以自動猜，還是要先手動
-// 選好商品才知道要把條碼填去哪一筆。
+// 用手機鏡頭掃實體商品上的條碼。全螢幕呈現（不是塞在小彈窗裡）＋對焦框依
+// 螢幕實際尺寸動態計算，是為了解決「一直要橋角度、掃不到」的問題——畫面
+// 越小、對焦框用固定像素算，手機螢幕尺寸一多就會對不準。
+//
+// 只負責「掃到什麼」，不負責判斷這個條碼對應哪個商品——那件事沒有現成的
+// 對照表可以自動猜，呼叫端要嘛拿掃到的值去比對現有商品、要嘛填進表單。
 export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScanDialogProps) {
   const [error, setError] = useState('')
   const onScannedRef = useRef(onScanned)
@@ -28,6 +29,11 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
   useEffect(() => {
     if (!open) return
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onOpenChangeRef.current(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
 
     let cancelled = false
     let hasScanned = false
@@ -49,8 +55,20 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       })
 
       scanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 260, height: 160 } },
+        // 順便跟鏡頭要高解析度畫面——解析度太低，密集的條碼線在正常閱讀距離
+        // 下會糊成一團解不出來，這也是常見的「一直掃不到」原因。
+        { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        {
+          fps: 15,
+          // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
+          // 像素在小螢幕會塞不下、大螢幕又太小。條碼是橫向長方形，框故意做
+          // 成寬扁形狀比較好對準。
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const width = Math.round(viewfinderWidth * 0.85)
+            const height = Math.round(Math.min(viewfinderHeight * 0.5, width * 0.45))
+            return { width, height }
+          },
+        },
         (decodedText: string) => {
           if (hasScanned) return
           hasScanned = true
@@ -67,26 +85,34 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
     return () => {
       cancelled = true
+      window.removeEventListener('keydown', onKeyDown)
       if (scanner) {
         scanner.stop().then(() => scanner.clear()).catch(() => {})
       }
     }
   }, [open])
 
+  if (!open) return null
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xs">
-        <DialogTitle className="text-base font-semibold">掃描條碼</DialogTitle>
-        {error ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <CameraOffIcon className="size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{error}</p>
-          </div>
-        ) : (
-          <div id={SCANNER_ELEMENT_ID} className="aspect-4/3 w-full overflow-hidden rounded-xl bg-black" />
-        )}
-        <p className="text-center text-xs text-muted-foreground">把商品上的條碼對準框內</p>
-      </DialogContent>
-    </Dialog>
+    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+      <div className="flex items-center justify-between px-4 py-3">
+        <p className="text-sm font-medium text-white">把商品上的條碼對準框內</p>
+        <button
+          onClick={() => onOpenChange(false)}
+          className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+        >
+          <XIcon className="size-5" />
+        </button>
+      </div>
+      {error ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+          <CameraOffIcon className="size-10 text-white/60" />
+          <p className="text-sm text-white/80">{error}</p>
+        </div>
+      ) : (
+        <div id={SCANNER_ELEMENT_ID} className="min-h-0 flex-1" />
+      )}
+    </div>
   )
 }

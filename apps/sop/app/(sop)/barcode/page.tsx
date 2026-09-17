@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, PackageSearchIcon } from 'lucide-react'
+import { BarcodeIcon, SearchIcon, PlusIcon, StarIcon, TagIcon, RefreshCwIcon, PackageSearchIcon, ScanLineIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/use-me'
 import { useProductFavorites } from '@/hooks/use-product-favorites'
@@ -11,6 +11,7 @@ import { useProductDeals } from '@/hooks/use-product-deals'
 import { AddProductSheet } from '@/components/sop/add-product-sheet'
 import { ProductCard } from '@/components/sop/product-card'
 import { ProductDetailDialog } from '@/components/sop/product-detail-dialog'
+import { BarcodeScanDialog } from '@/components/sop/barcode-scan-dialog'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import * as api from '@/lib/api'
@@ -45,6 +46,14 @@ function filterByKeyword(data: Product[], keyword: string): Product[] {
 function cleanEventLabels(raw: string | null): string[] {
   if (!raw) return []
   return raw.split('/').filter(Boolean).map(part => part.replace(/_\d{3}$/, ''))
+}
+
+// 掃描查詢：拿掃到的條碼直接比對商品的 code 欄位。只有原本手動新增/CSV 匯入
+// 那批（有真正條碼的）才查得到，7-11howhowfun 匯入的那批沒有存條碼、掃不到
+// 是預期內的正常狀況。UPC-A(12碼) 有時候會補一個前導 0 存成 EAN13(13碼)，
+// 兩種都試著比對一下。
+function findProductByCode(products: Product[], scanned: string): Product | undefined {
+  return products.find(p => p.code && (p.code === scanned || p.code === `0${scanned}` || `0${p.code}` === scanned))
 }
 
 // 把符合關鍵字的部分標亮，比對邏輯跟 7-11howhowfun 那個查詢頁一樣快、純前端做
@@ -91,6 +100,8 @@ export default function BarcodePage() {
   const [refreshMessage, setRefreshMessage] = useState('')
   const [allProducts, setAllProducts] = useState<Product[] | null>(null)
   const [allProductsLoading, setAllProductsLoading] = useState(false)
+  const [scanLookupOpen, setScanLookupOpen] = useState(false)
+  const [scanNotFoundCode, setScanNotFoundCode] = useState('')
 
   const loadAllProducts = useCallback(() => {
     setAllProductsLoading(true)
@@ -156,6 +167,18 @@ export default function BarcodePage() {
     setResults(prev => prev.filter(p => p.id !== productId))
     setAllProducts(prev => prev && prev.filter(p => p.id !== productId))
     reloadFavorites()
+  }
+
+  // 掃描查詢：掃到的條碼直接比對現有商品的 code 欄位、找到就打開詳細頁。
+  // 只有原本有存真正條碼的商品查得到，這是資料本身的限制，不是掃描沒掃準。
+  function handleScanLookup(code: string) {
+    setScanNotFoundCode('')
+    const matched = allProducts && findProductByCode(allProducts, code)
+    if (matched) {
+      setZoomProduct(matched)
+    } else {
+      setScanNotFoundCode(code)
+    }
   }
 
   // 重整 = 重新從 7-11howhowfun 抓一次最新資料，再把畫面上的商品目錄/筆數刷新——
@@ -278,6 +301,16 @@ export default function BarcodePage() {
               />
             </InputGroup>
 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setScanLookupOpen(true)}
+              title="掃描條碼查詢商品"
+              className="shrink-0 rounded-2xl border-transparent bg-muted/60"
+            >
+              <ScanLineIcon className="size-4.5" />
+            </Button>
+
             {events.length > 0 && (
               <Select
                 value={selectedEvent || undefined}
@@ -312,7 +345,18 @@ export default function BarcodePage() {
         onDeleted={handleProductDeleted}
       />
 
+      <BarcodeScanDialog
+        open={scanLookupOpen}
+        onOpenChange={setScanLookupOpen}
+        onScanned={handleScanLookup}
+      />
+
       <div className="flex flex-col gap-4 px-4 pt-4 pb-6 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-6">
+        {scanNotFoundCode && (
+          <p className="rounded-xl bg-rose-50 px-3 py-2 text-center text-xs text-rose-600 dark:bg-rose-900/20">
+            查無條碼「{scanNotFoundCode}」對應的商品——可能是這件商品沒有存真正的條碼資料
+          </p>
+        )}
         {mode === 'simple' ? (
           allProductsLoading && !allProducts ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
