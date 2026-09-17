@@ -62,11 +62,12 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       const scanConfig = {
         fps: 15,
         // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
-        // 像素在小螢幕會塞不下、大螢幕又太小。條碼是橫向長方形，框故意做
-        // 成寬扁形狀比較好對準。
+        // 像素在小螢幕會塞不下、大螢幕又太小。框故意放大、放寬鬆一點——
+        // 條碼實際印刷高度常常比想像中高（含下面那排數字），框太扁太小
+        // 的話邊緣很容易被切到，明明看起來對準了還是掃不到。
         qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const width = Math.round(viewfinderWidth * 0.85)
-          const height = Math.round(Math.min(viewfinderHeight * 0.5, width * 0.45))
+          const width = Math.round(viewfinderWidth * 0.92)
+          const height = Math.round(viewfinderHeight * 0.38)
           return { width, height }
         },
       }
