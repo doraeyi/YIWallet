@@ -19,6 +19,9 @@ interface BarcodeScanDialogProps {
 // 對照表可以自動猜，呼叫端要嘛拿掃到的值去比對現有商品、要嘛填進表單。
 export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScanDialogProps) {
   const [error, setError] = useState('')
+  // 除錯用：顯示鏡頭到底有沒有真的在嘗試解碼，還是根本沒在跑——不然每次
+  // 「掃不到」都只能靠猜，看不到中間發生什麼事。之後穩定了可以拿掉。
+  const [debugInfo, setDebugInfo] = useState('')
   const onScannedRef = useRef(onScanned)
   const onOpenChangeRef = useRef(onOpenChange)
 
@@ -37,9 +40,11 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
     let cancelled = false
     let hasScanned = false
+    let failCount = 0
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let scanner: any = null
     setError('')
+    setDebugInfo('準備中…')
 
     // 保險：正常情況鏡頭幾秒內就會回應（成功或失敗），真的卡住的話 8 秒後
     // 直接顯示錯誤，不要讓使用者對著黑畫面一直等、以為程式當掉。
@@ -73,8 +78,11 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         onScannedRef.current(decodedText)
         onOpenChangeRef.current(false)
       }
-      const onDecodeFail = () => {
-        // 單一 frame 沒掃到東西很正常，不用當錯誤處理
+      const onDecodeFail = (message: string) => {
+        // 單一 frame 沒掃到東西很正常，不用當錯誤處理——但記下來方便除錯，
+        // 用來確認鏡頭到底有沒有真的在跑解碼迴圈。
+        failCount += 1
+        if (!cancelled) setDebugInfo(`解碼中…已嘗試 ${failCount} 次，最近一次：${message}`)
       }
 
       scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
@@ -86,12 +94,18 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       // 不保證乾淨，重試可能卡在不上不下的黑畫面）。
       scanner
         .start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
-        .then(() => clearTimeout(startTimeoutId))
+        .then(() => {
+          clearTimeout(startTimeoutId)
+          if (!cancelled) setDebugInfo('鏡頭已開啟，等待解碼中…')
+        })
         .catch((firstErr: unknown) => {
           if (cancelled) return
           scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
           return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
-            .then(() => clearTimeout(startTimeoutId))
+            .then(() => {
+              clearTimeout(startTimeoutId)
+              if (!cancelled) setDebugInfo('鏡頭已開啟（重試成功），等待解碼中…')
+            })
             .catch((retryErr: unknown) => {
               clearTimeout(startTimeoutId)
               if (cancelled) return
@@ -132,6 +146,9 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         </div>
       ) : (
         <div id={SCANNER_ELEMENT_ID} className="min-h-0 flex-1" />
+      )}
+      {debugInfo && !error && (
+        <p className="break-all px-4 py-2 text-center text-[11px] text-white/50">{debugInfo}</p>
       )}
     </div>
   )
