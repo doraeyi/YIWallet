@@ -41,19 +41,24 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
     let scanner: any = null
     setError('')
 
+    // 保險：正常情況鏡頭幾秒內就會回應（成功或失敗），真的卡住的話 8 秒後
+    // 直接顯示錯誤，不要讓使用者對著黑畫面一直等、以為程式當掉。
+    const startTimeoutId = setTimeout(() => {
+      if (!cancelled && !hasScanned) {
+        setError('相機一直沒有回應，請關閉後重新整理頁面再試一次')
+      }
+    }, 8000)
+
     import('html5-qrcode').then(({ Html5Qrcode, Html5QrcodeSupportedFormats }) => {
       if (cancelled) return
-      scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-        ],
-        verbose: false,
-      })
 
+      const formatsToSupport = [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+      ]
       const scanConfig = {
         fps: 15,
         // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
@@ -68,6 +73,7 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       const onDecoded = (decodedText: string) => {
         if (hasScanned) return
         hasScanned = true
+        clearTimeout(startTimeoutId)
         onScannedRef.current(decodedText)
         onOpenChangeRef.current(false)
       }
@@ -75,16 +81,25 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         // 單一 frame 沒掃到東西很正常，不用當錯誤處理
       }
 
+      scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, { formatsToSupport, verbose: false })
+
       // 先跟鏡頭要高解析度畫面——解析度太低，密集的條碼線在正常閱讀距離下
       // 會糊成一團解不出來。但有些手機/瀏覽器不支援指定的解析度組合，硬要
       // 的話 getUserMedia 會直接失敗連鏡頭都開不了，所以失敗時退回最基本的
-      // 「後鏡頭」設定再試一次，總比完全不能用好。
+      // 「後鏡頭」設定再試一次。這裡刻意用「全新的」Html5Qrcode instance 重
+      // 試，不重用剛剛失敗那個——同一個 instance 失敗一次之後內部狀態不保證
+      // 乾淨，之前拿同一個 instance 重試會卡在不上不下的黑畫面、既不成功也
+      // 不報錯。
       scanner
         .start({ facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, scanConfig, onDecoded, onDecodeFail)
+        .then(() => clearTimeout(startTimeoutId))
         .catch((highResErr: unknown) => {
           if (cancelled) return
+          scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, { formatsToSupport, verbose: false })
           return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
+            .then(() => clearTimeout(startTimeoutId))
             .catch((fallbackErr: unknown) => {
+              clearTimeout(startTimeoutId)
               if (cancelled) return
               const detail = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
               console.error('[barcode-scan] camera start failed', { highResErr, fallbackErr })
@@ -95,6 +110,7 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
     return () => {
       cancelled = true
+      clearTimeout(startTimeoutId)
       window.removeEventListener('keydown', onKeyDown)
       if (scanner) {
         scanner.stop().then(() => scanner.clear()).catch(() => {})
