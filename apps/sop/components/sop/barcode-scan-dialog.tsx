@@ -19,6 +19,10 @@ interface BarcodeScanDialogProps {
 // 對照表可以自動猜，呼叫端要嘛拿掃到的值去比對現有商品、要嘛填進表單。
 export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScanDialogProps) {
   const [error, setError] = useState('')
+  // 除錯用：直接量測鏡頭容器/video 元素/html5-qrcode 畫的對焦框（DOM id
+  // 固定是 qr-shaded-region）三者實際的 clientWidth/clientHeight，不用再
+  // 猜畫面上看到的形狀是哪裡跑掉的。之後排查完可以拿掉。
+  const [debugDims, setDebugDims] = useState('')
   const onScannedRef = useRef(onScanned)
   const onOpenChangeRef = useRef(onOpenChange)
 
@@ -80,14 +84,33 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       // 讓瀏覽器自己挑鏡頭覺得合適的畫質，成功率明顯比較好。失敗的話重建
       // 一個全新的 instance 再試一次（同一個 instance 失敗一次後內部狀態
       // 不保證乾淨，重試可能卡在不上不下的黑畫面）。
+      function measureDims() {
+        if (cancelled) return
+        const container = document.getElementById(SCANNER_ELEMENT_ID)
+        const shaded = document.getElementById('qr-shaded-region')
+        const video = container?.querySelector('video')
+        const parts = [
+          `容器 ${container?.clientWidth ?? '?'}x${container?.clientHeight ?? '?'}`,
+          video ? `video ${video.clientWidth}x${video.clientHeight}（原始流 ${video.videoWidth}x${video.videoHeight}）` : 'video 找不到',
+          shaded ? `對焦框 ${shaded.clientWidth}x${shaded.clientHeight}` : '對焦框找不到',
+        ]
+        setDebugDims(parts.join(' / '))
+      }
+
       scanner
         .start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
-        .then(() => clearTimeout(startTimeoutId))
+        .then(() => {
+          clearTimeout(startTimeoutId)
+          setTimeout(measureDims, 500)
+        })
         .catch((firstErr: unknown) => {
           if (cancelled) return
           scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
           return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
-            .then(() => clearTimeout(startTimeoutId))
+            .then(() => {
+              clearTimeout(startTimeoutId)
+              setTimeout(measureDims, 500)
+            })
             .catch((retryErr: unknown) => {
               clearTimeout(startTimeoutId)
               if (cancelled) return
@@ -128,6 +151,9 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         </div>
       ) : (
         <div id={SCANNER_ELEMENT_ID} className="min-h-0 flex-1" />
+      )}
+      {debugDims && !error && (
+        <p className="break-all px-4 py-2 text-center text-[11px] text-white/50">{debugDims}</p>
       )}
     </div>
   )
