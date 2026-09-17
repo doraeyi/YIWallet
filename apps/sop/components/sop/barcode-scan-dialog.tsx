@@ -52,16 +52,18 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
     import('html5-qrcode').then(({ Html5Qrcode }) => {
       if (cancelled) return
 
-      // 這組參數是直接從另一個「掃得到」的參考網站（fantasy871014 的
-      // barcode-app）扒出來的實際設定，不是憑感覺調的：fps 故意是「低」的
-      // 8（不是越高越好，每個 frame 有更多時間處理反而更容易解出來）、
-      // aspectRatio 1.5 是我們原本完全沒設定過的鏡頭串流長寬比、qrbox 也
-      // 是固定 280x140 像素，不是動態算的。連 Html5Qrcode 建構子都完全沒
-      // 限制格式（formatsToSupport），這裡照抄，先讓掃描能力對齊到跟參考
-      // 網站一樣，之後有餘裕再視情況調整。
+      // fps 8、aspectRatio 1.5 是從另一個「掃得到」的參考網站（fantasy871014
+      // 的 barcode-app）扒出來的實際設定，不是憑感覺調的。qrbox 那邊沒有照抄
+      // 對方的固定 {width:280,height:140}——html5-qrcode 給固定物件時內部會
+      // 取兩者較小值，框會被夾成正方形；改用函式寫法自己算寬扁矩形，才不會
+      // 被這個內部行為吃掉。
       const scanConfig = {
         fps: 8,
-        qrbox: { width: 280, height: 140 },
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const width = Math.round(Math.min(viewfinderWidth * 0.85, 320))
+          const height = Math.round(width * 0.45)
+          return { width, height }
+        },
         aspectRatio: 1.5,
       }
       const onDecoded = (decodedText: string) => {
