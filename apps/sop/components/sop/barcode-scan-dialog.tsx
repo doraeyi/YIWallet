@@ -6,7 +6,7 @@ import { CameraOffIcon, XIcon } from 'lucide-react'
 const SCANNER_ELEMENT_ID = 'sop-barcode-scan-region'
 // 純粹用來確認手機上載入的是不是最新部署的版本，不是快取住的舊頁面。
 // 之後排查完會整個拿掉（連同上面的除錯量測邏輯）。
-const DEBUG_BUILD_TAG = 'build-v3-no-aspectratio'
+const DEBUG_BUILD_TAG = 'build-v4-video-object-fit-cover'
 
 interface BarcodeScanDialogProps {
   open: boolean
@@ -160,6 +160,10 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       ) : (
         <div id={SCANNER_ELEMENT_ID} className="min-h-0 flex-1" />
       )}
+      {/* 鏡頭原始串流通常比容器瘦長，預設會等比縮放置中、上下留黑邊——這個
+          留白正是對焦框計算跑掉的根源（video 高度 ≠ 容器高度）。強制裁切
+          滿版，讓 video 確實撐滿容器，對焦框的高度算法才會準。 */}
+      <style>{`#${SCANNER_ELEMENT_ID} video { width: 100% !important; height: 100% !important; object-fit: cover !important; }`}</style>
       {debugDims && !error && (
         <p className="break-all px-4 py-2 text-center text-[11px] text-white/50">{debugDims}</p>
       )}
