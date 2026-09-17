@@ -11,9 +11,9 @@ interface BarcodeScanDialogProps {
   onScanned: (code: string) => void
 }
 
-// 用手機鏡頭掃實體商品上的條碼。全螢幕呈現（不是塞在小彈窗裡）＋對焦框依
-// 螢幕實際尺寸動態計算，是為了解決「一直要橋角度、掃不到」的問題——畫面
-// 越小、對焦框用固定像素算，手機螢幕尺寸一多就會對不準。
+// 用手機鏡頭掃實體商品上的條碼。全螢幕呈現（不是塞在小彈窗裡），讓鏡頭
+// 預覽區最大化，比塞在小彈窗裡好對準。掃描相關參數（fps/qrbox/aspectRatio）
+// 是照抄一個實測掃得到的參考網站的設定，見下面 scanConfig 的註解。
 //
 // 只負責「掃到什麼」，不負責判斷這個條碼對應哪個商品——那件事沒有現成的
 // 對照表可以自動猜，呼叫端要嘛拿掃到的值去比對現有商品、要嘛填進表單。
@@ -54,16 +54,13 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
       // fps 8、aspectRatio 1.5 是從另一個「掃得到」的參考網站（fantasy871014
       // 的 barcode-app）扒出來的實際設定，不是憑感覺調的。qrbox 那邊沒有照抄
-      // 對方的固定 {width:280,height:140}——html5-qrcode 給固定物件時內部會
-      // 取兩者較小值，框會被夾成正方形；改用函式寫法自己算寬扁矩形，才不會
-      // 被這個內部行為吃掉，比例調成貼近條碼本身的寬扁形狀（約 3:1）。
+      // 這三個值原封不動照抄對方的設定，不要自己改——包含 qrbox 那個
+      // {width:280,height:140} 固定物件，即使它在畫面上看起來偏正方形
+      // （html5-qrcode 對固定物件的內部處理就是這樣），也不要「修正」成
+      // 別的形狀，避免又跟參考網站的設定不一致。
       const scanConfig = {
         fps: 8,
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const width = Math.round(Math.min(viewfinderWidth * 0.85, 320))
-          const height = Math.round(width * 0.32)
-          return { width, height }
-        },
+        qrbox: { width: 280, height: 140 },
         aspectRatio: 1.5,
       }
       const onDecoded = (decodedText: string) => {
