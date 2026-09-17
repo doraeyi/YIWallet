@@ -56,15 +56,19 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
     import('html5-qrcode').then(({ Html5Qrcode }) => {
       if (cancelled) return
 
-      // fps 8、aspectRatio 1.5 是從另一個「掃得到」的參考網站（fantasy871014
-      // 的 barcode-app）扒出來的實際設定。qrbox 查過函式庫原始碼確認：給固定
-      // {width,height} 物件不會被夾成正方形，只有寬度超過畫面實際寬度時才會
-      // 被裁切、高度不受影響——所以框故意做小一點、寬扁一點，確保在大多數
-      // 手機螢幕寬度下都不會被裁切變形。
+      // fps 8 是從另一個「掃得到」的參考網站（fantasy871014 的 barcode-app）
+      // 扒出來的實際設定。aspectRatio 1.5 原本也是照抄，但實測+算過數學後
+      // 發現它跟我們「全螢幕直向」的版面互相打架：html5-qrcode 算對焦框邊框
+      // 粗細是拿「video 實際高度」去算，但畫框的 div 卻貼齊「容器」撐滿——
+      // 我們要求橫向 1.5 的畫面塞進直向容器，video 會比容器矮（上下留白），
+      // 這個落差害對焦框的高度算爆掉（實測案例：容器 733、video 524，落差
+      // 209，算出來對焦框從設定的 90 變成 299，剛好對得起來）。參考網站的
+      // 掃描窗本來就是小小一塊偏橫向的區域，aspectRatio 1.5 對它不會有這個
+      // 落差問題，但直接照搬到我們的版面上就出問題，所以拿掉這個設定，讓
+      // 鏡頭自然用貼合直向容器的畫面比例，qrbox 才會照實際設定的形狀顯示。
       const scanConfig = {
         fps: 8,
         qrbox: { width: 260, height: 90 },
-        aspectRatio: 1.5,
       }
       const onDecoded = (decodedText: string) => {
         if (hasScanned) return
