@@ -60,7 +60,7 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         Html5QrcodeSupportedFormats.UPC_E,
       ]
       const scanConfig = {
-        fps: 15,
+        fps: 20,
         // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
         // 像素在小螢幕會塞不下、大螢幕又太小。框故意放大、放寬鬆一點——
         // 條碼實際印刷高度常常比想像中高（含下面那排數字），框太扁太小
@@ -84,26 +84,24 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
       scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, { formatsToSupport, verbose: false })
 
-      // 先跟鏡頭要高解析度畫面——解析度太低，密集的條碼線在正常閱讀距離下
-      // 會糊成一團解不出來。但有些手機/瀏覽器不支援指定的解析度組合，硬要
-      // 的話 getUserMedia 會直接失敗連鏡頭都開不了，所以失敗時退回最基本的
-      // 「後鏡頭」設定再試一次。這裡刻意用「全新的」Html5Qrcode instance 重
-      // 試，不重用剛剛失敗那個——同一個 instance 失敗一次之後內部狀態不保證
-      // 乾淨，之前拿同一個 instance 重試會卡在不上不下的黑畫面、既不成功也
-      // 不報錯。
+      // 不強制指定解析度——實測過要求 1920x1080 反而讓同一支手機、同一個
+      // 條碼掃不出來（可能是相機為了滿足高解析度犧牲了對焦/更新頻率），
+      // 讓瀏覽器自己挑鏡頭覺得合適的畫質，成功率明顯比較好。失敗的話重建
+      // 一個全新的 instance 再試一次（同一個 instance 失敗一次後內部狀態
+      // 不保證乾淨，重試可能卡在不上不下的黑畫面）。
       scanner
-        .start({ facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, scanConfig, onDecoded, onDecodeFail)
+        .start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
         .then(() => clearTimeout(startTimeoutId))
-        .catch((highResErr: unknown) => {
+        .catch((firstErr: unknown) => {
           if (cancelled) return
           scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, { formatsToSupport, verbose: false })
           return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
             .then(() => clearTimeout(startTimeoutId))
-            .catch((fallbackErr: unknown) => {
+            .catch((retryErr: unknown) => {
               clearTimeout(startTimeoutId)
               if (cancelled) return
-              const detail = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
-              console.error('[barcode-scan] camera start failed', { highResErr, fallbackErr })
+              const detail = retryErr instanceof Error ? retryErr.message : String(retryErr)
+              console.error('[barcode-scan] camera start failed', { firstErr, retryErr })
               setError(`無法開啟相機，請確認瀏覽器已允許鏡頭權限（${detail}）`)
             })
         })
