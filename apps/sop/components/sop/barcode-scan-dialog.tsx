@@ -53,14 +53,13 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       if (cancelled) return
 
       // fps 8、aspectRatio 1.5 是從另一個「掃得到」的參考網站（fantasy871014
-      // 的 barcode-app）扒出來的實際設定，不是憑感覺調的。qrbox 那邊沒有照抄
-      // 這三個值原封不動照抄對方的設定，不要自己改——包含 qrbox 那個
-      // {width:280,height:140} 固定物件，即使它在畫面上看起來偏正方形
-      // （html5-qrcode 對固定物件的內部處理就是這樣），也不要「修正」成
-      // 別的形狀，避免又跟參考網站的設定不一致。
+      // 的 barcode-app）扒出來的實際設定。qrbox 查過函式庫原始碼確認：給固定
+      // {width,height} 物件不會被夾成正方形，只有寬度超過畫面實際寬度時才會
+      // 被裁切、高度不受影響——所以框故意做小一點、寬扁一點，確保在大多數
+      // 手機螢幕寬度下都不會被裁切變形。
       const scanConfig = {
         fps: 8,
-        qrbox: { width: 280, height: 140 },
+        qrbox: { width: 260, height: 90 },
         aspectRatio: 1.5,
       }
       const onDecoded = (decodedText: string) => {
