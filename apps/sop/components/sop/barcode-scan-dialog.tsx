@@ -49,27 +49,20 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       }
     }, 8000)
 
-    import('html5-qrcode').then(({ Html5Qrcode, Html5QrcodeSupportedFormats }) => {
+    import('html5-qrcode').then(({ Html5Qrcode }) => {
       if (cancelled) return
 
-      const formatsToSupport = [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-      ]
+      // 這組參數是直接從另一個「掃得到」的參考網站（fantasy871014 的
+      // barcode-app）扒出來的實際設定，不是憑感覺調的：fps 故意是「低」的
+      // 8（不是越高越好，每個 frame 有更多時間處理反而更容易解出來）、
+      // aspectRatio 1.5 是我們原本完全沒設定過的鏡頭串流長寬比、qrbox 也
+      // 是固定 280x140 像素，不是動態算的。連 Html5Qrcode 建構子都完全沒
+      // 限制格式（formatsToSupport），這裡照抄，先讓掃描能力對齊到跟參考
+      // 網站一樣，之後有餘裕再視情況調整。
       const scanConfig = {
-        fps: 20,
-        // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
-        // 像素在小螢幕會塞不下、大螢幕又太小。框故意放大、放寬鬆一點——
-        // 條碼實際印刷高度常常比想像中高（含下面那排數字），框太扁太小
-        // 的話邊緣很容易被切到，明明看起來對準了還是掃不到。
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const width = Math.round(viewfinderWidth * 0.92)
-          const height = Math.round(viewfinderHeight * 0.38)
-          return { width, height }
-        },
+        fps: 8,
+        qrbox: { width: 280, height: 140 },
+        aspectRatio: 1.5,
       }
       const onDecoded = (decodedText: string) => {
         if (hasScanned) return
@@ -82,7 +75,7 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         // 單一 frame 沒掃到東西很正常，不用當錯誤處理
       }
 
-      scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, { formatsToSupport, verbose: false })
+      scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
 
       // 不強制指定解析度——實測過要求 1920x1080 反而讓同一支手機、同一個
       // 條碼掃不出來（可能是相機為了滿足高解析度犧牲了對焦/更新頻率），
@@ -94,7 +87,7 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         .then(() => clearTimeout(startTimeoutId))
         .catch((firstErr: unknown) => {
           if (cancelled) return
-          scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, { formatsToSupport, verbose: false })
+          scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
           return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
             .then(() => clearTimeout(startTimeoutId))
             .catch((retryErr: unknown) => {
