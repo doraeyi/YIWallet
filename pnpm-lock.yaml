@@ -16,6 +16,9 @@ importers:
       '@yiwallet/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      html5-qrcode:
+        specifier: ^2.3.8
+        version: 2.3.8
       jsbarcode:
         specifier: ^3.12.3
         version: 3.12.3
@@ -2976,6 +2979,9 @@ packages:
   hono@4.13.0:
     resolution: {integrity: sha512-jhunvfHWxd7J5EFfSgH4xsYJzSe/lfqbUCxiyyeaQasUsXeEHXtzVid+7EOGByc5JnFa23SSFL3Y2RV/z1T+eQ==}
     engines: {node: '>=16.9.0'}
+
+  html5-qrcode@2.3.8:
+    resolution: {integrity: sha512-jsr4vafJhwoLVEDW3n1KvPnCCXWaQfRng0/EEYk1vNcQGcG/htAdhJX0be8YyqMoSz7+hZvOZSTAepsabiuhiQ==}
 
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
@@ -7437,6 +7443,8 @@ snapshots:
       hermes-estree: 0.25.1
 
   hono@4.13.0: {}
+
+  html5-qrcode@2.3.8: {}
 
   http-errors@2.0.1:
     dependencies:

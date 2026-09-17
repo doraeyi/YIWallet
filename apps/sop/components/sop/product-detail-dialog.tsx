@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, Trash2Icon, XIcon } from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, ScanLineIcon, Trash2Icon, XIcon } from 'lucide-react'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ProductBarcode } from './product-card'
+import { BarcodeScanDialog } from './barcode-scan-dialog'
 import * as api from '@/lib/api'
 import type { Product } from '@/lib/types'
 
@@ -41,6 +42,7 @@ export function ProductDetailDialog({ product, list = [], onNavigate, onOpenChan
   const [form, setForm] = useState({ itemNo: '', type: 'EAN13', code: '', name: '', event: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [scanOpen, setScanOpen] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   // 換了一個商品（或第一次打開）就重置表單，比照 React 官方建議的
@@ -200,10 +202,27 @@ export function ProductDetailDialog({ product, list = [], onNavigate, onOpenChan
                 {TYPE_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input
-              value={form.code}
-              onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-              placeholder="條碼"
+            <div className="flex gap-2">
+              <Input
+                value={form.code}
+                onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
+                placeholder="條碼"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setScanOpen(true)}
+                title="用鏡頭掃描條碼填入"
+              >
+                <ScanLineIcon className="size-4" />
+              </Button>
+            </div>
+            <BarcodeScanDialog
+              open={scanOpen}
+              onOpenChange={setScanOpen}
+              onScanned={code => setForm(f => ({ ...f, code }))}
             />
             <Input
               value={form.name}

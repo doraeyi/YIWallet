@@ -17,8 +17,6 @@ import * as api from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-// Radix Select 不支援空字串當選項值，「全部」用這個代稱，對外仍轉回空字串
-const ALL_EVENTS = 'all'
 
 // 目前先只開放簡易模式（純文字清單、純前端篩選）。「條碼模式」（卡片+條碼圖+
 // 收藏/砍貨）的程式碼都還在，之後要重新開放的話，把 mode 改回可切換、UI 加
@@ -282,14 +280,13 @@ export default function BarcodePage() {
 
             {events.length > 0 && (
               <Select
-                value={selectedEvent || ALL_EVENTS}
-                onValueChange={v => setSelectedEvent(v === ALL_EVENTS ? '' : v)}
+                value={selectedEvent || undefined}
+                onValueChange={v => setSelectedEvent(v)}
               >
                 <SelectTrigger className="w-28 shrink-0 rounded-2xl border-transparent bg-muted/60">
                   <SelectValue placeholder="檔期" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL_EVENTS}>檔期：全部</SelectItem>
                   {events.map(ev => (
                     <SelectItem key={ev} value={ev}>{formatEventLabel(ev)}</SelectItem>
                   ))}
