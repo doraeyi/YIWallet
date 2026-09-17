@@ -19,9 +19,6 @@ interface BarcodeScanDialogProps {
 // 對照表可以自動猜，呼叫端要嘛拿掃到的值去比對現有商品、要嘛填進表單。
 export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScanDialogProps) {
   const [error, setError] = useState('')
-  // 除錯用：顯示鏡頭到底有沒有真的在嘗試解碼，還是根本沒在跑——不然每次
-  // 「掃不到」都只能靠猜，看不到中間發生什麼事。之後穩定了可以拿掉。
-  const [debugInfo, setDebugInfo] = useState('')
   const onScannedRef = useRef(onScanned)
   const onOpenChangeRef = useRef(onOpenChange)
 
@@ -40,11 +37,9 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
 
     let cancelled = false
     let hasScanned = false
-    let failCount = 0
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let scanner: any = null
     setError('')
-    setDebugInfo('準備中…')
 
     // 保險：正常情況鏡頭幾秒內就會回應（成功或失敗），真的卡住的話 8 秒後
     // 直接顯示錯誤，不要讓使用者對著黑畫面一直等、以為程式當掉。
@@ -61,12 +56,12 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       // 的 barcode-app）扒出來的實際設定，不是憑感覺調的。qrbox 那邊沒有照抄
       // 對方的固定 {width:280,height:140}——html5-qrcode 給固定物件時內部會
       // 取兩者較小值，框會被夾成正方形；改用函式寫法自己算寬扁矩形，才不會
-      // 被這個內部行為吃掉。
+      // 被這個內部行為吃掉，比例調成貼近條碼本身的寬扁形狀（約 3:1）。
       const scanConfig = {
         fps: 8,
         qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
           const width = Math.round(Math.min(viewfinderWidth * 0.85, 320))
-          const height = Math.round(width * 0.45)
+          const height = Math.round(width * 0.32)
           return { width, height }
         },
         aspectRatio: 1.5,
@@ -78,11 +73,8 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         onScannedRef.current(decodedText)
         onOpenChangeRef.current(false)
       }
-      const onDecodeFail = (message: string) => {
-        // 單一 frame 沒掃到東西很正常，不用當錯誤處理——但記下來方便除錯，
-        // 用來確認鏡頭到底有沒有真的在跑解碼迴圈。
-        failCount += 1
-        if (!cancelled) setDebugInfo(`解碼中…已嘗試 ${failCount} 次，最近一次：${message}`)
+      const onDecodeFail = () => {
+        // 單一 frame 沒掃到東西很正常，不用當錯誤處理
       }
 
       scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
@@ -94,18 +86,12 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
       // 不保證乾淨，重試可能卡在不上不下的黑畫面）。
       scanner
         .start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
-        .then(() => {
-          clearTimeout(startTimeoutId)
-          if (!cancelled) setDebugInfo('鏡頭已開啟，等待解碼中…')
-        })
+        .then(() => clearTimeout(startTimeoutId))
         .catch((firstErr: unknown) => {
           if (cancelled) return
           scanner = new Html5Qrcode(SCANNER_ELEMENT_ID)
           return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
-            .then(() => {
-              clearTimeout(startTimeoutId)
-              if (!cancelled) setDebugInfo('鏡頭已開啟（重試成功），等待解碼中…')
-            })
+            .then(() => clearTimeout(startTimeoutId))
             .catch((retryErr: unknown) => {
               clearTimeout(startTimeoutId)
               if (cancelled) return
@@ -146,9 +132,6 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         </div>
       ) : (
         <div id={SCANNER_ELEMENT_ID} className="min-h-0 flex-1" />
-      )}
-      {debugInfo && !error && (
-        <p className="break-all px-4 py-2 text-center text-[11px] text-white/50">{debugInfo}</p>
       )}
     </div>
   )
