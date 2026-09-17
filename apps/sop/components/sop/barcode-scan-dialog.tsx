@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { CameraOffIcon, XIcon } from 'lucide-react'
 
 const SCANNER_ELEMENT_ID = 'sop-barcode-scan-region'
+// 純粹用來確認手機上載入的是不是最新部署的版本，不是快取住的舊頁面。
+// 之後排查完會整個拿掉（連同上面的除錯量測邏輯）。
+const DEBUG_BUILD_TAG = 'build-v3-no-aspectratio'
 
 interface BarcodeScanDialogProps {
   open: boolean
@@ -94,6 +97,7 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         const shaded = document.getElementById('qr-shaded-region')
         const video = container?.querySelector('video')
         const parts = [
+          DEBUG_BUILD_TAG,
           `容器 ${container?.clientWidth ?? '?'}x${container?.clientHeight ?? '?'}`,
           video ? `video ${video.clientWidth}x${video.clientHeight}（原始流 ${video.videoWidth}x${video.videoHeight}）` : 'video 找不到',
           shaded ? `對焦框 ${shaded.clientWidth}x${shaded.clientHeight}` : '對焦框找不到',
