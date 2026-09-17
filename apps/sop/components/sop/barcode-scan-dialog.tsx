@@ -54,33 +54,43 @@ export function BarcodeScanDialog({ open, onOpenChange, onScanned }: BarcodeScan
         verbose: false,
       })
 
-      scanner.start(
-        // 順便跟鏡頭要高解析度畫面——解析度太低，密集的條碼線在正常閱讀距離
-        // 下會糊成一團解不出來，這也是常見的「一直掃不到」原因。
-        { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-        {
-          fps: 15,
-          // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
-          // 像素在小螢幕會塞不下、大螢幕又太小。條碼是橫向長方形，框故意做
-          // 成寬扁形狀比較好對準。
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.round(viewfinderWidth * 0.85)
-            const height = Math.round(Math.min(viewfinderHeight * 0.5, width * 0.45))
-            return { width, height }
-          },
+      const scanConfig = {
+        fps: 15,
+        // 對焦框依實際畫面寬高算，不用固定像素：手機螢幕尺寸差很多，固定
+        // 像素在小螢幕會塞不下、大螢幕又太小。條碼是橫向長方形，框故意做
+        // 成寬扁形狀比較好對準。
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const width = Math.round(viewfinderWidth * 0.85)
+          const height = Math.round(Math.min(viewfinderHeight * 0.5, width * 0.45))
+          return { width, height }
         },
-        (decodedText: string) => {
-          if (hasScanned) return
-          hasScanned = true
-          onScannedRef.current(decodedText)
-          onOpenChangeRef.current(false)
-        },
-        () => {
-          // 單一 frame 沒掃到東西很正常，不用當錯誤處理
-        },
-      ).catch(() => {
-        if (!cancelled) setError('無法開啟相機，請確認瀏覽器已允許鏡頭權限')
-      })
+      }
+      const onDecoded = (decodedText: string) => {
+        if (hasScanned) return
+        hasScanned = true
+        onScannedRef.current(decodedText)
+        onOpenChangeRef.current(false)
+      }
+      const onDecodeFail = () => {
+        // 單一 frame 沒掃到東西很正常，不用當錯誤處理
+      }
+
+      // 先跟鏡頭要高解析度畫面——解析度太低，密集的條碼線在正常閱讀距離下
+      // 會糊成一團解不出來。但有些手機/瀏覽器不支援指定的解析度組合，硬要
+      // 的話 getUserMedia 會直接失敗連鏡頭都開不了，所以失敗時退回最基本的
+      // 「後鏡頭」設定再試一次，總比完全不能用好。
+      scanner
+        .start({ facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, scanConfig, onDecoded, onDecodeFail)
+        .catch((highResErr: unknown) => {
+          if (cancelled) return
+          return scanner.start({ facingMode: 'environment' }, scanConfig, onDecoded, onDecodeFail)
+            .catch((fallbackErr: unknown) => {
+              if (cancelled) return
+              const detail = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+              console.error('[barcode-scan] camera start failed', { highResErr, fallbackErr })
+              setError(`無法開啟相機，請確認瀏覽器已允許鏡頭權限（${detail}）`)
+            })
+        })
     })
 
     return () => {
