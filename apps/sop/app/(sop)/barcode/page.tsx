@@ -290,6 +290,22 @@ export default function BarcodePage() {
           )}
 
           <div className="flex gap-2">
+            {events.length > 0 && (
+              <Select
+                value={selectedEvent || undefined}
+                onValueChange={v => setSelectedEvent(v)}
+              >
+                <SelectTrigger className="w-28 shrink-0 rounded-2xl border-transparent bg-muted/60">
+                  <SelectValue placeholder="檔期" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events.map(ev => (
+                    <SelectItem key={ev} value={ev}>{formatEventLabel(ev)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <InputGroup className="min-w-0 flex-1 rounded-2xl border-transparent bg-muted/60 shadow-none focus-within:border-ring focus-within:bg-background focus-within:shadow-sm">
               <InputGroupAddon>
                 <SearchIcon className="text-muted-foreground" />
@@ -310,22 +326,6 @@ export default function BarcodePage() {
             >
               <ScanLineIcon className="size-4.5" />
             </Button>
-
-            {events.length > 0 && (
-              <Select
-                value={selectedEvent || undefined}
-                onValueChange={v => setSelectedEvent(v)}
-              >
-                <SelectTrigger className="w-28 shrink-0 rounded-2xl border-transparent bg-muted/60">
-                  <SelectValue placeholder="檔期" />
-                </SelectTrigger>
-                <SelectContent>
-                  {events.map(ev => (
-                    <SelectItem key={ev} value={ev}>{formatEventLabel(ev)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
           </div>
         </div>
       </div>
