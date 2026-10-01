@@ -183,7 +183,7 @@ if (!data || !data.month) {
   const wd = w.addStack()
   for (let i = 0; i < 7; i++) {
     const c = wd.addStack()
-    c.size = new Size(0, 14)
+    c.size = new Size(40, 14)
     centered(c, row => {
       const t = row.addText(WEEK[i])
       t.font = Font.systemFont(10)
@@ -197,6 +197,7 @@ if (!data || !data.month) {
   weeks.forEach((wk, wi) => {
     if (wi > 0) w.addSpacer()
     const row = w.addStack()
+    row.topAlignContent()
     for (let i = 0; i < 7; i++) {
       const d = wk[i]
       const cell = row.addStack()
