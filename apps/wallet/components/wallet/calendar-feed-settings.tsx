@@ -103,6 +103,7 @@ Script.complete()
 
 // iPhone 的 Scriptable「月曆」小工具：叫 /api/calendar/<token>/month 拿整月班表，
 // 排成 7 欄月曆，有班的日子下面放班別小標籤（早／晚／跨，或上班小時）。
+// 日期顏色比照 iPhone 內建行事曆：週日和國定假日紅字、週六藍字。
 // 大尺寸顯示整個月；中尺寸放不下就只顯示本週＋下週。版面跟 Android 的
 // /api/calendar/<token>/month-widget 一致。
 function buildScriptableMonthScript(monthUrl: string, scheduleUrl: string): string {
@@ -116,6 +117,8 @@ const TEXT = dyn('#111827', '#F5F5F7')
 const SUB = dyn('#6B7280', '#A1A1AA')
 const ACCENT = dyn('#D97706', '#FBBF24')
 const ON_ACCENT = dyn('#FFFFFF', '#1C1C1E')
+const RED = dyn('#DC2626', '#F87171')
+const SAT = dyn('#2563EB', '#60A5FA')
 
 function hex(c) { return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : '#F59E0B' }
 function chipText(s) { return s.label ? s.label.slice(0, 1) : String(Number(s.start.slice(0, 2))) }
@@ -150,6 +153,7 @@ if (!data || !data.month) {
   const days = new Date(y, m, 0).getDate()
   const byDate = {}
   for (const s of data.shifts) (byDate[s.date] = byDate[s.date] || []).push(s)
+  const holidays = new Set((data.holidays || []).map(h => h.date))
 
   const cells = []
   for (let i = 0; i < firstDow; i++) cells.push(null)
@@ -183,13 +187,15 @@ if (!data || !data.month) {
     centered(c, row => {
       const t = row.addText(WEEK[i])
       t.font = Font.systemFont(10)
-      t.textColor = SUB
+      t.textColor = i === 0 ? RED : i === 6 ? SAT : SUB
     })
     if (i < 6) wd.addSpacer()
   }
   w.addSpacer(2)
 
-  for (const wk of weeks) {
+  // 週與週之間放彈性 spacer，讓月曆把小工具的高度撐滿，不會下面空一截
+  weeks.forEach((wk, wi) => {
+    if (wi > 0) w.addSpacer()
     const row = w.addStack()
     for (let i = 0; i < 7; i++) {
       const d = wk[i]
@@ -207,7 +213,7 @@ if (!data || !data.month) {
           if (isToday) { n.backgroundColor = ACCENT; n.cornerRadius = 10 }
           const t = n.addText(String(d))
           t.font = isToday ? Font.boldSystemFont(12) : Font.mediumSystemFont(12)
-          t.textColor = isToday ? ON_ACCENT : (i === 0 || i === 6 ? SUB : TEXT)
+          t.textColor = isToday ? ON_ACCENT : (i === 0 || holidays.has(iso)) ? RED : i === 6 ? SAT : TEXT
           if (isPast && !isToday) t.textOpacity = 0.4
         })
         for (const s of (byDate[iso] || []).slice(0, 1)) {
@@ -227,10 +233,9 @@ if (!data || !data.month) {
       cell.addSpacer()
       if (i < 6) row.addSpacer()
     }
-  }
+  })
 }
 
-w.addSpacer()
 w.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000)
 Script.setWidget(w)
 if (!config.runsInWidget) await w.presentLarge()
