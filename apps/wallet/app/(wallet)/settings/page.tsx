@@ -13,6 +13,7 @@ import { logout } from '@/app/actions/auth'
 import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
+import { CalendarFeedSettings } from '@/components/wallet/calendar-feed-settings'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useTheme, type ThemePref } from '@/hooks/use-theme'
 import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react'
@@ -580,6 +581,10 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* ── 班表同步 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">班表同步</p>
+        <CalendarFeedSettings />
 
         {/* ── 功能 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">功能</p>

@@ -811,6 +811,25 @@ export async function fetchLineQuota(): Promise<LineQuota> {
   return res.json()
 }
 
+// ── 班表行事曆訂閱／桌面小工具 token ─────────────────────────────────
+
+export async function fetchCalendarToken(): Promise<string | null> {
+  const res = await fetch(`${API}/calendar/feed-token`)
+  if (!res.ok) throw new Error('Failed to fetch calendar token')
+  return (await res.json()).token
+}
+
+export async function rotateCalendarToken(): Promise<string> {
+  const res = await fetch(`${API}/calendar/feed-token`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to create calendar token')
+  return (await res.json()).token
+}
+
+export async function disableCalendarToken(): Promise<void> {
+  const res = await fetch(`${API}/calendar/feed-token`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to disable calendar token')
+}
+
 // ── 目前登入使用者（含各項功能權限旗標）──────────────────────────────
 
 interface ApiMeProfile {
