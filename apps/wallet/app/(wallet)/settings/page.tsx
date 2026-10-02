@@ -13,6 +13,7 @@ import { logout } from '@/app/actions/auth'
 import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
+import { ApplePayRecordSettings } from '@/components/wallet/apple-pay-record-settings'
 import { CalendarFeedSettings } from '@/components/wallet/calendar-feed-settings'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useTheme, type ThemePref } from '@/hooks/use-theme'
@@ -581,6 +582,10 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* ── 自動記帳 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
+        <ApplePayRecordSettings />
 
         {/* ── 班表同步 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">班表同步</p>

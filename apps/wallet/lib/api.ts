@@ -830,6 +830,25 @@ export async function disableCalendarToken(): Promise<void> {
   if (!res.ok) throw new Error('Failed to disable calendar token')
 }
 
+// ── Apple Pay 捷徑自動記帳的 token ──────────────────────────────────
+
+export async function fetchRecordToken(): Promise<string | null> {
+  const res = await fetch(`${API}/auto-record/token`)
+  if (!res.ok) throw new Error('Failed to fetch record token')
+  return (await res.json()).token
+}
+
+export async function rotateRecordToken(): Promise<string> {
+  const res = await fetch(`${API}/auto-record/token`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to create record token')
+  return (await res.json()).token
+}
+
+export async function disableRecordToken(): Promise<void> {
+  const res = await fetch(`${API}/auto-record/token`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to disable record token')
+}
+
 // ── 目前登入使用者（含各項功能權限旗標）──────────────────────────────
 
 interface ApiMeProfile {
