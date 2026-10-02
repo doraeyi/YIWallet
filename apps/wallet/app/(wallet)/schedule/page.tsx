@@ -44,9 +44,9 @@ export default function SchedulePage() {
   const [myName, setMyName] = useState<string | null>(null)
   const [friends, setFriends] = useState<Friendship[]>([])
   const [holidays, setHolidays] = useState<Set<string>>(new Set())
-  // 工作切換器：預設每個工作的班表/薪資分開顯示，只有使用者主動切成「全部」才合併顯示
+  // 工作切換器：預設每個工作的班表/薪資分開顯示；有兩份以上工作時才有「合併顯示」開關
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
-  const [showAllJobs, setShowAllJobs] = useState(false)
+  const [mergeJobs, setMergeJobs] = useState(false)
   const [coworkersDialogOpen, setCoworkersDialogOpen] = useState(false)
   const isDesktop = useIsDesktop()
   const { transactions, addTransaction, deleteTransaction } = useTransactions()
@@ -134,14 +134,10 @@ export default function SchedulePage() {
   const jobs = useMemo(() => [...ownJobs, ...sharedJobs], [ownJobs, sharedJobs])
   const ownJobIds = useMemo(() => new Set(ownJobs.map(j => j.id)), [ownJobs])
 
-  // 手機版拿掉工作切換 tab，改左右滑動；「全部」也算序列裡的一格，跟桌機版 tab 順序一致
-  const jobViewSequence = useMemo(
-    () => [{ kind: 'all' as const }, ...jobs.map(job => ({ kind: 'job' as const, job }))],
-    [jobs],
-  )
-  const currentJobViewIndex = showAllJobs || jobs.length === 0
-    ? 0
-    : jobViewSequence.findIndex(v => v.kind === 'job' && v.job.id === (activeJobId ?? jobs[0]?.id))
+  // 只有一份工作時「合併」跟單看那份工作一樣，開關不顯示也不生效
+  const showAllJobs = mergeJobs && jobs.length > 1
+  // 手機版拿掉工作切換 tab，改左右滑動在各工作之間切換
+  const currentJobViewIndex = Math.max(0, jobs.findIndex(j => j.id === (activeJobId ?? jobs[0]?.id)))
   const activeJob = jobs.find(j => j.id === (activeJobId ?? jobs[0]?.id)) ?? null
   const isOwnActiveJob = !!activeJob && ownJobIds.has(activeJob.id)
   const canManageActiveJobCoworkers = !!activeJob && (isOwnActiveJob || activeJob.canManage)
@@ -157,17 +153,15 @@ export default function SchedulePage() {
   }, [activeJob])
 
   function goToJobView(index: number) {
-    const total = jobViewSequence.length
-    const view = jobViewSequence[(index + total) % total]
-    if (view.kind === 'all') setShowAllJobs(true)
-    else { setActiveJobId(view.job.id); setShowAllJobs(false) }
+    const total = jobs.length
+    setActiveJobId(jobs[(index + total) % total].id)
   }
 
   function handleJobTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
   }
   function handleJobTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null || jobViewSequence.length <= 1) return
+    if (touchStartX.current === null || jobs.length <= 1) return
     const delta = touchStartX.current - e.changedTouches[0].clientX
     if (Math.abs(delta) > 48) {
       goToJobView(currentJobViewIndex + (delta > 0 ? 1 : -1))
@@ -269,11 +263,14 @@ export default function SchedulePage() {
     const map: Record<string, api.MatchedRosterShift[]> = {}
     const relevant = showAllJobs || !activeJob ? matchedShifts : matchedShifts.filter(s => s.jobId === activeJob.id)
     for (const s of relevant) {
+      // 自己已經有同一天、同時段（或同班別）的班，就是同一班，不要再多顯示一次
+      const own = shiftsByDate[s.date] ?? []
+      if (own.some(o => (s.startTime && o.start_time.slice(0, 5) === s.startTime.slice(0, 5)) || (s.shiftType && o.shift_type === s.shiftType))) continue
       if (!map[s.date]) map[s.date] = []
       map[s.date].push(s)
     }
     return map
-  }, [matchedShifts, showAllJobs, activeJob])
+  }, [matchedShifts, showAllJobs, activeJob, shiftsByDate])
 
   const selectedShifts = useMemo(
     () => (selectedDate ? (shiftsByDate[selectedDate] ?? []) : []),
@@ -623,21 +620,12 @@ export default function SchedulePage() {
           {/* 工作切換器（桌機）：預設分開顯示各自班表/薪資，「全部」才合併。手機版拿掉 tab，改左右滑動 */}
           {jobs.length > 1 && (
             <div className="hidden gap-1.5 overflow-x-auto scrollbar-none lg:flex">
-              <button
-                onClick={() => setShowAllJobs(true)}
-                className={cn(
-                  'shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                  showAllJobs ? 'border-foreground bg-foreground text-background' : 'border-muted-foreground/20 text-muted-foreground hover:bg-muted/40'
-                )}
-              >
-                全部
-              </button>
               {jobs.map(job => {
-                const selected = !showAllJobs && (activeJobId ?? jobs[0].id) === job.id
+                const selected = (activeJobId ?? jobs[0].id) === job.id
                 return (
                   <button
                     key={job.id}
-                    onClick={() => { setActiveJobId(job.id); setShowAllJobs(false) }}
+                    onClick={() => setActiveJobId(job.id)}
                     className={cn(
                       'flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
                       selected ? 'text-white' : 'border-muted-foreground/20 text-muted-foreground hover:bg-muted/40'
@@ -670,6 +658,17 @@ export default function SchedulePage() {
                   <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                     <LockIcon className="size-3" />唯讀
                   </span>
+                )}
+                {jobs.length > 1 && (
+                  <button
+                    onClick={() => setMergeJobs(v => !v)}
+                    className={cn(
+                      'rounded-full border px-2 py-0.5 text-xs font-medium transition-colors',
+                      showAllJobs ? 'border-foreground bg-foreground text-background' : 'border-muted-foreground/20 text-muted-foreground hover:bg-muted/40'
+                    )}
+                  >
+                    {showAllJobs ? '已合併顯示' : '合併顯示'}
+                  </button>
                 )}
               </div>
               {canManageActiveJobCoworkers && (
@@ -774,9 +773,9 @@ export default function SchedulePage() {
           {/* 手機版目前檢視指示（可左右滑動切換），只在有多個工作時顯示 */}
           {jobs.length > 1 && (
             <div className="flex items-center justify-center gap-1.5 pt-2 lg:hidden">
-              {jobViewSequence.map((view, i) => (
+              {jobs.map((job, i) => (
                 <span
-                  key={view.kind === 'all' ? 'all' : view.job.id}
+                  key={job.id}
                   className={cn(
                     'h-1.5 rounded-full transition-all',
                     i === currentJobViewIndex ? 'w-4 bg-foreground' : 'w-1.5 bg-muted-foreground/30'
