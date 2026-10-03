@@ -17,11 +17,26 @@ import { useCards } from '@/hooks/use-cards'
 import { CATEGORIES, type Transaction, type TransactionType } from '@/lib/types'
 import { todayString } from '@/lib/finance-utils'
 import { cn } from '@/lib/utils'
+import { toast } from '@/lib/toast'
+
+// 新增交易時預選上次用的分類（收入、支出各記一個），常記同一類的不用每次重選
+const LAST_CATEGORY_KEY = 'yiwallet_last_category'
+
+function lastCategory(type: TransactionType): string {
+  try { return JSON.parse(localStorage.getItem(LAST_CATEGORY_KEY) ?? '{}')[type] ?? '' } catch { return '' }
+}
+
+function rememberCategory(type: TransactionType, category: string) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_CATEGORY_KEY) ?? '{}')
+    localStorage.setItem(LAST_CATEGORY_KEY, JSON.stringify({ ...saved, [type]: category }))
+  } catch {}
+}
 
 interface AddTransactionSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>, isCash: boolean) => Promise<Transaction> | void
+  onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>, isCash: boolean) => Promise<unknown> | void
   initialData?: Transaction
 }
 
@@ -42,7 +57,8 @@ export function AddTransactionSheet({
   const { cards, defaultCard } = useCards()
 
   const [type,       setType]       = useState<TransactionType>(initialData?.type     ?? 'expense')
-  const [category,   setCategory]   = useState(initialData?.category ?? '')
+  const [category,   setCategory]   = useState(() =>
+    initialData ? initialData.category : (typeof window !== 'undefined' ? lastCategory('expense') : ''))
   const [amount,     setAmount]     = useState(initialData ? String(initialData.amount) : '')
   const [note,       setNote]       = useState(() => {
     if (initialData?.category === 'transfer' && initialData.note) {
@@ -62,7 +78,8 @@ export function AddTransactionSheet({
   const [cardId,        setCardId]        = useState<string | undefined>(
     initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id)
   )
-  const [isExplicitCash, setIsExplicitCash] = useState(false)
+  const [isExplicitCash, setIsExplicitCash] = useState(!!initialData?.isCash && !initialData.cardId)
+  const [saving, setSaving] = useState(false)
 
   const selectedCard = cards.find(c => c.id === cardId)
   const isDebitCard = selectedCard?.type === 'debit'
@@ -90,23 +107,35 @@ export function AddTransactionSheet({
 
   function handleTypeChange(t: TransactionType) {
     setType(t)
-    setCategory('')
+    setCategory(initialData ? '' : lastCategory(t))
     setTransferTo('')
   }
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const parsed = parseFloat(amount)
-    if (!amount || isNaN(parsed) || parsed <= 0 || !category) return
-    const isCash = !cardId && cards.length > 0 && isExplicitCash
+    if (!amount || isNaN(parsed) || parsed <= 0 || !category || saving) return
+    // 沒有任何卡片的人一律是現金；有卡片的人要明確點「現金」才算，不然就是還沒指定
+    const isCash = !cardId && (cards.length === 0 || isExplicitCash)
     const savedNote = category === 'transfer'
       ? (transferTo ? (note ? `${transferTo}|${note}` : transferTo) : note)
       : note
-    onSubmit({ type, amount: parsed, category, note: savedNote, date, cardId }, isCash)
-    setAmount(''); setNote(''); setTransferTo(''); setDate(todayString()); setCategory(''); setType('expense')
+    setSaving(true)
+    try {
+      await onSubmit({ type, amount: parsed, category, note: savedNote, date, cardId, isCash }, isCash)
+    } catch {
+      toast(initialData ? '儲存失敗，請再試一次' : '記帳失敗，請再試一次', 'error')
+      return
+    } finally {
+      setSaving(false)
+    }
+    toast(initialData ? '已更新' : '已記帳')
+    if (!initialData) rememberCategory(type, category)
+    setAmount(''); setNote(''); setTransferTo(''); setDate(todayString()); setType('expense')
+    setCategory(initialData ? '' : lastCategory('expense'))
     setIsExplicitCash(false)
     setCardId(defaultCard?.id ?? cards[0]?.id)
     onOpenChange(false)
-  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id])
+  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id, saving, initialData])
 
   const handleKey = useCallback((key: string) => {
     if (key === '✓') { handleSave(); return }
@@ -236,7 +265,7 @@ export function AddTransactionSheet({
             onClick={() => { setCardId(undefined); setIsExplicitCash(true) }}
             className={cn(
               'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-              !cardId
+              !cardId && isExplicitCash
                 ? 'bg-emerald-500 text-white'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}

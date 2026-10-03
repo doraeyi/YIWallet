@@ -4,9 +4,10 @@ import { useState, useMemo } from 'react'
 import { SearchIcon, PencilIcon, Trash2Icon } from 'lucide-react'
 import { useTransactions } from '@/hooks/use-transactions'
 import { AddTransactionSheet } from '@/components/wallet/add-transaction-sheet'
-import { groupByDate, formatDate, formatCurrency, filterByMonth, sumByType } from '@/lib/finance-utils'
+import { groupByDate, formatDate, formatCurrency, filterByMonth, sumByType, transactionLabels } from '@/lib/finance-utils'
 import { getCategoryById, type Transaction } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { toast } from '@/lib/toast'
 
 export default function TransactionsPage() {
   const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear } = useTransactions()
@@ -21,7 +22,9 @@ export default function TransactionsPage() {
     const q = search.toLowerCase()
     return byMonth.filter(t => {
       const cat = getCategoryById(t.category)
-      return t.note.toLowerCase().includes(q) || (cat?.name ?? '').toLowerCase().includes(q)
+      return t.note.toLowerCase().includes(q)
+        || (t.description ?? '').toLowerCase().includes(q)
+        || (cat?.name ?? '').toLowerCase().includes(q)
     })
   }, [byMonth, search])
 
@@ -38,6 +41,16 @@ export default function TransactionsPage() {
     else setMonth(m => m + 1)
   }
 
+  async function handleDelete(tx: Transaction, label: string) {
+    if (!confirm(`確定刪除「${label}」${formatCurrency(tx.amount)}？刪除後無法復原。`)) return
+    try {
+      await deleteTransaction(tx.id)
+      toast('已刪除')
+    } catch {
+      toast('刪除失敗，請再試一次', 'error')
+    }
+  }
+
   if (!isLoaded) {
     return <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
   }
@@ -48,7 +61,7 @@ export default function TransactionsPage() {
         <AddTransactionSheet
           open={!!editTx}
           onOpenChange={open => { if (!open) setEditTx(null) }}
-          onSubmit={(data) => { updateTransaction(editTx.id, data); setEditTx(null) }}
+          onSubmit={data => updateTransaction(editTx.id, data)}
           initialData={editTx}
         />
       )}
@@ -76,7 +89,7 @@ export default function TransactionsPage() {
         <div className="relative mx-4 mb-4 lg:mx-6 lg:max-w-sm">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            placeholder="搜尋備註或分類"
+            placeholder="搜尋商家、備註或分類"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full rounded-xl bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring dark:bg-card"
@@ -106,6 +119,7 @@ export default function TransactionsPage() {
                     </div>
                     {items.map((tx, idx) => {
                       const cat = getCategoryById(tx.category)
+                      const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category)
                       return (
                         <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}>
                           <span
@@ -114,10 +128,10 @@ export default function TransactionsPage() {
                           >
                             {cat?.emoji ?? '💸'}
                           </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{cat?.name ?? tx.category}</p>
-                            {tx.note && <p className="truncate text-xs text-muted-foreground">{tx.note}</p>}
-                          </div>
+                          <button onClick={() => setEditTx(tx)} className="min-w-0 flex-1 text-left">
+                            <p className="truncate text-sm font-medium">{title}</p>
+                            {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+                          </button>
                           <p className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
                             {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                           </p>
@@ -125,7 +139,7 @@ export default function TransactionsPage() {
                             <button onClick={() => setEditTx(tx)} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
                               <PencilIcon className="size-3.5" />
                             </button>
-                            <button onClick={() => deleteTransaction(tx.id)} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-100 hover:text-rose-500">
+                            <button onClick={() => handleDelete(tx, title)} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-100 hover:text-rose-500">
                               <Trash2Icon className="size-3.5" />
                             </button>
                           </div>

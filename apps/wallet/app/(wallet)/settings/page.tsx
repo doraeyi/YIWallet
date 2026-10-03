@@ -583,14 +583,6 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* ── 自動記帳 ── */}
-        <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
-        <ApplePayRecordSettings />
-
-        {/* ── 班表同步 ── */}
-        <p className="px-1 text-xs font-medium text-muted-foreground">班表同步</p>
-        <CalendarFeedSettings />
-
         {/* ── 功能 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">功能</p>
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
@@ -833,6 +825,14 @@ export default function SettingsPage() {
             onSave={async (id, data) => { await updateCard(id, data) }}
           />
         )}
+
+        {/* ── 自動記帳（設定一次就好的進階功能，放在常用的卡片／工作後面）── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
+        <ApplePayRecordSettings />
+
+        {/* ── 班表同步 ── */}
+        <p className="px-1 text-xs font-medium text-muted-foreground">班表同步</p>
+        <CalendarFeedSettings />
 
         {/* ── 管理後台（只有管理員帳號看得到入口，真正的權限判斷在後端）── */}
         {profile?.email === 'ch855118@gmail.com' && (

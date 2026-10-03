@@ -7,8 +7,9 @@ import { format, parseISO } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useCards } from '@/hooks/use-cards'
-import { filterByMonth, sumByType, groupByDate, formatCurrency } from '@/lib/finance-utils'
-import { getCategoryById, type Card } from '@/lib/types'
+import { filterByMonth, sumByType, groupByDate, formatCurrency, transactionLabels } from '@/lib/finance-utils'
+import { getCategoryById, type Card, type Transaction } from '@/lib/types'
+import { AddTransactionSheet } from '@/components/wallet/add-transaction-sheet'
 import { cn } from '@/lib/utils'
 import * as api from '@/lib/api'
 import { AddCardSheet } from '@/components/wallet/add-card-sheet'
@@ -82,10 +83,16 @@ function DonutChart({
   const cx = size / 2
   const cy = size / 2
   const circumference = 2 * Math.PI * r
-  const ratio = income > 0 ? Math.min(expense / income, 1) : expense > 0 ? 1 : 0
+  // 圓環 = 支出佔收入的比例；沒有收入就沒有比例可畫，維持空環，下面用文字說明，
+  // 不要整圈填滿（以前沒收入時整圈滿，看起來像「達標」）。花超過收入改紅色。
+  const ratio = income > 0 ? Math.min(expense / income, 1) : 0
   const filled = ratio * circumference
+  const overspent = income > 0 && expense > income
   const displayValue = centerValue ?? balance
   const displayLabel = centerLabel ?? '月結餘'
+  const ratioText = income > 0
+    ? `花了收入的 ${Math.round((expense / income) * 100)}%`
+    : expense > 0 ? '這個月還沒有收入' : ''
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -97,7 +104,7 @@ function DonutChart({
             cy={cy}
             r={r}
             fill="none"
-            stroke={ringColor}
+            stroke={overspent ? '#F43F5E' : ringColor}
             strokeWidth={28}
             strokeDasharray={`${filled} ${circumference}`}
             strokeLinecap={ratio < 1 ? 'round' : 'butt'}
@@ -115,6 +122,9 @@ function DonutChart({
         >
           {formatCurrency(displayValue)}
         </span>
+        {ratioText && (
+          <span className={cn('mt-0.5 text-[11px]', overspent ? 'text-rose-500' : 'text-muted-foreground')}>{ratioText}</span>
+        )}
       </div>
     </div>
   )
@@ -122,7 +132,8 @@ function DonutChart({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch } = useTransactions()
+  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction } = useTransactions()
+  const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { cards, removeCard, defaultCard, setDefaultCard, updateCard } = useCards()
   const now = new Date()
   const [viewIndex, setViewIndex] = useState(0)
@@ -214,11 +225,27 @@ export default function DashboardPage() {
     [transactions, year, month],
   )
 
+  // 信用卡設了結帳日、又在看這個月的話，改看「本期」（上次結帳日隔天～下次結帳日），
+  // 跟卡片上的「本期消費」同一段期間，數字才對得起來；看其他月份還是照日曆月
+  const isThisMonth = year === now.getFullYear() && month === now.getMonth() + 1
+  const creditPeriod = useMemo(() => {
+    if (currentView.kind !== 'card' || currentView.card.type !== 'credit' || !isThisMonth) return null
+    if (creditSummary?.billing_day == null || !creditSummary.last_closing_date) return null
+    const last = parseISO(creditSummary.last_closing_date)
+    const start = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1)
+    const nextMonthLastDay = new Date(last.getFullYear(), last.getMonth() + 2, 0).getDate()
+    const end = new Date(last.getFullYear(), last.getMonth() + 1, Math.min(creditSummary.billing_day, nextMonthLastDay))
+    return { after: creditSummary.last_closing_date, start, end }
+  }, [currentView, isThisMonth, creditSummary])
+
   const filtered = useMemo(() => {
     if (currentView.kind === 'all') return allFiltered
     if (currentView.kind === 'cash') return allFiltered.filter(tx => !tx.cardId)
+    if (creditPeriod) {
+      return transactions.filter(tx => tx.cardId === currentView.card.id && tx.date > creditPeriod.after)
+    }
     return allFiltered.filter(tx => tx.cardId === currentView.card.id)
-  }, [allFiltered, currentView])
+  }, [allFiltered, transactions, currentView, creditPeriod])
 
   const income = sumByType(filtered, 'income')
   const expense = sumByType(filtered, 'expense')
@@ -253,8 +280,9 @@ export default function DashboardPage() {
     catch { cashIds = new Set() }
     return allFiltered.filter(tx =>
       !tx.cardId &&
+      !tx.isCash &&
       !/領現 \d{4}-\d{2}-\d{2}$/.test(tx.note) &&
-      !cashIds.has(tx.id)
+      !cashIds.has(tx.id) // 舊資料：以前「選現金」只記在這台瀏覽器的 localStorage
     )
   }, [allFiltered])
   const unassignedCount = unassigned.length
@@ -426,7 +454,7 @@ export default function DashboardPage() {
       <div className="flex items-start justify-between px-6 pb-2">
         <Link href={statsHref} className="flex flex-col">
           <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-            月支出
+            {creditPeriod ? `本期支出（${format(creditPeriod.start, 'M/d')}～${format(creditPeriod.end, 'M/d')}）` : '月支出'}
             <ChevronRightIcon className="size-3" />
           </span>
           <span className="text-2xl font-bold text-rose-500">{formatCurrency(expense)}</span>
@@ -729,10 +757,12 @@ export default function DashboardPage() {
                   </div>
                   {items.map((tx, idx) => {
                     const cat = getCategoryById(tx.category)
+                    const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category)
                     return (
-                      <div
+                      <button
                         key={tx.id}
-                        className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}
+                        onClick={() => setEditTx(tx)}
+                        className={cn('flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30', idx > 0 && 'border-t')}
                       >
                         <span
                           className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg"
@@ -741,15 +771,15 @@ export default function DashboardPage() {
                           {cat?.emoji ?? '💸'}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{cat?.name ?? tx.category}</p>
-                          {tx.note && (
-                            <p className="truncate text-xs text-muted-foreground">{tx.note}</p>
+                          <p className="truncate text-sm font-medium">{title}</p>
+                          {subtitle && (
+                            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
                           )}
                         </div>
                         <span className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
                           {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                         </span>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
@@ -763,6 +793,14 @@ export default function DashboardPage() {
 
       {/* ── Sheets ─────────────────────────────────────────── */}
       <AddCardSheet open={addCardOpen} onOpenChange={setAddCardOpen} onCreated={setJustCreatedCard} />
+      {editTx && (
+        <AddTransactionSheet
+          open={!!editTx}
+          onOpenChange={open => { if (!open) setEditTx(null) }}
+          onSubmit={async data => { await updateTransaction(editTx.id, data); loadCreditSummary() }}
+          initialData={editTx}
+        />
+      )}
       {justCreatedCard && (
         <CardCreatedCelebration card={justCreatedCard} onDone={() => setJustCreatedCard(null)} />
       )}

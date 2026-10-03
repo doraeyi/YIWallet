@@ -162,3 +162,12 @@ export function formatDate(date: string): string {
 export function todayString(): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
+
+// 交易列表每一列要顯示的兩行字：有商家／品名就當標題（Apple Pay、電子發票、LINE 記帳都會帶），
+// 分類跟備註放副標；手動記帳的 description 本來就等於備註，就不重複顯示
+export function transactionLabels(tx: Transaction, categoryName: string): { title: string; subtitle: string } {
+  const desc = tx.description?.trim() ?? ''
+  const note = tx.note?.trim() ?? ''
+  if (!desc) return { title: categoryName, subtitle: note }
+  return { title: desc, subtitle: [categoryName, note !== desc ? note : ''].filter(Boolean).join(' · ') }
+}

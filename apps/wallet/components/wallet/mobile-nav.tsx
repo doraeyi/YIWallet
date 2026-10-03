@@ -76,23 +76,12 @@ export function MobileNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  async function handleSubmit(data: Parameters<typeof addTransaction>[0], isCash: boolean) {
-    const tx = await addTransaction(data)
-    if (isCash) {
-      const raw = localStorage.getItem('yiwallet_cash_tx_ids') ?? '[]'
-      const ids: string[] = JSON.parse(raw)
-      ids.push(tx.id)
-      localStorage.setItem('yiwallet_cash_tx_ids', JSON.stringify(ids))
-    }
-    return tx
-  }
-
   return (
     <>
       <AddTransactionSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        onSubmit={handleSubmit}
+        onSubmit={addTransaction}
       />
 
       {/* 懸浮的膠囊狀導覽列（比照 IG 改版後的樣式），離螢幕邊緣/底部都留距離，

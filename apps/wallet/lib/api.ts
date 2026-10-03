@@ -13,6 +13,9 @@ interface ApiTransaction {
   transaction_date: string | null
   created_at: string
   card_id: number | null
+  description?: string | null
+  source?: string | null
+  is_cash?: boolean
 }
 
 function normalizeTransaction(t: ApiTransaction): Transaction {
@@ -25,6 +28,9 @@ function normalizeTransaction(t: ApiTransaction): Transaction {
     date: t.transaction_date ?? t.created_at.slice(0, 10),
     createdAt: t.created_at,
     cardId: t.card_id != null ? String(t.card_id) : undefined,
+    description: t.description ?? undefined,
+    source: t.source ?? undefined,
+    isCash: t.is_cash ?? false,
   }
 }
 
@@ -53,6 +59,7 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
       note: data.note,
       date: data.date,
       card_id: data.cardId ?? null,
+      is_cash: !data.cardId && !!data.isCash,
     }),
   })
   if (!res.ok) {
@@ -62,8 +69,8 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
   return normalizeTransaction(await res.json())
 }
 
-// 後端只有 PATCH /transactions/{id}，且只接受 amount/category/note
-// （日期、類型、卡片目前無法透過這支端點修改；卡片指定另外走 setTransactionCard）
+// PATCH /transactions/{id} 接受 amount/category/note/date；類型不能改，
+// 卡片指定另外走 setTransactionCard（要順便調整卡片餘額）
 export async function updateTransaction(id: string, data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
   const res = await fetch(`${API}/transactions/${id}`, {
     method: 'PATCH',
@@ -72,6 +79,7 @@ export async function updateTransaction(id: string, data: Omit<Transaction, 'id'
       amount: data.amount,
       category: data.category,
       note: data.note,
+      date: data.date,
     }),
   })
   if (!res.ok) throw new Error('Failed to update transaction')

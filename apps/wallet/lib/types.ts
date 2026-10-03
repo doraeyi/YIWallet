@@ -20,6 +20,9 @@ export interface Transaction {
   date: string      // YYYY-MM-DD
   createdAt: string // ISO datetime
   cardId?: string
+  description?: string // 商家／品名（Apple Pay、電子發票、LINE 記帳會帶；手動記帳等於備註）
+  source?: string      // manual | einvoice_csv | line_bot | bank_notification | apple_pay
+  isCash?: boolean     // 明確選了現金（跟「還沒指定卡片」區分）
 }
 
 export interface ChartDataPoint {

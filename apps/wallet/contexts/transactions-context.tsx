@@ -71,9 +71,15 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateTransaction = useCallback(async (id: string, data: Omit<Transaction, 'id' | 'createdAt'>) => {
+    // 卡片要走另一支 API（會順便調整新舊卡片的餘額），先改卡片再改其他欄位，
+    // PATCH 回來的就是卡片也更新過的完整資料
+    const old = transactions.find(t => t.id === id)
+    const cardChanged = (data.cardId ?? null) !== (old?.cardId ?? null)
+    const becameCash = !data.cardId && !!data.isCash && !old?.isCash
+    if (cardChanged || becameCash) await api.setTransactionCard(id, data.cardId ?? null)
     const tx = await api.updateTransaction(id, data)
     setTransactions(prev => prev.map(t => t.id === id ? tx : t))
-  }, [])
+  }, [transactions])
 
   const deleteTransaction = useCallback(async (id: string) => {
     await api.deleteTransaction(id)
