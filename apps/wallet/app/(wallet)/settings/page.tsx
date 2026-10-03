@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
 import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
-import { APP_VERSION } from '@/lib/version'
+import { APP_VERSION, VERSION_HISTORY } from '@/lib/version'
+import { exportTransactionsCsv } from '@/lib/export-csv'
 import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
@@ -20,6 +21,7 @@ import { useTheme, type ThemePref } from '@/hooks/use-theme'
 import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { Card } from '@/lib/types'
+import { PageSkeleton } from '@/components/wallet/page-skeleton'
 
 interface UserProfile {
   id: string
@@ -65,7 +67,7 @@ const EMPTY_FORM = {
 
 
 export default function SettingsPage() {
-  const { budget, setBudget, isLoaded: txLoaded } = useTransactions()
+  const { budget, setBudget, isLoaded: txLoaded, transactions } = useTransactions()
   const [input, setInput] = useState(budget > 0 ? String(budget) : '')
   const [saved, setSaved] = useState(false)
 
@@ -99,6 +101,11 @@ export default function SettingsPage() {
   // 展開狀態
   const [expandedAccount, setExpandedAccount] = useState<'google' | 'line' | null>(null)
   const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | 'push' | null>(null)
+  const [showChangelog, setShowChangelog] = useState(false)
+
+  function handleExportCsv() {
+    exportTransactionsCsv(transactions, cards)
+  }
 
   // 推播通知
   const { permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, enable: enablePush, disable: disablePush } = usePushNotifications()
@@ -377,18 +384,13 @@ export default function SettingsPage() {
     setJobs(prev => prev.filter(j => j.id !== id))
   }
 
-  const isLoaded = txLoaded && cardsLoaded && jobsLoaded && googleLinked !== null && lineLinked !== null
+  // Google／LINE 綁定狀態比較慢回來，不用整頁等它們，那兩列的「已綁定／未綁定」會晚一點出現
+  const isLoaded = txLoaded && cardsLoaded && jobsLoaded
 
   if (!isLoaded) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-amber-400" />
-          <p className="text-sm text-muted-foreground">載入中…</p>
-        </div>
-      </div>
-    )
+    return <PageSkeleton />
   }
+
 
   const displayName = profile?.name || profile?.username || profile?.email?.split('@')[0] || '使用者'
   const avatarLetter = displayName.charAt(0).toUpperCase()
@@ -509,78 +511,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className="border-t" />
-
-          {/* LINE Bot row */}
-          <button
-            onClick={() => setExpandedAccount(v => v === 'line' ? null : 'line')}
-            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
-          >
-            <div className="flex items-center gap-2.5">
-              <BotIcon className="size-4 text-green-500" />
-              <span className="text-sm font-medium">LINE Bot 自動記帳</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {lineLinked !== null && (
-                <span className={cn(
-                  'rounded-full px-2 py-0.5 text-xs font-medium',
-                  lineLinked ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-muted text-muted-foreground'
-                )}>
-                  {lineLinked ? '已綁定' : '未綁定'}
-                </span>
-              )}
-              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedAccount === 'line' && 'rotate-180')} />
-            </div>
-          </button>
-          {expandedAccount === 'line' && (
-            <div className="border-t px-4 py-4 flex flex-col gap-4">
-              {lineLinked ? (
-                <>
-                  <div className="rounded-xl bg-green-50 px-3 py-2.5 text-xs text-green-700 dark:bg-green-950/30 dark:text-green-400">
-                    LINE 帳號已綁定。直接傳給 Bot 消費記錄即可，例如：<br />
-                    <code className="font-mono">全家 茶葉蛋 10</code>　或　<code className="font-mono">捷運28</code>
-                  </div>
-                  <button
-                    onClick={handleUnlink}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                  >
-                    解除 LINE 綁定
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-xs text-muted-foreground">步驟 1：加入 Bot 好友（<span className="font-mono">@984ehkom</span>）</p>
-                    <p className="text-xs text-muted-foreground">步驟 2：產生綁定碼，傳給 Bot</p>
-                  </div>
-                  {linkCode && linkSecondsLeft > 0 ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
-                        <code className="text-lg font-bold tracking-widest">{linkCode}</code>
-                        <span className="text-xs text-muted-foreground">{Math.floor(linkSecondsLeft / 60)}:{String(linkSecondsLeft % 60).padStart(2, '0')}</span>
-                      </div>
-                      <button
-                        onClick={handleCopyCode}
-                        className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
-                      >
-                        {codeCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-                        {codeCopied ? '已複製！' : '複製指令（/link 綁定碼）'}
-                      </button>
-                      <p className="text-center text-xs text-muted-foreground">複製後貼到 Bot 聊天室傳送即完成綁定</p>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleGenerateCode}
-                      disabled={linkLoading}
-                      className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
-                    >
-                      {linkLoading ? '產生中…' : '產生綁定碼'}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
         </div>
 
         {/* ── 功能 ── */}
@@ -779,7 +709,15 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">此瀏覽器不支援推播通知（iOS 需先將本站加入主畫面再開啟）。</p>
               )}
               {pushPermission === 'denied' && (
-                <p className="text-xs text-muted-foreground">通知權限已被封鎖，請至瀏覽器設定手動開啟後再試一次。</p>
+                <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                  <p>通知權限被關掉了，要到系統或瀏覽器設定重新打開，打開後回來這頁再按一次「開啟推播通知」：</p>
+                  <ul className="flex flex-col gap-1.5 rounded-xl bg-muted/40 p-3">
+                    <li><b className="text-foreground">iPhone（已加到主畫面）：</b>設定 → 通知 → 易記帳 → 允許通知</li>
+                    <li><b className="text-foreground">Android（Chrome）：</b>網址列左邊的鎖頭圖示 → 權限 → 通知 → 允許</li>
+                    <li><b className="text-foreground">電腦 Chrome／Edge：</b>網址列左邊的圖示 → 網站設定 → 通知 → 允許，再重新整理</li>
+                    <li><b className="text-foreground">電腦 Safari：</b>Safari → 設定 → 網站 → 通知 → 找到本站改成「允許」</li>
+                  </ul>
+                </div>
               )}
               {pushPermission !== 'unsupported' && pushPermission !== 'denied' && (
                 <>
@@ -828,6 +766,78 @@ export default function SettingsPage() {
 
         {/* ── 自動記帳（設定一次就好的進階功能，放在常用的卡片／工作後面）── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          {/* LINE Bot row */}
+          <button
+            onClick={() => setExpandedAccount(v => v === 'line' ? null : 'line')}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <div className="flex items-center gap-2.5">
+              <BotIcon className="size-4 text-green-500" />
+              <span className="text-sm font-medium">LINE Bot 自動記帳</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {lineLinked !== null && (
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 text-xs font-medium',
+                  lineLinked ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-muted text-muted-foreground'
+                )}>
+                  {lineLinked ? '已綁定' : '未綁定'}
+                </span>
+              )}
+              <ChevronDownIcon className={cn('size-4 text-muted-foreground transition-transform', expandedAccount === 'line' && 'rotate-180')} />
+            </div>
+          </button>
+          {expandedAccount === 'line' && (
+            <div className="border-t px-4 py-4 flex flex-col gap-4">
+              {lineLinked ? (
+                <>
+                  <div className="rounded-xl bg-green-50 px-3 py-2.5 text-xs text-green-700 dark:bg-green-950/30 dark:text-green-400">
+                    LINE 帳號已綁定。直接傳給 Bot 消費記錄即可，例如：<br />
+                    <code className="font-mono">全家 茶葉蛋 10</code>　或　<code className="font-mono">捷運28</code>
+                  </div>
+                  <button
+                    onClick={handleUnlink}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                  >
+                    解除 LINE 綁定
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs text-muted-foreground">步驟 1：加入 Bot 好友（<span className="font-mono">@984ehkom</span>）</p>
+                    <p className="text-xs text-muted-foreground">步驟 2：產生綁定碼，傳給 Bot</p>
+                  </div>
+                  {linkCode && linkSecondsLeft > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
+                        <code className="text-lg font-bold tracking-widest">{linkCode}</code>
+                        <span className="text-xs text-muted-foreground">{Math.floor(linkSecondsLeft / 60)}:{String(linkSecondsLeft % 60).padStart(2, '0')}</span>
+                      </div>
+                      <button
+                        onClick={handleCopyCode}
+                        className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
+                      >
+                        {codeCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                        {codeCopied ? '已複製！' : '複製指令（/link 綁定碼）'}
+                      </button>
+                      <p className="text-center text-xs text-muted-foreground">複製後貼到 Bot 聊天室傳送即完成綁定</p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGenerateCode}
+                      disabled={linkLoading}
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
+                    >
+                      {linkLoading ? '產生中…' : '產生綁定碼'}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <ApplePayRecordSettings />
 
         {/* ── 班表同步 ── */}
@@ -851,14 +861,37 @@ export default function SettingsPage() {
         {/* ── 關於 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">關於</p>
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          <div className="flex items-center justify-between px-4 py-3.5">
+          <button
+            onClick={() => setShowChangelog(v => !v)}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
             <span className="text-sm font-medium">易記帳</span>
-            <span className="text-sm text-muted-foreground">{APP_VERSION}</span>
-          </div>
+            <span className="text-sm text-muted-foreground">{APP_VERSION}・{showChangelog ? '收起' : '更新內容'}</span>
+          </button>
+          {showChangelog && (
+            <div className="flex flex-col gap-3 border-t px-4 py-3">
+              {VERSION_HISTORY.map(v => (
+                <div key={v.version}>
+                  <p className="text-xs font-semibold">{v.version}</p>
+                  <ul className="mt-1 list-disc pl-4 text-xs text-muted-foreground">
+                    {v.changes.map(c => <li key={c}>{c}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="border-t" />
+          <button
+            onClick={handleExportCsv}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <span className="text-sm font-medium">匯出記帳資料（CSV）</span>
+            <span className="text-base leading-none text-muted-foreground">›</span>
+          </button>
         </div>
 
         {/* Logout — visible on mobile only (desktop uses sidebar) */}
-        <form action={logout} className="lg:hidden">
+        <form action={logout} className="lg:hidden" onSubmit={e => { if (!confirm('確定要登出嗎？')) e.preventDefault() }}>
           <button
             type="submit"
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-medium text-rose-500 shadow-sm dark:bg-card"

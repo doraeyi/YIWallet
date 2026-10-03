@@ -319,7 +319,7 @@ export async function fetchShifts(): Promise<Shift[]> {
   return data.map(normalizeShift)
 }
 
-export async function upsertShift(data: { job_id: string; date: string; label: string; start_time: string; end_time: string }): Promise<Shift> {
+export async function upsertShift(data: { job_id: string; date: string; label: string | null; start_time: string; end_time: string; note?: string | null }): Promise<Shift> {
   const res = await fetch(`${API}/schedule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -329,6 +329,7 @@ export async function upsertShift(data: { job_id: string; date: string; label: s
       shift_type: data.label,
       start_time: data.start_time,
       end_time: data.end_time,
+      note: data.note ?? null,
     }),
   })
   if (!res.ok) throw new Error('Failed to upsert shift')

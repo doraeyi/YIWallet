@@ -11,6 +11,7 @@ import { filterByPeriod, sumByType, groupByCategory, buildChartData, formatCurre
 import { getCategoryById, type Period } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { MonthNav } from '@/components/wallet/month-nav'
+import { PageSkeleton } from '@/components/wallet/page-skeleton'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week',  label: '週' },
@@ -93,7 +94,7 @@ function StatsContent() {
   }))
 
   if (!isLoaded) {
-    return <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
+    return <PageSkeleton />
   }
 
   return (

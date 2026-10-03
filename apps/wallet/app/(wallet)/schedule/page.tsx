@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
-import { UserPlusIcon, LockIcon } from 'lucide-react'
+import { UserPlusIcon, LockIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCurrency, jobRate, shiftTypeLabel } from '@/lib/finance-utils'
+import { formatCurrency, jobRate, shiftTypeLabel, shiftHours } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job, Shift, ShiftPreset, Friendship, JobShare, FriendShift } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -15,6 +15,7 @@ import { JobCoworkersDialog } from '@/components/wallet/job-coworkers-dialog'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useTransactions } from '@/hooks/use-transactions'
+import { PageSkeleton } from '@/components/wallet/page-skeleton'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -48,6 +49,12 @@ export default function SchedulePage() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [mergeJobs, setMergeJobs] = useState(false)
   const [coworkersDialogOpen, setCoworkersDialogOpen] = useState(false)
+  // 日期面板裡「自訂時間／備註」的表單，記的是正在編輯哪個工作
+  const [customFor, setCustomFor] = useState<string | null>(null)
+  const [customStart, setCustomStart] = useState('09:00')
+  const [customEnd, setCustomEnd] = useState('17:00')
+  const [customNote, setCustomNote] = useState('')
+  const [showSalaryDetail, setShowSalaryDetail] = useState(false)
   const isDesktop = useIsDesktop()
   const { transactions, addTransaction, deleteTransaction } = useTransactions()
   const touchStartX = useRef<number | null>(null)
@@ -352,7 +359,10 @@ export default function SchedulePage() {
     const rate = jobRate(job)
     if (job.pay_type === 'hourly') {
       const multiplier = holidays.has(date) ? 2 : 1
-      return Math.round(rate * 8 * multiplier)
+      const hours = (shiftsByDate[date] ?? [])
+        .filter(s => s.job_id === job.id)
+        .reduce((sum, s) => sum + shiftHours(s.start_time, s.end_time), 0)
+      return Math.round(rate * (hours || 8) * multiplier)
     }
     return Math.round(rate / 30)
   }
@@ -403,6 +413,49 @@ export default function SchedulePage() {
     }
   }
 
+  async function handleClearDay(jobId: string) {
+    if (!selectedDate || saving) return
+    setSaving(true)
+    try {
+      for (const s of selectedShifts.filter(s => s.job_id === jobId)) {
+        await api.deleteShift(s.id)
+        setShifts(prev => prev.filter(x => x.id !== s.id))
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function openCustom(jobId: string) {
+    const existing = selectedShifts.find(s => s.job_id === jobId)
+    setCustomStart(existing?.start_time.slice(0, 5) ?? '09:00')
+    setCustomEnd(existing?.end_time.slice(0, 5) ?? '17:00')
+    setCustomNote(existing?.note ?? '')
+    setCustomFor(jobId)
+  }
+
+  async function handleSaveCustom(jobId: string) {
+    if (!selectedDate || saving || !customStart || !customEnd) return
+    setSaving(true)
+    try {
+      for (const s of selectedShifts.filter(s => s.job_id === jobId)) {
+        await api.deleteShift(s.id)
+        setShifts(prev => prev.filter(x => x.id !== s.id))
+      }
+      const preset = ownJobs.find(j => j.id === jobId)?.presets
+        .find(p => p.start_time.slice(0, 5) === customStart && p.end_time.slice(0, 5) === customEnd)
+      const newShift = await api.upsertShift({
+        job_id: jobId, date: selectedDate,
+        label: preset?.label ?? null, start_time: customStart, end_time: customEnd,
+        note: customNote.trim() || null,
+      })
+      setShifts(prev => [...prev, newShift])
+      setCustomFor(null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const dialogContent = selectedDate && (() => {
     // 選到別人分享給我的工作（不是自己的）：只顯示唯讀的班次資訊，不能排班/領現
     if (activeJob && !isOwnActiveJob && !showAllJobs) {
@@ -412,6 +465,13 @@ export default function SchedulePage() {
             <p className="text-center text-base font-semibold">
               {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日・{activeJob.name}
             </p>
+            <button
+            onClick={() => setSelectedDate(null)}
+            aria-label="關閉"
+            className="absolute right-3 top-2.5 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+          >
+            <XIcon className="size-4" />
+          </button>
           </div>
           <div className="flex flex-col gap-2 p-4">
             {selectedSharedShifts.length === 0 && (matchedShiftsByDate[selectedDate] ?? []).length === 0 ? (
@@ -481,8 +541,15 @@ export default function SchedulePage() {
             {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日
           </p>
           {holidays.has(selectedDate) && (
-            <p className="mt-1 text-center text-xs font-medium text-rose-500">國定假日・時薪雙倍</p>
+            <p className="mt-1 text-center text-xs font-medium text-rose-500">🎌 國定假日・這天上班時薪雙倍</p>
           )}
+          <button
+            onClick={() => setSelectedDate(null)}
+            aria-label="關閉"
+            className="absolute right-3 top-2.5 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+          >
+            <XIcon className="size-4" />
+          </button>
         </div>
         <div className="flex flex-col gap-3 p-4">
           {ownJobs.length === 0 ? (
@@ -524,10 +591,64 @@ export default function SchedulePage() {
                             )}
                             style={on ? { backgroundColor: job.color } : undefined}
                           >
-                            {preset.label} {preset.start_time.slice(0, 5)}–{preset.end_time.slice(0, 5)}
+                            {on && '✓ '}{preset.label} {preset.start_time.slice(0, 5)}–{preset.end_time.slice(0, 5)}
                           </button>
                         )
                       })}
+                    </div>
+                  )}
+                  {/* 不是預設班別的班（自訂時間）也要看得到，還有備註 */}
+                  {selectedShifts.filter(s => s.job_id === job.id && !job.presets.some(p => p.label === s.shift_type)).map(s => (
+                    <p key={s.id} className="mt-2 rounded-xl px-3 py-2 text-sm font-medium text-white" style={{ backgroundColor: job.color }}>
+                      ✓ 自訂 {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
+                    </p>
+                  ))}
+                  {selectedShifts.filter(s => s.job_id === job.id && s.note).map(s => (
+                    <p key={`note-${s.id}`} className="mt-2 text-xs text-muted-foreground">📝 {s.note}</p>
+                  ))}
+                  {customFor === job.id ? (
+                    <div className="mt-2 flex flex-col gap-2 rounded-xl bg-muted/50 p-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <input type="time" value={customStart} onChange={e => setCustomStart(e.target.value)} className="flex-1 rounded-lg border bg-white px-2 py-1.5 dark:bg-card" />
+                        <span>–</span>
+                        <input type="time" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="flex-1 rounded-lg border bg-white px-2 py-1.5 dark:bg-card" />
+                      </div>
+                      <input
+                        value={customNote}
+                        onChange={e => setCustomNote(e.target.value)}
+                        placeholder="備註（選填，例如：代班、支援別店）"
+                        maxLength={100}
+                        className="rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-card"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => setCustomFor(null)} className="flex-1 rounded-lg border py-1.5 text-xs font-medium">取消</button>
+                        <button
+                          onClick={() => handleSaveCustom(job.id)}
+                          disabled={saving}
+                          className="flex-1 rounded-lg py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                          style={{ backgroundColor: job.color }}
+                        >
+                          儲存這天的班
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => openCustom(job.id)}
+                        className="flex-1 rounded-xl border py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                      >
+                        {hasShift ? '改時間／加備註' : '＋ 自訂時間'}
+                      </button>
+                      {hasShift && (
+                        <button
+                          onClick={() => handleClearDay(job.id)}
+                          disabled={saving}
+                          className="flex-1 rounded-xl border border-rose-200 py-2 text-xs font-medium text-rose-500 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-950/20"
+                        >
+                          這天休假（清除）
+                        </button>
+                      )}
                     </div>
                   )}
                   {hasShift && (
@@ -543,6 +664,11 @@ export default function SchedulePage() {
                     >
                       {advanceTx ? '✓ 已領現　點擊取消' : `+ 領現　${formatCurrency(shiftAmount(job, selectedDate))}`}
                     </button>
+                  )}
+                  {hasShift && !advanceTx && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      領現：這天的薪水當天就先拿到現金，會記一筆收入；月底「新增薪資」時會自動扣掉已領的部分
+                    </p>
                   )}
                   {/* 團隊班表：從 LINE 匯入的整份排班表裡，這個工作當天有誰上班 */}
                   {teamShiftsFor(job.id, selectedDate).length > 0 && (
@@ -644,7 +770,7 @@ export default function SchedulePage() {
       </div>
 
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
+        <PageSkeleton variant="calendar" />
       ) : (
         <div className="px-4 lg:px-6" onTouchStart={handleJobTouchStart} onTouchEnd={handleJobTouchEnd}>
           {/* 目前選中工作的公司名稱 + 同事頭像堆疊，取代原本擠在薪資卡片裡的公司名稱；
@@ -727,20 +853,18 @@ export default function SchedulePage() {
                     onClick={() => setSelectedDate(dateStr)}
                     className="min-h-16 cursor-pointer border-b border-r p-1 transition-colors hover:bg-muted/30"
                   >
+                    <span className="flex items-center gap-0.5">
                     <span className={cn(
                       'flex size-6 items-center justify-center rounded-full text-xs font-medium',
                       isToday && 'bg-amber-400 text-white',
-                      !isToday && col === 0 && 'text-rose-500',
-                      !isToday && col === 6 && 'text-blue-500',
+                      !isToday && (col === 0 || isHolidayDate) && 'text-rose-500',
+                      !isToday && col === 6 && !isHolidayDate && 'text-blue-500',
                     )}>
                       {day}
                     </span>
+                    {isHolidayDate && <span aria-label="國定假日" className="text-[10px] leading-none">🎌</span>}
+                    </span>
                     <div className="mt-0.5 flex flex-col gap-0.5">
-                      {isHolidayDate && (
-                        <span className="rounded bg-orange-100 px-1 py-0.5 text-[10px] font-semibold leading-none text-orange-600 dark:bg-orange-400/20 dark:text-orange-400">
-                          假
-                        </span>
-                      )}
                       {dayShifts.map(s => (
                         <span
                           key={s.id}
@@ -770,9 +894,14 @@ export default function SchedulePage() {
             </div>
           </div>
 
+          <p className="pt-2 text-[11px] text-muted-foreground">🎌 國定假日（這天上班時薪雙倍）</p>
+
           {/* 手機版目前檢視指示（可左右滑動切換），只在有多個工作時顯示 */}
-          {jobs.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5 pt-2 lg:hidden">
+          {jobs.length > 1 && (<>
+            <div className="flex items-center justify-center gap-2 pt-2 lg:hidden">
+              <button onClick={() => goToJobView(currentJobViewIndex - 1)} aria-label="上一個工作" className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+                <ChevronLeftIcon className="size-4" />
+              </button>
               {jobs.map((job, i) => (
                 <span
                   key={job.id}
@@ -782,8 +911,12 @@ export default function SchedulePage() {
                   )}
                 />
               ))}
+              <button onClick={() => goToJobView(currentJobViewIndex + 1)} aria-label="下一個工作" className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+                <ChevronRightIcon className="size-4" />
+              </button>
             </div>
-          )}
+            <p className="pt-1 text-center text-[11px] text-muted-foreground lg:hidden">左右滑動月曆切換工作</p>
+          </>)}
 
           {/* Salary preview——別人分享給我的工作看不到薪資，那是對方的薪資不是我的 */}
           {isOwnActiveJob && (
@@ -800,11 +933,13 @@ export default function SchedulePage() {
                 const rate = jobRate(job)
                 // 國定假日出勤雙倍工資（勞基法）：時薪制當天薪資直接乘 2，月薪制則是全薪之外
                 // 再加發一天日薪（月薪 ÷ 30）作為假日出勤獎金
+                // 時薪制照每班實際時數算（以前固定當 8 小時，4 小時的短班也算成 8 小時）
+                const normalHours = jobShifts.filter(s => !holidays.has(s.date.slice(0, 10)))
+                  .reduce((sum, s) => sum + shiftHours(s.start_time, s.end_time), 0)
+                const holidayHours = jobShifts.filter(s => holidays.has(s.date.slice(0, 10)))
+                  .reduce((sum, s) => sum + shiftHours(s.start_time, s.end_time), 0)
                 const gross = job.pay_type === 'hourly'
-                  ? jobShifts.reduce((sum, s) => {
-                      const multiplier = holidays.has(s.date.slice(0, 10)) ? 2 : 1
-                      return sum + rate * 8 * multiplier
-                    }, 0)
+                  ? rate * normalHours + rate * 2 * holidayHours
                   : rate + holidayShiftCount * (rate / 30)
                 const deduction = job.labor_insurance_fee + job.health_insurance_fee + job.welfare_fee
                 const net = gross - deduction
@@ -813,11 +948,38 @@ export default function SchedulePage() {
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                       <span className="text-xs text-muted-foreground">
                         {job.pay_type === 'hourly'
-                          ? `${jobShifts.length} 班 · ${jobShifts.length * 8} 小時`
+                          ? `${jobShifts.length} 班 · ${+(normalHours + holidayHours).toFixed(1)} 小時`
                           : `${jobShifts.length} 班`}
                         {holidayShiftCount > 0 && `・${holidayShiftCount} 天假日加成`}
                       </span>
+                      <button
+                        onClick={() => setShowSalaryDetail(v => !v)}
+                        className="ml-auto text-xs font-medium text-amber-600 hover:underline"
+                      >
+                        {showSalaryDetail ? '收起' : '怎麼算的？'}
+                      </button>
                     </div>
+                    {showSalaryDetail && (
+                      <div className="flex flex-col gap-1 border-b bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+                        {job.pay_type === 'hourly' ? (
+                          <>
+                            <p>平日 {+normalHours.toFixed(1)} 小時 × 時薪 {formatCurrency(rate)} = {formatCurrency(rate * normalHours)}</p>
+                            {holidayHours > 0 && (
+                              <p>國定假日 {+holidayHours.toFixed(1)} 小時 × 時薪 {formatCurrency(rate)} × 2 = {formatCurrency(rate * 2 * holidayHours)}</p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p>月薪 {formatCurrency(rate)}</p>
+                            {holidayShiftCount > 0 && (
+                              <p>國定假日出勤 {holidayShiftCount} 天 × 日薪 {formatCurrency(rate / 30)} = {formatCurrency(holidayShiftCount * rate / 30)}</p>
+                            )}
+                          </>
+                        )}
+                        <p>扣勞保 {formatCurrency(job.labor_insurance_fee)}、健保 {formatCurrency(job.health_insurance_fee)}{job.welfare_fee ? `、福利金 ${formatCurrency(job.welfare_fee)}` : ''}</p>
+                        <p>時薪和扣款金額可以到「設定 → 工作管理」修改</p>
+                      </div>
+                    )}
                     <div className="flex justify-around px-4 py-3">
                       <div className="flex flex-col items-center">
                         <p className="text-xs text-muted-foreground">應領</p>
@@ -825,7 +987,7 @@ export default function SchedulePage() {
                       </div>
                       <div className="w-px bg-border" />
                       <div className="flex flex-col items-center">
-                        <p className="text-xs text-muted-foreground">勞健保</p>
+                        <p className="text-xs text-muted-foreground">扣款</p>
                         <p className="text-base font-semibold text-rose-500">
                           -{formatCurrency(deduction)}
                         </p>

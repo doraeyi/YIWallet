@@ -85,7 +85,7 @@ export function Sidebar() {
 
         {/* Logout */}
         <div className="px-3 pb-4">
-          <form action={logout}>
+          <form action={logout} onSubmit={e => { if (!confirm('確定要登出嗎？')) e.preventDefault() }}>
             <button
               type="submit"
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

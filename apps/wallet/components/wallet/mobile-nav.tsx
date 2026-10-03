@@ -24,7 +24,11 @@ const SCROLL_THRESHOLD = 8
 export function MobileNav() {
   const pathname = usePathname()
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  // 縮小狀態綁定在「哪一頁縮小的」：換頁之後就自動恢復原本大小，不會帶著上一頁的
+  // 縮小狀態跑到下一頁（短頁面捲不動，會一直卡在縮小，切頁時看起來像跳一下）
+  const [collapsedOn, setCollapsedOn] = useState<string | null>(null)
+  const collapsed = collapsedOn === pathname
+  const setCollapsed = (v: boolean) => setCollapsedOn(v ? window.location.pathname : null)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const { addTransaction } = useTransactions()
   const lastScrollY = useRef(0)
@@ -120,6 +124,7 @@ export function MobileNav() {
           <div className="flex flex-col items-center px-2">
             <button
               onClick={() => setSheetOpen(true)}
+              aria-label="新增記帳"
               className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-amber-400 shadow-lg shadow-amber-400/30 active:scale-95 transition-transform"
             >
               <PlusIcon className="size-7 text-white" strokeWidth={2.5} />

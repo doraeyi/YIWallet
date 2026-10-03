@@ -8,6 +8,7 @@ import { groupByDate, formatDate, formatCurrency, filterByMonth, sumByType, tran
 import { getCategoryById, type Transaction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import { PageSkeleton } from '@/components/wallet/page-skeleton'
 
 export default function TransactionsPage() {
   const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear } = useTransactions()
@@ -52,7 +53,7 @@ export default function TransactionsPage() {
   }
 
   if (!isLoaded) {
-    return <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">載入中…</div>
+    return <PageSkeleton />
   }
 
   return (

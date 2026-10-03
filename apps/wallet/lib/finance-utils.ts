@@ -171,3 +171,14 @@ export function transactionLabels(tx: Transaction, categoryName: string): { titl
   if (!desc) return { title: categoryName, subtitle: note }
   return { title: desc, subtitle: [categoryName, note !== desc ? note : ''].filter(Boolean).join(' · ') }
 }
+
+// 一班幾小時：時間是 "HH:MM" 或 "HH:MM:SS"，下班時間早於上班時間就是跨夜（例如 23:00–07:00 是 8 小時）
+export function shiftHours(start: string, end: string): number {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + (m || 0)
+  }
+  let diff = toMin(end) - toMin(start)
+  if (diff <= 0) diff += 24 * 60
+  return diff / 60
+}

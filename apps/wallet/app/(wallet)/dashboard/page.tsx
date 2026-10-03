@@ -17,6 +17,7 @@ import { MonthNav } from '@/components/wallet/month-nav'
 import { CardVisual } from '@/components/wallet/card-visual'
 import { CardCreatedCelebration } from '@/components/wallet/card-created-celebration'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { PageSkeleton } from '@/components/wallet/page-skeleton'
 
 type ViewItem =
   | { kind: 'all' }
@@ -378,9 +379,7 @@ export default function DashboardPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        載入中…
-      </div>
+      <PageSkeleton />
     )
   }
 
@@ -393,7 +392,7 @@ export default function DashboardPage() {
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
         <div className="flex items-center gap-3 text-muted-foreground">
-          <Link href="/bank-notify" className="relative hover:text-foreground">
+          <Link href="/bank-notify" aria-label={pendingNotifyCount > 0 ? `待處理通知 ${pendingNotifyCount} 則` : '通知'} className="relative hover:text-foreground">
             <BellIcon className="size-5" />
             {pendingNotifyCount > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-4 text-white">
@@ -401,16 +400,16 @@ export default function DashboardPage() {
               </span>
             )}
           </Link>
-          <Link href="/statements" className="hover:text-foreground">
+          <Link href="/statements" aria-label="信用卡帳單" className="hover:text-foreground">
             <ReceiptTextIcon className="size-5" />
           </Link>
           {canUseBarcode && (
-            <a href={`${process.env.NEXT_PUBLIC_SOP_APP_URL}/barcode`} className="hover:text-foreground">
+            <a href={`${process.env.NEXT_PUBLIC_SOP_APP_URL}/barcode`} aria-label="條碼查詢" className="hover:text-foreground">
               <BarcodeIcon className="size-5" />
             </a>
           )}
           {canUseBarcode && (
-            <a href={`${process.env.NEXT_PUBLIC_SOP_APP_URL}/procedures`} className="hover:text-foreground">
+            <a href={`${process.env.NEXT_PUBLIC_SOP_APP_URL}/procedures`} aria-label="作業流程" className="hover:text-foreground">
               <BookOpenIcon className="size-5" />
             </a>
           )}

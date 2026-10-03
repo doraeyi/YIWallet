@@ -40,12 +40,27 @@ interface AddTransactionSheetProps {
   initialData?: Transaction
 }
 
+// 右邊一欄放 + − 讓使用者直接算「120+35」，金額會即時算出結果，儲存時用結果
 const PAD_KEYS = [
   '1','2','3','⌫',
-  '4','5','6','',
-  '7','8','9','',
+  '4','5','6','+',
+  '7','8','9','−',
   '.','0','00','✓',
 ] as const
+
+const OPERATORS = ['+', '−']
+
+// "120+35−5" → 150；結尾是運算子的話先忽略那個運算子
+function evaluateAmount(expr: string): number {
+  const trimmed = expr.replace(/[+−]$/, '')
+  if (!trimmed) return 0
+  let total = 0
+  for (const m of trimmed.matchAll(/([+−]?)([\d.]+)/g)) {
+    const n = parseFloat(m[2]) || 0
+    total += m[1] === '−' ? -n : n
+  }
+  return Math.round(total * 100) / 100
+}
 
 export function AddTransactionSheet({
   open,
@@ -112,7 +127,7 @@ export function AddTransactionSheet({
   }
 
   const handleSave = useCallback(async () => {
-    const parsed = parseFloat(amount)
+    const parsed = evaluateAmount(amount)
     if (!amount || isNaN(parsed) || parsed <= 0 || !category || saving) return
     // 沒有任何卡片的人一律是現金；有卡片的人要明確點「現金」才算，不然就是還沒指定
     const isCash = !cardId && (cards.length === 0 || isExplicitCash)
@@ -140,25 +155,76 @@ export function AddTransactionSheet({
   const handleKey = useCallback((key: string) => {
     if (key === '✓') { handleSave(); return }
     if (key === '⌫') { setAmount(prev => prev.slice(0, -1)); return }
+    if (key === '=') {
+      const result = evaluateAmount(amount)
+      setAmount(result > 0 ? String(result) : '')
+      return
+    }
     if (key === '')   return
-    if (key === '.' && amount.includes('.')) return
-    if (key === '00' && amount === '') return
-    if (amount.replace('.', '').length >= 8) return
+    const lastChar = amount.slice(-1)
+    if (OPERATORS.includes(key)) {
+      if (!amount) return
+      // 連按兩個運算子就換成後按的那個
+      setAmount(prev => (OPERATORS.includes(prev.slice(-1)) ? prev.slice(0, -1) : prev) + key)
+      return
+    }
+    const current = amount.split(/[+−]/).pop() ?? ''
+    if (key === '.' && current.includes('.')) return
+    if (key === '00' && (current === '' || OPERATORS.includes(lastChar))) return
+    if (current.replace('.', '').length >= 8) return
     setAmount(prev => prev + key)
   }, [amount, handleSave])
 
+  // 電腦上直接用實體鍵盤輸入金額：數字、小數點、+ -、Backspace、Enter 存檔。
+  // 正在備註欄這類輸入框打字時不攔截。
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      let key: string | null = null
+      if (/^[0-9]$/.test(e.key)) key = e.key
+      else if (e.key === '.') key = '.'
+      else if (e.key === '+') key = '+'
+      else if (e.key === '-') key = '−'
+      else if (e.key === '=') key = '='
+      else if (e.key === 'Backspace') key = '⌫'
+      else if (e.key === 'Enter') key = '✓'
+      if (key === null) return
+      e.preventDefault()
+      handleKey(key)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, handleKey])
+
+  const evaluated = evaluateAmount(amount)
+  const hasExpression = /[+−]/.test(amount)
   const displayAmount = amount
-    ? new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(parseFloat(amount) || 0)
+    ? new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(evaluated)
     : '0'
 
-  const isValid = !!amount && parseFloat(amount) > 0 && !!category
+  const isValid = evaluated > 0 && !!category
+
+  // 已經輸入金額卻按 ✕／點外面關掉，先確認，避免誤觸把剛打的內容丟掉
+  const initialAmount = initialData ? String(initialData.amount) : ''
+  function requestClose() {
+    if (amount && amount !== initialAmount && !confirm('金額還沒儲存，確定要關閉嗎？')) return
+    onOpenChange(false)
+  }
+  function handleOpenChange(next: boolean) {
+    if (next) onOpenChange(true)
+    else requestClose()
+  }
 
   const inner = (
     <div className="flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <button
-          onClick={() => onOpenChange(false)}
+          onClick={requestClose}
+          aria-label="關閉"
           className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
         >
           <XIcon className="size-4" />
@@ -189,15 +255,21 @@ export function AddTransactionSheet({
         </button>
       </div>
 
+      {!category && (
+        <p className="px-4 pb-1 text-xs text-muted-foreground">選一個分類 <span className="text-rose-500">*</span></p>
+      )}
       {/* Category grid — 2 rows, horizontal scroll if overflow */}
       <div className="grid grid-rows-2 grid-flow-col auto-cols-[72px] gap-3 overflow-x-auto px-4 pb-3 scrollbar-none">
         {categories.map(cat => (
           <button
             key={cat.id}
             onClick={() => setCategory(cat.id)}
+            aria-pressed={category === cat.id}
             className={cn(
               'flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all',
-              category === cat.id && (type === 'expense' ? 'ring-2 ring-rose-400 ring-offset-1' : 'ring-2 ring-emerald-400 ring-offset-1')
+              category === cat.id
+                ? (type === 'expense' ? 'bg-rose-50 ring-2 ring-rose-400 dark:bg-rose-400/10' : 'bg-emerald-50 ring-2 ring-emerald-400 dark:bg-emerald-400/10')
+                : category && 'opacity-50'
             )}
           >
             <span
@@ -206,13 +278,16 @@ export function AddTransactionSheet({
             >
               {cat.emoji}
             </span>
-            <span className="text-xs font-medium">{cat.name}</span>
+            <span className={cn('text-xs', category === cat.id ? 'font-bold' : 'font-medium')}>{cat.name}</span>
           </button>
         ))}
       </div>
 
       {/* Amount display */}
-      <div className="flex items-center justify-end px-6 pb-2">
+      <div className="flex flex-col items-end px-6 pb-2">
+        {hasExpression && (
+          <span className="text-sm tabular-nums text-muted-foreground">{amount}</span>
+        )}
         <span className={cn(
           'text-4xl font-bold tabular-nums',
           type === 'expense' ? 'text-rose-500' : 'text-emerald-500'
@@ -293,8 +368,8 @@ export function AddTransactionSheet({
         </div>
       )}
 
-      {/* Number pad */}
-      <div className="grid grid-cols-4 border-t bg-muted/20">
+      {/* Number pad——固定在面板底部，小螢幕不用往下捲才看得到「儲存」 */}
+      <div className="sticky bottom-0 grid grid-cols-4 border-t bg-background">
         {PAD_KEYS.map((key, idx) => {
           if (key === '✓') {
             return (
@@ -310,12 +385,15 @@ export function AddTransactionSheet({
               </button>
             )
           }
-          if (key === '') return <div key={idx} className="py-4 bg-background/30" />
           return (
             <button
               key={idx}
               onClick={() => handleKey(key)}
-              className="flex items-center justify-center py-4 text-lg font-medium hover:bg-muted active:bg-muted transition-colors"
+              aria-label={key === '⌫' ? '刪除' : key === '+' ? '加' : key === '−' ? '減' : undefined}
+              className={cn(
+                'flex items-center justify-center py-4 text-lg font-medium hover:bg-muted active:bg-muted transition-colors',
+                OPERATORS.includes(key) && 'text-amber-600',
+              )}
             >
               {key === '⌫' ? <DeleteIcon className="size-5 text-muted-foreground" /> : key}
             </button>
@@ -327,7 +405,7 @@ export function AddTransactionSheet({
 
   if (isDesktop) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent showCloseButton={false} className="gap-0 overflow-hidden p-0 sm:max-w-sm">
           <DialogTitle className="sr-only">{initialData ? '編輯紀錄' : '新增紀錄'}</DialogTitle>
           {inner}
@@ -337,7 +415,7 @@ export function AddTransactionSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="bottom" showCloseButton={false} className="gap-0 rounded-t-2xl p-0 max-h-[92dvh] overflow-y-auto">
         <SheetTitle className="sr-only">{initialData ? '編輯紀錄' : '新增紀錄'}</SheetTitle>
         {inner}

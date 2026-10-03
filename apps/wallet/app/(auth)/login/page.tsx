@@ -5,6 +5,17 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { login } from '@/app/actions/auth'
+import { PasswordInput } from '@/components/wallet/password-input'
+
+function ResetDone() {
+  const searchParams = useSearchParams()
+  if (searchParams.get('reset') !== '1') return null
+  return (
+    <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+      密碼已重設，請用新密碼登入
+    </p>
+  )
+}
 
 function GoogleError() {
   const searchParams = useSearchParams()
@@ -60,10 +71,12 @@ export default function LoginPage() {
           <div className="flex flex-col gap-4">
             <Suspense>
               <ReturnToFields />
+              <ResetDone />
             </Suspense>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Email</label>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium">電子郵件</label>
               <input
+                id="email"
                 name="email"
                 type="email"
                 required
@@ -73,14 +86,16 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">密碼</label>
-              <input
+              <div className="mb-1.5 flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-medium">密碼</label>
+                <Link href="/forgot-password" className="text-xs text-amber-500 hover:text-amber-600">忘記密碼？</Link>
+              </div>
+              <PasswordInput
+                id="password"
                 name="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 placeholder="輸入密碼"
-                className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-ring"
               />
             </div>
             {state?.error && (
