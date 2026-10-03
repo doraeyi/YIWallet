@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { CheckIcon, ChevronDownIcon, CopyIcon, RefreshCwIcon, ZapIcon } from 'lucide-react'
 import * as api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { confirmDialog } from '@/lib/confirm'
 
 // iPhone 捷徑「錢包」自動化：每次用 Apple Pay 付款就 POST 商家／金額／卡片到
 // /api/auto-record/<token>/apple-pay，後端直接建立一筆支出（見後端 routers/auto_record.py）。
@@ -25,12 +26,12 @@ export function ApplePayRecordSettings() {
   }
 
   async function handleRotate() {
-    if (!confirm('重新產生後，舊網址立刻失效，要到捷徑裡把網址換成新的。確定嗎？')) return
+    if (!(await confirmDialog('重新產生後，舊網址立刻失效，要到捷徑裡把網址換成新的。確定嗎？'))) return
     await handleEnable()
   }
 
   async function handleDisable() {
-    if (!confirm('停用後，Apple Pay 付款就不會再自動記帳。確定嗎？')) return
+    if (!(await confirmDialog('停用後，Apple Pay 付款就不會再自動記帳。確定嗎？', { confirmText: '停用', danger: true }))) return
     setBusy(true)
     try { await api.disableRecordToken(); setToken(null) } finally { setBusy(false) }
   }

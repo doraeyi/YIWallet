@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { CalendarDaysIcon, CheckIcon, ChevronDownIcon, CopyIcon, RefreshCwIcon } from 'lucide-react'
 import * as api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { confirmDialog } from '@/lib/confirm'
 
 // iPhone 的 Scriptable App 小工具腳本：叫 /api/calendar/<token>/upcoming 拿近期班表。
 // 版面跟 Android 用的 /api/calendar/<token>/widget 網頁一致：上面大字顯示下一班，
@@ -272,12 +273,12 @@ export function CalendarFeedSettings() {
   }
 
   async function handleRotate() {
-    if (!confirm('重新產生後，舊的訂閱網址和小工具都會失效，要在手機上重新加入一次。確定嗎？')) return
+    if (!(await confirmDialog('重新產生後，舊的訂閱網址和小工具都會失效，要在手機上重新加入一次。確定嗎？'))) return
     await handleEnable()
   }
 
   async function handleDisable() {
-    if (!confirm('停用後，已訂閱的行事曆和小工具都會讀不到班表。確定嗎？')) return
+    if (!(await confirmDialog('停用後，已訂閱的行事曆和小工具都會讀不到班表。確定嗎？', { confirmText: '停用', danger: true }))) return
     setBusy(true)
     try { await api.disableCalendarToken(); setToken(null) } finally { setBusy(false) }
   }

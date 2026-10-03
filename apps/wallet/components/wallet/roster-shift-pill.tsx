@@ -6,6 +6,7 @@ import * as api from '@/lib/api'
 import type { Friendship } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { confirmDialog } from '@/lib/confirm'
 
 interface RosterShiftPillProps {
   shift: api.RosterViewShift
@@ -83,7 +84,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
   }
 
   async function handleDelete() {
-    if (!window.confirm(`確定要刪除「${shift.employeeName}」這筆班表嗎？`)) return
+    if (!(await confirmDialog(`確定要刪除「${shift.employeeName}」這筆班表嗎？`, { confirmText: '刪除', danger: true }))) return
     setSaving(true)
     try {
       await api.deleteRosterShift(shift.id)

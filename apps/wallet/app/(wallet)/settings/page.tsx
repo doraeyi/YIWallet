@@ -22,6 +22,8 @@ import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { Card } from '@/lib/types'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
+import { confirmDialog } from '@/lib/confirm'
+import { DeleteAccountDialog } from '@/components/wallet/delete-account-dialog'
 
 interface UserProfile {
   id: string
@@ -102,6 +104,7 @@ export default function SettingsPage() {
   const [expandedAccount, setExpandedAccount] = useState<'google' | 'line' | null>(null)
   const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | 'push' | null>(null)
   const [showChangelog, setShowChangelog] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
 
   function handleExportCsv() {
     exportTransactionsCsv(transactions, cards)
@@ -379,7 +382,7 @@ export default function SettingsPage() {
   }
 
   async function handleDeleteJob(id: string) {
-    if (!confirm('確定刪除此工作？班表紀錄也會一併刪除。')) return
+    if (!(await confirmDialog('確定刪除此工作？班表紀錄也會一併刪除。', { confirmText: '刪除', danger: true }))) return
     await api.deleteJob(id)
     setJobs(prev => prev.filter(j => j.id !== id))
   }
@@ -564,7 +567,7 @@ export default function SettingsPage() {
                           <PencilIcon className="size-4" />
                         </button>
                         <button
-                          onClick={async () => { if (!confirm(`確定刪除「${card.name}」？相關交易紀錄不受影響。`)) return; await removeCard(card.id) }}
+                          onClick={async () => { if (!(await confirmDialog(`確定刪除「${card.name}」？相關交易紀錄不受影響。`, { confirmText: '刪除', danger: true }))) return; await removeCard(card.id) }}
                           className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500"
                         >
                           <Trash2Icon className="size-4" />
@@ -710,13 +713,19 @@ export default function SettingsPage() {
               )}
               {pushPermission === 'denied' && (
                 <div className="flex flex-col gap-2 text-xs text-muted-foreground">
-                  <p>通知權限被關掉了，要到系統或瀏覽器設定重新打開，打開後回來這頁再按一次「開啟推播通知」：</p>
+                  <p>通知權限被關掉了，要到系統或瀏覽器設定重新打開，打開後回來按最下面的「我已經打開了」：</p>
                   <ul className="flex flex-col gap-1.5 rounded-xl bg-muted/40 p-3">
                     <li><b className="text-foreground">iPhone（已加到主畫面）：</b>設定 → 通知 → 易記帳 → 允許通知</li>
                     <li><b className="text-foreground">Android（Chrome）：</b>網址列左邊的鎖頭圖示 → 權限 → 通知 → 允許</li>
                     <li><b className="text-foreground">電腦 Chrome／Edge：</b>網址列左邊的圖示 → 網站設定 → 通知 → 允許，再重新整理</li>
                     <li><b className="text-foreground">電腦 Safari：</b>Safari → 設定 → 網站 → 通知 → 找到本站改成「允許」</li>
                   </ul>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="flex items-center justify-center rounded-xl bg-amber-400 py-2.5 text-sm font-medium text-white hover:bg-amber-500"
+                  >
+                    我已經打開了，重新檢查
+                  </button>
                 </div>
               )}
               {pushPermission !== 'unsupported' && pushPermission !== 'denied' && (
@@ -888,19 +897,29 @@ export default function SettingsPage() {
             <span className="text-sm font-medium">匯出記帳資料（CSV）</span>
             <span className="text-base leading-none text-muted-foreground">›</span>
           </button>
+          <div className="border-t" />
+          <button
+            onClick={() => setDeleteAccountOpen(true)}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
+          >
+            <span className="text-sm font-medium text-rose-500">刪除帳號</span>
+            <span className="text-base leading-none text-muted-foreground">›</span>
+          </button>
         </div>
 
         {/* Logout — visible on mobile only (desktop uses sidebar) */}
-        <form action={logout} className="lg:hidden" onSubmit={e => { if (!confirm('確定要登出嗎？')) e.preventDefault() }}>
+        <div className="lg:hidden">
           <button
-            type="submit"
+            onClick={async () => { if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await logout() }}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-medium text-rose-500 shadow-sm dark:bg-card"
           >
             <LogOutIcon className="size-4" />
             登出
           </button>
-        </form>
+        </div>
       </div>
+
+      <DeleteAccountDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen} />
 
       {/* Job form overlay */}
       {formOpen && (

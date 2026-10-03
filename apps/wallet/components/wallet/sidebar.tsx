@@ -9,6 +9,7 @@ import { useTransactions } from '@/hooks/use-transactions'
 import { useMe } from '@/hooks/use-me'
 import { logout } from '@/app/actions/auth'
 import { cn } from '@/lib/utils'
+import { confirmDialog } from '@/lib/confirm'
 
 interface NavItem {
   href: string
@@ -85,7 +86,7 @@ export function Sidebar() {
 
         {/* Logout */}
         <div className="px-3 pb-4">
-          <form action={logout} onSubmit={e => { if (!confirm('確定要登出嗎？')) e.preventDefault() }}>
+          <form action={logout} onSubmit={async e => { e.preventDefault(); if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await logout() }}>
             <button
               type="submit"
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/wallet/sidebar'
 import { MobileNav } from '@/components/wallet/mobile-nav'
 import { LineImportBanner } from '@/components/wallet/line-import-banner'
 import { Toaster } from '@/components/ui/toaster'
+import { ConfirmHost } from '@/components/ui/confirm-host'
 
 export default function WalletLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,6 +24,7 @@ export default function WalletLayout({ children }: { children: React.ReactNode }
         <LineImportBanner />
 
         <Toaster />
+        <ConfirmHost />
       </div>
     </TransactionsProvider>
   )

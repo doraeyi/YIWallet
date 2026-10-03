@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { XIcon, DeleteIcon } from 'lucide-react'
 import {
   Sheet,
@@ -18,6 +18,7 @@ import { CATEGORIES, type Transaction, type TransactionType } from '@/lib/types'
 import { todayString } from '@/lib/finance-utils'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
 
 // 新增交易時預選上次用的分類（收入、支出各記一個），常記同一類的不用每次重選
 const LAST_CATEGORY_KEY = 'yiwallet_last_category'
@@ -209,9 +210,17 @@ export function AddTransactionSheet({
 
   // 已經輸入金額卻按 ✕／點外面關掉，先確認，避免誤觸把剛打的內容丟掉
   const initialAmount = initialData ? String(initialData.amount) : ''
-  function requestClose() {
-    if (amount && amount !== initialAmount && !confirm('金額還沒儲存，確定要關閉嗎？')) return
+  async function requestClose() {
+    if (amount && amount !== initialAmount
+      && !(await confirmDialog('金額還沒儲存，確定要關閉嗎？', { confirmText: '關閉', danger: true }))) return
     onOpenChange(false)
+  }
+
+  // 面板一打開就讓面板本身取得焦點，電腦上不用先點一下就能直接打數字
+  const panelRef = useRef<HTMLDivElement>(null)
+  function focusPanel(e: Event) {
+    e.preventDefault()
+    panelRef.current?.focus()
   }
   function handleOpenChange(next: boolean) {
     if (next) onOpenChange(true)
@@ -219,7 +228,7 @@ export function AddTransactionSheet({
   }
 
   const inner = (
-    <div className="flex flex-col">
+    <div ref={panelRef} tabIndex={-1} className="flex flex-col outline-none">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <button
@@ -265,6 +274,7 @@ export function AddTransactionSheet({
             key={cat.id}
             onClick={() => setCategory(cat.id)}
             aria-pressed={category === cat.id}
+            aria-label={cat.name}
             className={cn(
               'flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all',
               category === cat.id
@@ -406,7 +416,7 @@ export function AddTransactionSheet({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent showCloseButton={false} className="gap-0 overflow-hidden p-0 sm:max-w-sm">
+        <DialogContent showCloseButton={false} onOpenAutoFocus={focusPanel} className="gap-0 overflow-hidden p-0 sm:max-w-sm">
           <DialogTitle className="sr-only">{initialData ? '編輯紀錄' : '新增紀錄'}</DialogTitle>
           {inner}
         </DialogContent>
@@ -416,7 +426,7 @@ export function AddTransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" showCloseButton={false} className="gap-0 rounded-t-2xl p-0 max-h-[92dvh] overflow-y-auto">
+      <SheetContent side="bottom" showCloseButton={false} onOpenAutoFocus={focusPanel} className="gap-0 rounded-t-2xl p-0 max-h-[92dvh] overflow-y-auto">
         <SheetTitle className="sr-only">{initialData ? '編輯紀錄' : '新增紀錄'}</SheetTitle>
         {inner}
       </SheetContent>

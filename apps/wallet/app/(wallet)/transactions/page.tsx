@@ -9,6 +9,7 @@ import { getCategoryById, type Transaction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
+import { confirmDialog } from '@/lib/confirm'
 
 export default function TransactionsPage() {
   const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear } = useTransactions()
@@ -43,7 +44,7 @@ export default function TransactionsPage() {
   }
 
   async function handleDelete(tx: Transaction, label: string) {
-    if (!confirm(`確定刪除「${label}」${formatCurrency(tx.amount)}？刪除後無法復原。`)) return
+    if (!(await confirmDialog(`確定刪除「${label}」${formatCurrency(tx.amount)}？\n刪除後無法復原。`, { confirmText: '刪除', danger: true }))) return
     try {
       await deleteTransaction(tx.id)
       toast('已刪除')

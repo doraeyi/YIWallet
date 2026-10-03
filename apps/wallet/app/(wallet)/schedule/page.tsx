@@ -15,6 +15,7 @@ import { JobCoworkersDialog } from '@/components/wallet/job-coworkers-dialog'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useTransactions } from '@/hooks/use-transactions'
+import { toast } from '@/lib/toast'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
@@ -388,6 +389,32 @@ export default function SchedulePage() {
     }
   }
 
+  // 點班別是直接存的，手機上很容易誤觸，所以每次改完都跳「已改成早班・復原」，
+  // 幾秒內按復原就把這次刪掉的班加回來、新加的班刪掉
+  function offerUndo(message: string, removed: Shift[], created: Shift | null) {
+    toast(message, 'success', {
+      label: '復原',
+      onClick: async () => {
+        try {
+          if (created) {
+            await api.deleteShift(created.id)
+            setShifts(prev => prev.filter(s => s.id !== created.id))
+          }
+          for (const old of removed) {
+            if (!old.job_id) continue
+            const restored = await api.upsertShift({
+              job_id: old.job_id, date: old.date.slice(0, 10),
+              label: old.shift_type, start_time: old.start_time, end_time: old.end_time, note: old.note,
+            })
+            setShifts(prev => [...prev, restored])
+          }
+        } catch {
+          toast('復原失敗，請再手動改一次', 'error')
+        }
+      },
+    })
+  }
+
   async function handleToggleShift(jobId: string, preset: ShiftPreset) {
     if (!selectedDate || saving) return
     setSaving(true)
@@ -396,9 +423,10 @@ export default function SchedulePage() {
       if (existing) {
         await api.deleteShift(existing.id)
         setShifts(prev => prev.filter(s => s.id !== existing.id))
+        offerUndo(`已取消${preset.label}`, [existing], null)
       } else {
-        const other = selectedShifts.find(s => s.job_id === jobId)
-        if (other) {
+        const others = selectedShifts.filter(s => s.job_id === jobId)
+        for (const other of others) {
           await api.deleteShift(other.id)
           setShifts(prev => prev.filter(s => s.id !== other.id))
         }
@@ -407,7 +435,10 @@ export default function SchedulePage() {
           label: preset.label, start_time: preset.start_time, end_time: preset.end_time,
         })
         setShifts(prev => [...prev, newShift])
+        offerUndo(`已改成${preset.label}`, others, newShift)
       }
+    } catch {
+      toast('儲存失敗，請再試一次', 'error')
     } finally {
       setSaving(false)
     }
@@ -416,11 +447,15 @@ export default function SchedulePage() {
   async function handleClearDay(jobId: string) {
     if (!selectedDate || saving) return
     setSaving(true)
+    const removed = selectedShifts.filter(s => s.job_id === jobId)
     try {
-      for (const s of selectedShifts.filter(s => s.job_id === jobId)) {
+      for (const s of removed) {
         await api.deleteShift(s.id)
         setShifts(prev => prev.filter(x => x.id !== s.id))
       }
+      offerUndo('已刪除這天的班', removed, null)
+    } catch {
+      toast('刪除失敗，請再試一次', 'error')
     } finally {
       setSaving(false)
     }
@@ -646,7 +681,7 @@ export default function SchedulePage() {
                           disabled={saving}
                           className="flex-1 rounded-xl border border-rose-200 py-2 text-xs font-medium text-rose-500 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-950/20"
                         >
-                          這天休假（清除）
+                          刪除這天的班
                         </button>
                       )}
                     </div>
