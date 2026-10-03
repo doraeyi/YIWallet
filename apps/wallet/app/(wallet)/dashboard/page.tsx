@@ -17,6 +17,7 @@ import { CardVisual } from '@/components/wallet/card-visual'
 import { CardCreatedCelebration } from '@/components/wallet/card-created-celebration'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
+import { useCountUp } from '@/hooks/use-count-up'
 
 type ViewItem =
   | { kind: 'all' }
@@ -91,6 +92,7 @@ function DonutChart({
   const filled = ratio * circumference
   const overspent = income > 0 && expense > income
   const displayValue = centerValue ?? balance
+  const animatedValue = useCountUp(displayValue)
   const displayLabel = centerLabel ?? '月結餘'
   const ratioText = income > 0
     ? `花了收入的 ${Math.round((expense / income) * 100)}%`
@@ -109,8 +111,14 @@ function DonutChart({
             stroke={overspent ? '#F43F5E' : ringColor}
             strokeWidth={28}
             strokeDasharray={`${filled} ${circumference}`}
+            strokeDashoffset={0}
             strokeLinecap={ratio < 1 ? 'round' : 'butt'}
             transform={`rotate(-90 ${cx} ${cy})`}
+            style={{
+              '--ring-length': filled,
+              animation: 'ring-draw 0.9s var(--ease-out-soft) backwards',
+              transition: 'stroke-dasharray 0.6s var(--ease-out-soft), stroke 0.3s',
+            } as React.CSSProperties}
           />
         )}
       </svg>
@@ -122,7 +130,7 @@ function DonutChart({
             displayValue >= 0 ? 'text-foreground' : 'text-rose-500',
           )}
         >
-          {formatCurrency(displayValue)}
+          {formatCurrency(animatedValue)}
         </span>
         {ratioText && (
           <span className={cn('mt-0.5 text-[11px]', overspent ? 'text-rose-500' : 'text-muted-foreground')}>{ratioText}</span>
@@ -252,6 +260,8 @@ export default function DashboardPage() {
   const income = sumByType(filtered, 'income')
   const expense = sumByType(filtered, 'expense')
   const balance = income - expense
+  const animatedExpense = useCountUp(expense)
+  const animatedIncome = useCountUp(income)
 
   // Donut center: debit/easycard → 餘額（stored）, credit → 本期消費（有設結帳日就用後端即時算的，
   // 沒設就退回日曆月加總當預覽）, others → 月結餘
@@ -465,20 +475,21 @@ export default function DashboardPage() {
             {creditPeriod ? `本期支出（${format(creditPeriod.start, 'M/d')}～${format(creditPeriod.end, 'M/d')}）` : '月支出'}
             <ChevronRightIcon className="size-3" />
           </span>
-          <span className="text-2xl font-bold text-rose-500">{formatCurrency(expense)}</span>
+          <span className="text-2xl font-bold tabular-nums text-rose-500">{formatCurrency(animatedExpense)}</span>
         </Link>
         <Link href={statsHref} className="flex flex-col items-end">
           <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
             月收入
             <ChevronRightIcon className="size-3" />
           </span>
-          <span className="text-2xl font-bold text-emerald-600">{formatCurrency(income)}</span>
+          <span className="text-2xl font-bold tabular-nums text-emerald-600">{formatCurrency(animatedIncome)}</span>
         </Link>
       </div>
 
       {/* ── Mobile: swipeable donut／卡片 ──────────────────── */}
       <div
-        className="relative flex justify-center px-8 py-6 lg:py-4 select-none"
+        key={safeIndex}
+        className="relative flex justify-center px-8 py-6 lg:py-4 select-none animate-pop"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -748,7 +759,7 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm text-muted-foreground">這個月還沒有紀錄</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:grid lg:grid-cols-2 lg:items-start">
+          <div key={`${safeIndex}-${year}-${month}`} className="stagger overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:grid lg:grid-cols-2 lg:items-start">
             {recentGroups.map(({ date, items }, groupIdx) => {
               const dateLabel = formatDate(date)
               const dayExpense = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)

@@ -119,10 +119,17 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
-                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium"
+                className="flex flex-1 flex-col items-center gap-0.5 pt-2.5 pb-1.5 text-xs font-medium"
               >
-                <Icon className={cn('size-5', active ? 'text-brand-text' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
-                <span className={active ? 'text-brand-text' : 'text-muted-foreground'}>{label}</span>
+                <Icon
+                  className={cn('size-5 transition-all duration-300 ease-(--ease-spring)', active ? 'scale-110 text-brand-text' : 'text-muted-foreground')}
+                  strokeWidth={active ? 2.5 : 1.8}
+                />
+                <span className={cn('transition-colors', active ? 'text-brand-text' : 'text-muted-foreground')}>{label}</span>
+                <span
+                  aria-hidden="true"
+                  className={cn('size-1 rounded-full bg-brand transition-all duration-300', active ? 'scale-100 opacity-100' : 'scale-0 opacity-0')}
+                />
               </Link>
             )
           })}
@@ -132,7 +139,7 @@ export function MobileNav() {
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="新增記帳"
-              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-brand shadow-lg shadow-brand/30 active:scale-95 transition-transform"
+              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-hover shadow-lg shadow-brand/40 transition-transform duration-300 ease-(--ease-spring) hover:rotate-90 active:scale-90"
             >
               <PlusIcon className="size-7 text-brand-foreground" strokeWidth={2.5} />
             </button>
@@ -145,10 +152,17 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
-                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium"
+                className="flex flex-1 flex-col items-center gap-0.5 pt-2.5 pb-1.5 text-xs font-medium"
               >
-                <Icon className={cn('size-5', active ? 'text-brand-text' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
-                <span className={active ? 'text-brand-text' : 'text-muted-foreground'}>{label}</span>
+                <Icon
+                  className={cn('size-5 transition-all duration-300 ease-(--ease-spring)', active ? 'scale-110 text-brand-text' : 'text-muted-foreground')}
+                  strokeWidth={active ? 2.5 : 1.8}
+                />
+                <span className={cn('transition-colors', active ? 'text-brand-text' : 'text-muted-foreground')}>{label}</span>
+                <span
+                  aria-hidden="true"
+                  className={cn('size-1 rounded-full bg-brand transition-all duration-300', active ? 'scale-100 opacity-100' : 'scale-0 opacity-0')}
+                />
               </Link>
             )
           })}

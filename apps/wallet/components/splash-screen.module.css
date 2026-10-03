@@ -1,0 +1,148 @@
+/* 開場動畫（只在這個元件用，所以 keyframes 放 CSS module，不放 globals.css）
+   時間軸：
+     0      背景出現，光暈開始慢慢飄
+     0.1s   logo 彈出來，外圈描邊畫一圈
+     0.55s  「易記帳」三個字依序浮上來
+     0.9s   副標淡入
+     1.15s  logo 外擴一圈漣漪
+     1.5s   整層往 logo 中心收成一個圓消失，露出 App（phase = exit） */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% 0%, oklch(0.9 0.15 90) 0%, transparent 60%),
+    linear-gradient(160deg, var(--brand) 0%, var(--brand-hover) 100%);
+  color: var(--brand-foreground);
+  clip-path: circle(150% at 50% 45%);
+  transition: clip-path 0.6s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.6s;
+}
+
+.exit {
+  clip-path: circle(0% at 50% 45%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* 背景兩團慢慢飄的光暈 */
+.glow {
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.35), transparent 65%);
+  animation: drift 6s ease-in-out infinite alternate;
+}
+
+.glow:nth-child(2) {
+  top: auto;
+  right: -20vmax;
+  bottom: -25vmax;
+  animation-duration: 7s;
+  animation-direction: alternate-reverse;
+}
+
+.glow:first-child {
+  top: -25vmax;
+  left: -20vmax;
+}
+
+.mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+}
+
+.logo {
+  border-radius: 28px;
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.35);
+  animation: logo-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s backwards;
+}
+
+/* logo 外面畫一圈的描邊 */
+.ring {
+  position: absolute;
+  inset: -14px;
+  width: calc(100% + 28px);
+  height: calc(100% + 28px);
+  transform: rotate(-90deg);
+}
+
+.ring circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 440;
+  stroke-dashoffset: 0;
+  opacity: 0.55;
+  animation: ring-draw 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s backwards;
+}
+
+/* 漣漪 */
+.ripple {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: ripple 0.9s ease-out 1.15s;
+}
+
+.title {
+  display: flex;
+  gap: 0.15em;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.title span {
+  display: inline-block;
+  animation: char-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.title span:nth-child(1) { animation-delay: 0.55s; }
+.title span:nth-child(2) { animation-delay: 0.63s; }
+.title span:nth-child(3) { animation-delay: 0.71s; }
+
+.tagline {
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.75;
+  animation: fade-in 0.5s ease-out 0.9s backwards;
+}
+
+@keyframes drift {
+  to { translate: 6vmax 4vmax; scale: 1.15; }
+}
+
+@keyframes logo-pop {
+  from { opacity: 0; scale: 0.3; rotate: -12deg; }
+}
+
+@keyframes ring-draw {
+  from { stroke-dashoffset: 440; }
+}
+
+@keyframes ripple {
+  from { opacity: 0.6; scale: 1; }
+  to { opacity: 0; scale: 1.8; }
+}
+
+@keyframes char-rise {
+  from { opacity: 0; translate: 0 0.6em; filter: blur(4px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}

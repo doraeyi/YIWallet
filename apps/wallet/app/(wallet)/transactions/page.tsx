@@ -147,7 +147,7 @@ export default function TransactionsPage() {
               <p className="mt-2 text-sm text-muted-foreground">{isFiltering ? '沒有符合的紀錄' : '這個月還沒有紀錄'}</p>
             </div>
           ) : (
-            <div className="lg:grid lg:grid-cols-2 lg:gap-3 flex flex-col gap-3">
+            <div key={`${year}-${month}`} className="stagger flex flex-col gap-3 lg:grid lg:grid-cols-2">
               {groups.map(({ date, items }) => {
                 const dayIncome  = items.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0)
                 const dayExpense = items.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0)
