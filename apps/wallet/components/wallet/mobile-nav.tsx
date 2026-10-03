@@ -21,6 +21,13 @@ const RIGHT_ITEMS = [
 // 滾動多少距離才觸發縮小/恢復，避免一點點抖動就一直切換
 const SCROLL_THRESHOLD = 8
 
+// 子頁面沒有自己的分頁，就讓它所屬的主分頁亮著，使用者才知道自己在哪
+const HOME_SUBPAGES = ['/transactions', '/stats', '/statements', '/bank-notify']
+function isActiveTab(pathname: string, href: string) {
+  if (pathname === href || pathname.startsWith(href + '/')) return true
+  return href === '/dashboard' && HOME_SUBPAGES.some(p => pathname.startsWith(p))
+}
+
 export function MobileNav() {
   const pathname = usePathname()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -107,7 +114,7 @@ export function MobileNav() {
         >
           {/* Left items */}
           {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href
+            const active = isActiveTab(pathname, href)
             return (
               <Link
                 key={href}
@@ -133,7 +140,7 @@ export function MobileNav() {
 
           {/* Right items */}
           {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href
+            const active = isActiveTab(pathname, href)
             return (
               <Link
                 key={href}

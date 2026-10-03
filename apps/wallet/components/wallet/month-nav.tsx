@@ -14,6 +14,7 @@ export function MonthNav({ year, month, onPrev, onNext }: MonthNavProps) {
     <div className="flex items-center gap-1">
       <button
         onClick={onPrev}
+        aria-label="上個月"
         className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-transform"
       >
         <ChevronRightIcon className="size-4 rotate-180" />
@@ -23,6 +24,7 @@ export function MonthNav({ year, month, onPrev, onNext }: MonthNavProps) {
       </span>
       <button
         onClick={onNext}
+        aria-label="下個月"
         className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-transform"
       >
         <ChevronRightIcon className="size-4" />

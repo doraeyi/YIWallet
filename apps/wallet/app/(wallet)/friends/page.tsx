@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, UserPlusIcon, ChevronRightIcon, XIcon, Trash2Icon, BriefcaseIcon } from 'lucide-react'
+import { UserPlusIcon, ChevronRightIcon, XIcon, Trash2Icon, BriefcaseIcon } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -19,6 +19,13 @@ import { Input } from '@/components/ui/input'
 import * as api from '@/lib/api'
 import type { Friendship, Job, JobShare, FriendUser } from '@/lib/types'
 import { FriendJobsDialog } from '@/components/wallet/friend-jobs-dialog'
+
+// 好友清單上的 email 只露前幾個字，例如 lj98****@gmail.com
+function maskEmail(email: string) {
+  const [name, domain] = email.split('@')
+  if (!domain) return email
+  return `${name.slice(0, Math.min(4, Math.max(1, name.length - 2)))}****@${domain}`
+}
 
 export default function FriendsPage() {
   const [friendships, setFriendships] = useState<Friendship[]>([])
@@ -102,9 +109,6 @@ export default function FriendsPage() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-lg lg:pt-8">
-        <Link href="/schedule" className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
-          <ChevronLeftIcon className="size-5" />
-        </Link>
         <h1 className="text-xl font-bold">好友</h1>
       </div>
 
@@ -164,7 +168,7 @@ export default function FriendsPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{f.friend.displayName}</p>
-                          <p className="truncate text-xs text-muted-foreground">{f.friend.email}</p>
+                          <p className="truncate text-xs text-muted-foreground">{maskEmail(f.friend.email)}</p>
                           {jobNames.length > 0 && (
                             <p className="mt-0.5 truncate text-[11px] text-amber-600 dark:text-amber-400">
                               🏢 {jobNames.join('、')}
@@ -177,17 +181,19 @@ export default function FriendsPage() {
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => setDialogFriend(f.friend)}
-                        className="shrink-0 rounded-full text-muted-foreground"
+                        className="h-8 w-auto shrink-0 gap-1 rounded-full px-2.5 text-xs text-muted-foreground"
                         title="分享班表"
                       >
-                        <BriefcaseIcon className="size-4" />
+                        <BriefcaseIcon className="size-3.5" />
+                        分享班表
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            className="shrink-0 rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                            aria-label={`刪除好友「${f.friend.displayName}」`}
+                            className="ml-1 shrink-0 rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
                           >
                             <Trash2Icon className="size-4" />
                           </Button>

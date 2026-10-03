@@ -4,10 +4,9 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { BellIcon, ReceiptTextIcon, BarcodeIcon, BookOpenIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
-import { zhTW } from 'date-fns/locale'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useCards } from '@/hooks/use-cards'
-import { filterByMonth, sumByType, groupByDate, formatCurrency, transactionLabels } from '@/lib/finance-utils'
+import { filterByMonth, sumByType, groupByDate, formatCurrency, formatDate, transactionLabels, paymentLabel } from '@/lib/finance-utils'
 import { getCategoryById, type Card, type Transaction } from '@/lib/types'
 import { AddTransactionSheet } from '@/components/wallet/add-transaction-sheet'
 import { cn } from '@/lib/utils'
@@ -71,6 +70,7 @@ function DonutChart({
   ringColor,
   centerLabel,
   centerValue,
+  emptyHint,
 }: {
   expense: number
   income: number
@@ -78,6 +78,7 @@ function DonutChart({
   ringColor: string
   centerLabel?: string
   centerValue?: number
+  emptyHint?: string
 }) {
   const r = 76
   const size = 200
@@ -93,12 +94,12 @@ function DonutChart({
   const displayLabel = centerLabel ?? '月結餘'
   const ratioText = income > 0
     ? `花了收入的 ${Math.round((expense / income) * 100)}%`
-    : expense > 0 ? '這個月還沒有收入' : ''
+    : expense > 0 ? (emptyHint ?? '這個月還沒有收入') : ''
 
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F3F4F6" strokeWidth={28} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth={28} className="text-muted" />
         {filled > 0 && (
           <circle
             cx={cx}
@@ -133,7 +134,7 @@ function DonutChart({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction } = useTransactions()
+  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction, deleteTransaction } = useTransactions()
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { cards, removeCard, defaultCard, setDefaultCard, updateCard } = useCards()
   const now = new Date()
@@ -265,6 +266,14 @@ export default function DashboardPage() {
     : currentView.card.balance ?? balance
     : balance
   const recentGroups = groupByDate(filtered)
+  // 沒有收入時圓環沒有比例可畫，改提示這個月錢主要花在哪
+  const topCategoryHint = useMemo(() => {
+    const byCat = new Map<string, number>()
+    for (const t of filtered) if (t.type === 'expense') byCat.set(t.category, (byCat.get(t.category) ?? 0) + t.amount)
+    const top = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0]
+    if (!top) return undefined
+    return `花最多：${getCategoryById(top[0])?.name ?? top[0]} ${formatCurrency(top[1])}`
+  }, [filtered])
   const { startDate, endDate } = getMonthRange(year, month)
   const ringColor = viewColor(currentView)
   const statsHref = currentView.kind === 'card'
@@ -510,6 +519,7 @@ export default function DashboardPage() {
               ringColor={ringColor}
               centerLabel={centerLabel}
               centerValue={centerValue}
+              emptyHint={topCategoryHint}
             />
           </Link>
         )}
@@ -740,8 +750,7 @@ export default function DashboardPage() {
         ) : (
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:grid lg:grid-cols-2 lg:items-start">
             {recentGroups.map(({ date, items }, groupIdx) => {
-              const d = parseISO(date)
-              const dateLabel = format(d, 'yyyy/MM/dd EEEE', { locale: zhTW })
+              const dateLabel = formatDate(date)
               const dayExpense = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
               const dayIncome = items.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
               const dayNet = dayIncome - dayExpense
@@ -750,13 +759,13 @@ export default function DashboardPage() {
                 <div key={date} className={cn(groupIdx > 0 && 'border-t lg:border-t-0')}>
                   <div className="flex items-center justify-between bg-muted/20 px-4 py-2">
                     <span className="text-xs font-medium text-muted-foreground">{dateLabel}</span>
-                    <span className={cn('text-xs font-semibold', dayNet >= 0 ? 'text-emerald-600' : 'text-amber-500')}>
+                    <span className={cn('text-xs font-semibold', dayNet >= 0 ? 'text-emerald-600' : 'text-rose-500')}>
                       {dayNet >= 0 ? '+' : ''}{formatCurrency(dayNet)}
                     </span>
                   </div>
                   {items.map((tx, idx) => {
                     const cat = getCategoryById(tx.category)
-                    const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category)
+                    const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                     return (
                       <button
                         key={tx.id}
@@ -797,6 +806,7 @@ export default function DashboardPage() {
           open={!!editTx}
           onOpenChange={open => { if (!open) setEditTx(null) }}
           onSubmit={async data => { await updateTransaction(editTx.id, data); loadCreditSummary() }}
+          onDelete={async () => { await deleteTransaction(editTx.id); loadCreditSummary() }}
           initialData={editTx}
         />
       )}

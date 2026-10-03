@@ -80,6 +80,7 @@ export async function updateTransaction(id: string, data: Omit<Transaction, 'id'
       category: data.category,
       note: data.note,
       date: data.date,
+      ...(data.description !== undefined ? { description: data.description } : {}),
     }),
   })
   if (!res.ok) throw new Error('Failed to update transaction')

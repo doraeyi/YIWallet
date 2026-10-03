@@ -156,7 +156,7 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatDate(date: string): string {
-  return format(parseISO(date), 'yyyy/MM/dd (EEE)', { locale: zhTW })
+  return format(parseISO(date), 'yyyy/MM/dd EEEE', { locale: zhTW })
 }
 
 export function todayString(): string {
@@ -165,11 +165,19 @@ export function todayString(): string {
 
 // 交易列表每一列要顯示的兩行字：有商家／品名就當標題（Apple Pay、電子發票、LINE 記帳都會帶），
 // 分類跟備註放副標；手動記帳的 description 本來就等於備註，就不重複顯示
-export function transactionLabels(tx: Transaction, categoryName: string): { title: string; subtitle: string } {
+export function transactionLabels(
+  tx: Transaction, categoryName: string, paymentName?: string,
+): { title: string; subtitle: string } {
   const desc = tx.description?.trim() ?? ''
   const note = tx.note?.trim() ?? ''
-  if (!desc) return { title: categoryName, subtitle: note }
-  return { title: desc, subtitle: [categoryName, note !== desc ? note : ''].filter(Boolean).join(' · ') }
+  if (!desc) return { title: categoryName, subtitle: [note, paymentName].filter(Boolean).join(' · ') }
+  return { title: desc, subtitle: [categoryName, note !== desc ? note : '', paymentName].filter(Boolean).join(' · ') }
+}
+
+// 列表上顯示用哪張卡付的；沒卡又明確選了現金就寫現金，兩者都不是就不寫（還沒指定）
+export function paymentLabel(tx: Transaction, cards: { id: string; name: string }[]): string | undefined {
+  if (tx.cardId) return cards.find(c => c.id === tx.cardId)?.name
+  return tx.isCash ? '現金' : undefined
 }
 
 // 一班幾小時：時間是 "HH:MM" 或 "HH:MM:SS"，下班時間早於上班時間就是跨夜（例如 23:00–07:00 是 8 小時）

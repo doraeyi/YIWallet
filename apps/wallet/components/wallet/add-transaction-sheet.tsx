@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { XIcon, DeleteIcon } from 'lucide-react'
+import { XIcon, DeleteIcon, Trash2Icon } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -39,6 +39,7 @@ interface AddTransactionSheetProps {
   onOpenChange: (open: boolean) => void
   onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>, isCash: boolean) => Promise<unknown> | void
   initialData?: Transaction
+  onDelete?: () => Promise<void>
 }
 
 // 右邊一欄放 + − 讓使用者直接算「120+35」，金額會即時算出結果，儲存時用結果
@@ -68,6 +69,7 @@ export function AddTransactionSheet({
   onOpenChange,
   onSubmit,
   initialData,
+  onDelete,
 }: AddTransactionSheetProps) {
   const isDesktop = useIsDesktop()
   const { cards, defaultCard } = useCards()
@@ -91,6 +93,9 @@ export function AddTransactionSheet({
     return ''
   })
   const [date,     setDate]     = useState(initialData?.date     ?? todayString())
+  // 商家／品名：Apple Pay、電子發票、LINE 記帳帶進來的，編輯時才顯示讓人改
+  const [description, setDescription] = useState(
+    initialData?.description && initialData.description !== initialData.note ? initialData.description : '')
   const [cardId,        setCardId]        = useState<string | undefined>(
     initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id)
   )
@@ -137,7 +142,10 @@ export function AddTransactionSheet({
       : note
     setSaving(true)
     try {
-      await onSubmit({ type, amount: parsed, category, note: savedNote, date, cardId, isCash }, isCash)
+      await onSubmit({
+        type, amount: parsed, category, note: savedNote, date, cardId, isCash,
+        ...(initialData ? { description: description.trim() || savedNote } : {}),
+      }, isCash)
     } catch {
       toast(initialData ? '儲存失敗，請再試一次' : '記帳失敗，請再試一次', 'error')
       return
@@ -151,7 +159,7 @@ export function AddTransactionSheet({
     setIsExplicitCash(false)
     setCardId(defaultCard?.id ?? cards[0]?.id)
     onOpenChange(false)
-  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id, saving, initialData])
+  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id, saving, initialData, description])
 
   const handleKey = useCallback((key: string) => {
     if (key === '✓') { handleSave(); return }
@@ -216,6 +224,19 @@ export function AddTransactionSheet({
     onOpenChange(false)
   }
 
+  async function handleDelete() {
+    if (!onDelete) return
+    const label = description || initialData?.description || '這筆紀錄'
+    if (!(await confirmDialog(`確定刪除「${label}」？\n刪除後無法復原。`, { confirmText: '刪除', danger: true }))) return
+    try {
+      await onDelete()
+      toast('已刪除')
+      onOpenChange(false)
+    } catch {
+      toast('刪除失敗，請再試一次', 'error')
+    }
+  }
+
   // 面板一打開就讓面板本身取得焦點，電腦上不用先點一下就能直接打數字
   const panelRef = useRef<HTMLDivElement>(null)
   function focusPanel(e: Event) {
@@ -239,7 +260,17 @@ export function AddTransactionSheet({
           <XIcon className="size-4" />
         </button>
         <span className="text-base font-semibold">{initialData ? '編輯紀錄' : '新增紀錄'}</span>
-        <div className="size-8" />
+        {onDelete ? (
+          <button
+            onClick={handleDelete}
+            aria-label="刪除這筆"
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/20"
+          >
+            <Trash2Icon className="size-4" />
+          </button>
+        ) : (
+          <div className="size-8" />
+        )}
       </div>
 
       {/* Type toggle */}
@@ -305,6 +336,20 @@ export function AddTransactionSheet({
           ${displayAmount}
         </span>
       </div>
+
+      {initialData && (
+        <div className="flex items-center gap-2 border-t px-4 py-2.5">
+          <label htmlFor="tx-description" className="shrink-0 text-xs text-muted-foreground">商家</label>
+          <input
+            id="tx-description"
+            placeholder="商家或品名（選填）"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            maxLength={100}
+            className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+          />
+        </div>
+      )}
 
       {/* Date + note/transfer-to */}
       <div className="flex items-center gap-2 border-t px-4 py-2.5">

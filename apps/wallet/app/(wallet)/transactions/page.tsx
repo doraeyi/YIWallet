@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { SearchIcon, PencilIcon, Trash2Icon } from 'lucide-react'
+import { SearchIcon, PencilIcon, Trash2Icon, ChevronLeftIcon } from 'lucide-react'
+import Link from 'next/link'
+import { useCards } from '@/hooks/use-cards'
 import { useTransactions } from '@/hooks/use-transactions'
 import { AddTransactionSheet } from '@/components/wallet/add-transaction-sheet'
-import { groupByDate, formatDate, formatCurrency, filterByMonth, sumByType, transactionLabels } from '@/lib/finance-utils'
+import { groupByDate, formatDate, formatCurrency, filterByMonth, sumByType, transactionLabels, paymentLabel } from '@/lib/finance-utils'
 import { getCategoryById, type Transaction } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -17,18 +19,25 @@ export default function TransactionsPage() {
   const [month,  setMonth]  = useState(now.getMonth() + 1)
   const [search, setSearch] = useState('')
   const [editTx, setEditTx] = useState<Transaction | null>(null)
+  const { cards } = useCards()
+  // 付款方式篩選：all / cash / 某張卡的 id
+  const [payFilter, setPayFilter] = useState('all')
 
   const byMonth  = useMemo(() => filterByMonth(transactions, year, month), [transactions, year, month])
   const filtered = useMemo(() => {
-    if (!search.trim()) return byMonth
+    const byPay = payFilter === 'all' ? byMonth
+      : payFilter === 'cash' ? byMonth.filter(t => !t.cardId)
+      : byMonth.filter(t => t.cardId === payFilter)
+    if (!search.trim()) return byPay
     const q = search.toLowerCase()
-    return byMonth.filter(t => {
+    return byPay.filter(t => {
       const cat = getCategoryById(t.category)
       return t.note.toLowerCase().includes(q)
         || (t.description ?? '').toLowerCase().includes(q)
         || (cat?.name ?? '').toLowerCase().includes(q)
     })
-  }, [byMonth, search])
+  }, [byMonth, search, payFilter])
+  const isFiltering = !!search.trim() || payFilter !== 'all'
 
   const groups  = groupByDate(filtered)
   const income  = sumByType(byMonth, 'income')
@@ -64,6 +73,7 @@ export default function TransactionsPage() {
           open={!!editTx}
           onOpenChange={open => { if (!open) setEditTx(null) }}
           onSubmit={data => updateTransaction(editTx.id, data)}
+          onDelete={() => deleteTransaction(editTx.id)}
           initialData={editTx}
         />
       )}
@@ -72,6 +82,9 @@ export default function TransactionsPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-10 pb-4 lg:pt-8">
           <div className="flex items-center gap-2">
+            <Link href="/dashboard" aria-label="回首頁" className="-ml-2 flex size-8 items-center justify-center rounded-full hover:bg-muted">
+              <ChevronLeftIcon className="size-5" />
+            </Link>
             <h1 className="text-xl font-bold">收支明細</h1>
             <div className="flex items-center gap-0.5 text-sm font-medium text-muted-foreground">
               <button onClick={prevMonth} className="px-1 hover:text-foreground">‹</button>
@@ -98,12 +111,40 @@ export default function TransactionsPage() {
           />
         </div>
 
+        {/* 付款方式篩選 */}
+        {cards.length > 0 && (
+          <div className="mx-4 mb-3 flex gap-1.5 overflow-x-auto scrollbar-none lg:mx-6">
+            {[{ id: 'all', name: '全部' }, { id: 'cash', name: '💵 現金' }, ...cards.map(c => ({ id: c.id, name: c.name }))].map(o => (
+              <button
+                key={o.id}
+                onClick={() => setPayFilter(o.id)}
+                aria-pressed={payFilter === o.id}
+                className={cn(
+                  'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                  payFilter === o.id ? 'bg-foreground text-background' : 'bg-white text-muted-foreground shadow-sm dark:bg-card',
+                )}
+              >
+                {o.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 篩選後的合計 */}
+        {isFiltering && filtered.length > 0 && (
+          <p className="mx-4 mb-3 text-xs text-muted-foreground lg:mx-6">
+            符合 {filtered.length} 筆
+            {sumByType(filtered, 'expense') > 0 && <>・支出 <span className="font-semibold text-rose-500">{formatCurrency(sumByType(filtered, 'expense'))}</span></>}
+            {sumByType(filtered, 'income') > 0 && <>・收入 <span className="font-semibold text-emerald-600">{formatCurrency(sumByType(filtered, 'income'))}</span></>}
+          </p>
+        )}
+
         {/* List */}
         <div className="flex flex-col gap-3 px-4 lg:px-6">
           {groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-16 shadow-sm dark:bg-card">
               <p className="text-3xl">📒</p>
-              <p className="mt-2 text-sm text-muted-foreground">{search ? '沒有符合的紀錄' : '這個月還沒有紀錄'}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{isFiltering ? '沒有符合的紀錄' : '這個月還沒有紀錄'}</p>
             </div>
           ) : (
             <div className="lg:grid lg:grid-cols-2 lg:gap-3 flex flex-col gap-3">
@@ -121,7 +162,7 @@ export default function TransactionsPage() {
                     </div>
                     {items.map((tx, idx) => {
                       const cat = getCategoryById(tx.category)
-                      const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category)
+                      const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                       return (
                         <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}>
                           <span
@@ -138,10 +179,10 @@ export default function TransactionsPage() {
                             {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                           </p>
                           <div className="flex shrink-0 gap-1">
-                            <button onClick={() => setEditTx(tx)} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+                            <button onClick={() => setEditTx(tx)} aria-label={`編輯「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
                               <PencilIcon className="size-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(tx, title)} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-100 hover:text-rose-500">
+                            <button onClick={() => handleDelete(tx, title)} aria-label={`刪除「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-100 hover:text-rose-500">
                               <Trash2Icon className="size-3.5" />
                             </button>
                           </div>
