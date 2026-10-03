@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { XIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import type { Card } from '@/lib/types'
+import * as api from '@/lib/api'
+import { dayOfMonth } from '@/lib/utils'
 
 interface EditCardSheetProps {
   card: Card
@@ -18,11 +20,26 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
   const isDesktop = useIsDesktop()
   const [balance, setBalance] = useState(card.balance != null ? String(card.balance) : '')
   const [passExpiryDate, setPassExpiryDate] = useState(card.passExpiryDate ?? '')
-  const [paymentDueDate, setPaymentDueDate] = useState(card.paymentDueDate ?? '')
+  const [paymentDueDay, setPaymentDueDay] = useState(String(dayOfMonth(card.paymentDueDate) ?? ''))
+  // 結帳日存在銀行層級（BankCreditSetting），同一家銀行的信用卡共用，開啟時才去拿
+  const [billingDay, setBillingDay] = useState('')
+  const [initialBillingDay, setInitialBillingDay] = useState('')
   const [reminderDay, setReminderDay] = useState(card.reminderDay != null ? String(card.reminderDay) : '')
   const [saving, setSaving] = useState(false)
 
   const hasNotification = card.type === 'easycard' || card.type === 'credit'
+  const hasBillingSetting = card.type === 'credit' && !!card.bank
+
+  useEffect(() => {
+    if (!open || !hasBillingSetting) return
+    api.fetchBankCreditSetting(card.bank!)
+      .then(s => {
+        const v = s.billing_day != null ? String(s.billing_day) : ''
+        setBillingDay(v)
+        setInitialBillingDay(v)
+      })
+      .catch(() => {})
+  }, [open, hasBillingSetting, card.bank])
 
   async function handleSave() {
     setSaving(true)
@@ -32,9 +49,12 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
         balance: (card.type === 'debit' || card.type === 'easycard') && balance !== ''
           ? Number(balance) : undefined,
         passExpiryDate: card.type === 'easycard' && passExpiryDate ? passExpiryDate : undefined,
-        paymentDueDate: card.type === 'credit' && paymentDueDate ? paymentDueDate : undefined,
+        paymentDueDate: card.type === 'credit' && paymentDueDay ? paymentDueDay : undefined,
         reminderDay: hasNotification && reminderDay ? Number(reminderDay) : undefined,
       })
+      if (hasBillingSetting && billingDay !== initialBillingDay) {
+        await api.updateBankCreditSetting(card.bank!, { billing_day: billingDay ? Number(billingDay) : null })
+      }
       onOpenChange(false)
     } finally {
       setSaving(false)
@@ -91,17 +111,25 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
         </div>
       )}
 
-      {/* 信用卡：繳費截止日 */}
+      {/* 信用卡：結帳日 + 繳費截止日（都是每月幾號） */}
       {card.type === 'credit' && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">繳費截止日</label>
-          <input
-            type="date"
-            value={paymentDueDate}
-            onChange={e => setPaymentDueDate(e.target.value)}
-            className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
+        <div className="flex flex-col gap-3">
+          {hasBillingSetting && (
+            <DayOfMonthField
+              label="結帳日"
+              value={billingDay}
+              onChange={setBillingDay}
+              hint={billingDay
+                ? `每期是 ${Number(billingDay) % 31 + 1} 號到下個月 ${billingDay} 號，${billingDay} 號當天刷的算當期。${card.bank}的信用卡共用這個結帳日`
+                : `${card.bank}的信用卡共用這個結帳日；沒設定的話本期消費會用日曆月計算`}
+            />
+          )}
+          <DayOfMonthField
+            label="繳費截止日"
+            value={paymentDueDay}
+            onChange={setPaymentDueDay}
+            hint="下方可設定推播提醒時機"
           />
-          <p className="text-[11px] text-muted-foreground">下方可設定推播提醒時機</p>
         </div>
       )}
 
@@ -171,5 +199,33 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
         {formContent}
       </SheetContent>
     </Sheet>
+  )
+}
+
+function DayOfMonthField({ label, value, onChange, hint }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  hint: string
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <div className="flex items-center gap-2 text-sm">
+        <span>每月</span>
+        <input
+          value={value}
+          onChange={e => {
+            const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+            onChange(v === '' || (Number(v) >= 1 && Number(v) <= 31) ? v : value)
+          }}
+          placeholder="—"
+          inputMode="numeric"
+          className="w-16 rounded-xl border bg-muted/30 px-3 py-2 text-center text-sm outline-none focus:border-amber-400"
+        />
+        <span>號</span>
+      </div>
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
+    </div>
   )
 }

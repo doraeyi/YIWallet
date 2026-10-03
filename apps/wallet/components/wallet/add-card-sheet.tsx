@@ -8,6 +8,7 @@ import { useCards } from '@/hooks/use-cards'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { lookupBank } from '@/lib/bank-codes'
 import { cn } from '@/lib/utils'
+import * as api from '@/lib/api'
 import type { Card } from '@/lib/types'
 
 const PRESET_COLORS = [
@@ -39,7 +40,8 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
   // 悠遊卡專用
   const [balance,         setBalance]         = useState('')
   const [passExpiryDate,  setPassExpiryDate]  = useState('')
-  const [paymentDueDate,  setPaymentDueDate]  = useState('')
+  const [paymentDueDay,   setPaymentDueDay]   = useState('')
+  const [billingDay,      setBillingDay]      = useState('')
 
   const [submitting,   setSubmitting]   = useState(false)
   const [submitError,  setSubmitError]  = useState('')
@@ -68,7 +70,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
   function reset() {
     setBankCode(''); setType('debit')
     setColor(PRESET_COLORS[0]); setCardNumber('')
-    setBalance(''); setPassExpiryDate(''); setPaymentDueDate('')
+    setBalance(''); setPassExpiryDate(''); setPaymentDueDay(''); setBillingDay('')
     setSubmitError(''); setErrors({})
   }
 
@@ -93,8 +95,12 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
         bank: !isEasycard ? bankName : undefined,
         balance: (type === 'debit' || type === 'easycard') && balance ? Number(balance) : undefined,
         passExpiryDate: isEasycard && passExpiryDate ? passExpiryDate : undefined,
-        paymentDueDate: type === 'credit' && paymentDueDate ? paymentDueDate : undefined,
+        paymentDueDate: type === 'credit' && paymentDueDay ? paymentDueDay : undefined,
       })
+      // 結帳日存在銀行層級，同一家銀行的信用卡共用；有填才覆蓋，沒填就沿用這家銀行原本的設定
+      if (type === 'credit' && billingDay && bankName) {
+        await api.updateBankCreditSetting(bankName, { billing_day: Number(billingDay) })
+      }
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : '新增失敗，請確認後端已更新')
       setSubmitting(false)
@@ -201,17 +207,31 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
         </div>
       )}
 
-      {/* 信用卡繳費截止日 */}
+      {/* 信用卡結帳日 + 繳費截止日（都是每月幾號） */}
       {type === 'credit' && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">繳費截止日（選填）</label>
-          <input
-            type="date"
-            value={paymentDueDate}
-            onChange={e => setPaymentDueDate(e.target.value)}
-            className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
-          />
-          <p className="text-[11px] text-muted-foreground">新增後可到編輯頁設定推播提醒時機</p>
+        <div className="flex gap-4">
+          {([
+            { label: '結帳日（選填）', value: billingDay, set: setBillingDay },
+            { label: '繳費截止日（選填）', value: paymentDueDay, set: setPaymentDueDay },
+          ] as const).map(f => (
+            <div key={f.label} className="flex flex-1 flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+              <div className="flex items-center gap-2 text-sm">
+                <span>每月</span>
+                <input
+                  value={f.value}
+                  onChange={e => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                    if (v === '' || (Number(v) >= 1 && Number(v) <= 31)) f.set(v)
+                  }}
+                  placeholder="—"
+                  inputMode="numeric"
+                  className="w-14 rounded-xl border bg-muted/30 px-2 py-2 text-center text-sm outline-none focus:border-amber-400"
+                />
+                <span>號</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -279,10 +299,10 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
             {(type === 'debit' || type === 'easycard') && balance ? `餘額 $${balance}` : ''}
             {isEasycard && balance && passExpiryDate ? ' · ' : ''}
             {isEasycard && passExpiryDate ? `月票 ${passExpiryDate}` : ''}
-            {type === 'credit' && paymentDueDate ? `繳費截止 ${paymentDueDate}` : ''}
-            {!isEasycard && bankCode && bankName && !balance && !paymentDueDate ? `代碼 ${bankCode}` : ''}
-            {!isEasycard && bankCode && bankName && cardNumber.length >= 4 && !balance && !paymentDueDate ? ' · ' : ''}
-            {cardNumber.length >= 4 && !balance && !paymentDueDate ? `末四碼 ${cardNumber.replace(/\D/g, '').slice(-4)}` : ''}
+            {type === 'credit' && paymentDueDay ? `每月 ${paymentDueDay} 號繳費` : ''}
+            {!isEasycard && bankCode && bankName && !balance && !paymentDueDay ? `代碼 ${bankCode}` : ''}
+            {!isEasycard && bankCode && bankName && cardNumber.length >= 4 && !balance && !paymentDueDay ? ' · ' : ''}
+            {cardNumber.length >= 4 && !balance && !paymentDueDay ? `末四碼 ${cardNumber.replace(/\D/g, '').slice(-4)}` : ''}
           </p>
         </div>
       </div>

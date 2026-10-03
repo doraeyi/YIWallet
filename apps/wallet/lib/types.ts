@@ -61,7 +61,7 @@ export interface Card {
   dueAmount?: number         // 信用卡目前應繳金額
   creditLimit?: number       // 信用額度
   passExpiryDate?: string    // 悠遊卡月票到期日 YYYY-MM-DD
-  paymentDueDate?: string    // 信用卡繳費截止日 YYYY-MM-DD
+  paymentDueDate?: string    // 信用卡繳費截止日：每月幾號（舊資料可能是 YYYY-MM-DD，用 dayOfMonth 取號）
   reminderDay?: number       // 每月固定幾號提醒（不是提前幾天）
 }
 

@@ -8,7 +8,7 @@ import { useTransactions } from '@/hooks/use-transactions'
 import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { cn, dayOfMonth } from '@/lib/utils'
 import { logout } from '@/app/actions/auth'
 import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
@@ -634,7 +634,7 @@ export default function SettingsPage() {
                             {card.type === 'easycard' && card.balance != null && `餘額 $${card.balance}`}
                             {card.type === 'easycard' && card.balance != null && card.passExpiryDate && ' · '}
                             {card.type === 'easycard' && card.passExpiryDate && `月票 ${card.passExpiryDate}`}
-                            {card.type === 'credit' && card.paymentDueDate && `繳費截止 ${card.paymentDueDate}`}
+                            {card.type === 'credit' && dayOfMonth(card.paymentDueDate) && `每月 ${dayOfMonth(card.paymentDueDate)} 號繳費`}
                             {!card.balance && !card.passExpiryDate && !card.paymentDueDate && '尚未設定'}
                           </p>
                         </div>
