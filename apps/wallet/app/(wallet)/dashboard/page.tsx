@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { BellIcon, ReceiptTextIcon, BarcodeIcon, BookOpenIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
+import { SlidersHorizontalIcon, BellIcon, ReceiptTextIcon, BarcodeIcon, BookOpenIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -18,6 +18,8 @@ import { CardCreatedCelebration } from '@/components/wallet/card-created-celebra
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { useCountUp } from '@/hooks/use-count-up'
+import { useTotalScope, CASH_KEY } from '@/hooks/use-total-scope'
+import { TotalScopeDialog } from '@/components/wallet/total-scope-dialog'
 
 type ViewItem =
   | { kind: 'all' }
@@ -145,6 +147,8 @@ export default function DashboardPage() {
   const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction, deleteTransaction } = useTransactions()
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { cards, removeCard, defaultCard, setDefaultCard, updateCard } = useCards()
+  const { filter: scopeFilter, excluded: scopeExcluded, setExcluded: setScopeExcluded } = useTotalScope(cards)
+  const [scopeOpen, setScopeOpen] = useState(false)
   const now = new Date()
   const [viewIndex, setViewIndex] = useState(0)
   const [addCardOpen, setAddCardOpen] = useState(false)
@@ -249,13 +253,13 @@ export default function DashboardPage() {
   }, [currentView, isThisMonth, creditSummary])
 
   const filtered = useMemo(() => {
-    if (currentView.kind === 'all') return allFiltered
+    if (currentView.kind === 'all') return scopeFilter(allFiltered)
     if (currentView.kind === 'cash') return allFiltered.filter(tx => !tx.cardId)
     if (creditPeriod) {
       return transactions.filter(tx => tx.cardId === currentView.card.id && tx.date > creditPeriod.after)
     }
     return allFiltered.filter(tx => tx.cardId === currentView.card.id)
-  }, [allFiltered, transactions, currentView, creditPeriod])
+  }, [allFiltered, transactions, currentView, creditPeriod, scopeFilter])
 
   const income = sumByType(filtered, 'income')
   const expense = sumByType(filtered, 'expense')
@@ -276,6 +280,12 @@ export default function DashboardPage() {
     : currentView.card.balance ?? balance
     : balance
   const recentGroups = groupByDate(filtered)
+  const scopeSummary = (() => {
+    const cashIn = !scopeExcluded.has(CASH_KEY)
+    const cardsIn = cards.filter(c => !scopeExcluded.has(c.id)).length
+    const parts = [cashIn && '現金', cardsIn > 0 && `${cardsIn} 張卡`].filter(Boolean)
+    return parts.length ? `計入：${parts.join('＋')}` : '沒有計入任何付款方式'
+  })()
   // 沒有收入時圓環沒有比例可畫，改提示這個月錢主要花在哪
   const topCategoryHint = useMemo(() => {
     const byCat = new Map<string, number>()
@@ -535,6 +545,26 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* 「全部」計入哪些付款方式，點了可以自己勾 */}
+      {currentView.kind === 'all' && cards.length > 0 && (
+        <div className="-mt-3 mb-2 flex justify-center">
+          <button
+            onClick={() => setScopeOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+          >
+            <SlidersHorizontalIcon className="size-3" />
+            {scopeSummary}
+          </button>
+        </div>
+      )}
+      <TotalScopeDialog
+        open={scopeOpen}
+        onOpenChange={setScopeOpen}
+        cards={cards}
+        excluded={scopeExcluded}
+        onSave={setScopeExcluded}
+      />
 
       {/* 月票資訊 popover */}
       {showPassInfo && currentView.kind === 'card' && currentView.card.passExpiryDate && (() => {

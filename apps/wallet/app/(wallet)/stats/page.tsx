@@ -12,6 +12,7 @@ import { getCategoryById, type Period } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
+import { useTotalScope } from '@/hooks/use-total-scope'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week',  label: '週' },
@@ -31,6 +32,8 @@ function StatsContent() {
   const [period, setPeriod] = useState<Period>('month')
   const { transactions, isLoaded, year, month, prevMonth, nextMonth } = useTransactions()
   const { cards } = useCards()
+  // 「全部」照使用者在首頁勾的計入範圍算（預設不含悠遊卡）
+  const { filter: scopeFilter } = useTotalScope(cards)
   const searchParams = useSearchParams()
   const cardIdParam = searchParams.get('cardId')
   const filterParam = searchParams.get('filter')
@@ -47,8 +50,8 @@ function StatsContent() {
   const filtered = useMemo(() => {
     if (cardIdParam) return periodFiltered.filter(tx => tx.cardId === cardIdParam)
     if (filterParam === 'cash') return periodFiltered.filter(tx => !tx.cardId)
-    return periodFiltered
-  }, [periodFiltered, cardIdParam, filterParam])
+    return scopeFilter(periodFiltered)
+  }, [periodFiltered, cardIdParam, filterParam, scopeFilter])
   const income      = sumByType(filtered, 'income')
   const expense     = sumByType(filtered, 'expense')
   const balance     = income - expense
@@ -57,8 +60,8 @@ function StatsContent() {
   const cardFiltered = useMemo(() => {
     if (cardIdParam) return transactions.filter(tx => tx.cardId === cardIdParam)
     if (filterParam === 'cash') return transactions.filter(tx => !tx.cardId)
-    return transactions
-  }, [transactions, cardIdParam, filterParam])
+    return scopeFilter(transactions)
+  }, [transactions, cardIdParam, filterParam, scopeFilter])
   const chartData   = useMemo(() => buildChartData(cardFiltered, period, referenceDate), [cardFiltered, period, referenceDate])
   const groups      = useMemo(() => groupByDate(filtered), [filtered])
 
