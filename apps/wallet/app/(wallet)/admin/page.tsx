@@ -111,7 +111,7 @@ export default function AdminPage() {
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
         <p className="text-3xl">🔒</p>
         <p className="text-sm text-muted-foreground">你沒有管理員權限</p>
-        <Link href="/settings" className="mt-2 text-xs text-amber-500 hover:text-amber-600">回設定頁</Link>
+        <Link href="/settings" className="mt-2 text-xs text-brand-text hover:opacity-80">回設定頁</Link>
       </div>
     )
   }
@@ -123,7 +123,7 @@ export default function AdminPage() {
           <ChevronLeftIcon className="size-5" />
         </Link>
         <h1 className="flex items-center gap-1.5 text-xl font-bold">
-          <ShieldCheckIcon className="size-5 text-amber-500" />
+          <ShieldCheckIcon className="size-5 text-brand-text" />
           管理後台
         </h1>
       </div>

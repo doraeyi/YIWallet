@@ -694,7 +694,7 @@ export default function SchedulePage() {
                         'mt-2 w-full rounded-xl py-2 text-xs font-medium transition-colors',
                         advanceTx
                           ? 'bg-emerald-50 text-emerald-700 hover:bg-rose-50 hover:text-rose-500 dark:bg-emerald-400/10'
-                          : 'bg-muted text-muted-foreground hover:bg-amber-50 hover:text-amber-600'
+                          : 'bg-muted text-muted-foreground hover:bg-brand-soft hover:text-brand-text'
                       )}
                     >
                       {advanceTx ? '✓ 已領現　點擊取消' : `+ 領現　${formatCurrency(shiftAmount(job, selectedDate))}`}
@@ -715,7 +715,7 @@ export default function SchedulePage() {
                             {people.map(p => p.isMe ? (
                               <span
                                 key={p.id}
-                                className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-400/20 dark:text-amber-400"
+                                className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-soft-foreground"
                               >
                                 {p.employeeName}
                               </span>
@@ -891,7 +891,7 @@ export default function SchedulePage() {
                     <span className="flex items-center gap-0.5">
                     <span className={cn(
                       'flex size-6 items-center justify-center rounded-full text-xs font-medium',
-                      isToday && 'bg-amber-400 text-white',
+                      isToday && 'bg-brand text-brand-foreground',
                       !isToday && (col === 0 || isHolidayDate) && 'text-rose-500',
                       !isToday && col === 6 && !isHolidayDate && 'text-blue-500',
                     )}>
@@ -989,7 +989,7 @@ export default function SchedulePage() {
                       </span>
                       <button
                         onClick={() => setShowSalaryDetail(v => !v)}
-                        className="ml-auto text-xs font-medium text-amber-600 hover:underline"
+                        className="ml-auto text-xs font-medium text-brand-text hover:underline"
                       >
                         {showSalaryDetail ? '收起' : '怎麼算的？'}
                       </button>
@@ -1052,7 +1052,7 @@ export default function SchedulePage() {
                               'w-full rounded-xl py-2.5 text-sm font-semibold transition-colors',
                               added || allReceived
                                 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10'
-                                : 'bg-amber-400 text-white hover:bg-amber-500 disabled:opacity-50'
+                                : 'bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50'
                             )}
                           >
                             {addingJob === job.id ? '新增中…'

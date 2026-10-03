@@ -433,7 +433,7 @@ export function AddTransactionSheet({
                 onClick={handleSave}
                 className={cn(
                   'flex items-center justify-center py-4 text-base font-bold text-white transition-opacity',
-                  isValid ? 'bg-amber-400 active:opacity-70' : 'bg-amber-400/50 cursor-not-allowed'
+                  isValid ? 'bg-brand active:opacity-70' : 'bg-brand/50 cursor-not-allowed'
                 )}
               >
                 儲存
@@ -447,7 +447,7 @@ export function AddTransactionSheet({
               aria-label={key === '⌫' ? '刪除' : key === '+' ? '加' : key === '−' ? '減' : undefined}
               className={cn(
                 'flex items-center justify-center py-4 text-lg font-medium hover:bg-muted active:bg-muted transition-colors',
-                OPERATORS.includes(key) && 'text-amber-600',
+                OPERATORS.includes(key) && 'text-brand-text',
               )}
             >
               {key === '⌫' ? <DeleteIcon className="size-5 text-muted-foreground" /> : key}

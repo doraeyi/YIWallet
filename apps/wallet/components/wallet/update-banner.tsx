@@ -36,7 +36,7 @@ export function UpdateBanner() {
         </div>
         <button
           onClick={applyUpdate}
-          className="shrink-0 rounded-xl bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+          className="shrink-0 rounded-xl bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand-hover"
         >
           立即更新
         </button>

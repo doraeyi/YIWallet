@@ -94,7 +94,7 @@ export function JobCoworkersDialog({ job, shares, friends, onOpenChange, onChang
           ) : (
             shares.map(share => (
               <div key={share.id} className="flex items-center gap-2.5 rounded-xl px-1 py-1.5">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-white">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-brand-foreground">
                   {share.sharedWith.displayName.charAt(0).toUpperCase() || '?'}
                 </div>
                 <span className="flex-1 truncate text-sm">{share.sharedWith.displayName}</span>

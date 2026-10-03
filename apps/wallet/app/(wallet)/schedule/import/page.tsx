@@ -218,7 +218,7 @@ export default function RosterImportPage() {
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
         <p className="text-3xl">🔒</p>
         <p className="text-sm text-muted-foreground">這個功能目前需要權限才能使用，請聯絡管理員開通</p>
-        <Link href="/schedule" className="mt-2 text-xs text-amber-500 hover:text-amber-600">回排班頁</Link>
+        <Link href="/schedule" className="mt-2 text-xs text-brand-text hover:opacity-80">回排班頁</Link>
       </div>
     )
   }
@@ -247,7 +247,7 @@ export default function RosterImportPage() {
               ))}
             </select>
             {!selectedJobId && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-brand-text">
                 沒選工作的話，這批班表不會出現在「班表頁」對應工作的團隊班表裡
               </p>
             )}
@@ -365,7 +365,7 @@ export default function RosterImportPage() {
           <button
             onClick={handleConfirm}
             disabled={saving}
-            className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-50 hover:bg-amber-500"
+            className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground transition-opacity disabled:opacity-50 hover:bg-brand-hover"
           >
             {saving ? '匯入中…' : '確認匯入'}
           </button>
@@ -416,7 +416,7 @@ export default function RosterImportPage() {
                     <button
                       onClick={() => processPending(item)}
                       disabled={recognizing}
-                      className="rounded-xl bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                      className="rounded-xl bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
                     >
                       辨識校正
                     </button>
@@ -430,7 +430,7 @@ export default function RosterImportPage() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={recognizing}
-          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-muted-foreground/30 py-6 text-sm font-medium text-muted-foreground transition-colors hover:border-amber-400 hover:bg-amber-50/50 disabled:opacity-50 dark:hover:bg-amber-950/10"
+          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-muted-foreground/30 py-6 text-sm font-medium text-muted-foreground transition-colors hover:border-brand hover:bg-brand-soft/50 disabled:opacity-50"
         >
           <ImageIcon className="size-5" />
           從相簿選擇照片
@@ -439,7 +439,7 @@ export default function RosterImportPage() {
 
         {recognizing && (
           <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-            <div className="size-4 animate-spin rounded-full border-2 border-muted border-t-amber-400" />
+            <div className="size-4 animate-spin rounded-full border-2 border-muted border-t-brand" />
             {recognizeProgress ?? '辨識中…'}
           </div>
         )}

@@ -409,7 +409,7 @@ export default function SettingsPage() {
         {/* 個人資料 */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
           {/* 漸層 header */}
-          <div className="relative h-20 bg-gradient-to-br from-amber-400 to-amber-300">
+          <div className="relative h-20 bg-gradient-to-br from-brand to-brand/70">
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
               {profile?.picture ? (
                 <img
@@ -420,7 +420,7 @@ export default function SettingsPage() {
                 />
               ) : (
                 <div className="flex size-20 items-center justify-center rounded-full bg-white ring-4 ring-white dark:ring-card shadow-sm">
-                  <span className="text-3xl font-bold text-amber-400">{avatarLetter}</span>
+                  <span className="text-3xl font-bold text-brand">{avatarLetter}</span>
                 </div>
               )}
             </div>
@@ -451,7 +451,7 @@ export default function SettingsPage() {
                 onClick={() => setTheme(opt.key)}
                 className={cn(
                   'flex flex-1 flex-col items-center gap-1.5 rounded-xl py-3 text-xs font-medium transition-colors',
-                  theme === opt.key ? 'bg-amber-400 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                  theme === opt.key ? 'bg-brand text-brand-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/70',
                 )}
               >
                 <opt.icon className="size-4" />
@@ -548,7 +548,7 @@ export default function SettingsPage() {
                         data-card-drag-id={card.id}
                         className={cn(
                           'flex items-center gap-3 px-4 py-3 transition-transform',
-                          draggingCardId === card.id && 'scale-[1.01] bg-amber-50 dark:bg-amber-900/20',
+                          draggingCardId === card.id && 'scale-[1.01] bg-brand-soft',
                         )}
                       >
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white" style={{ backgroundColor: card.color }}>{emoji}</div>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={handleSaveBudget}
-                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
+                  className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
                 >
                   {saved && <CheckIcon className="size-4" />}
                   {saved ? '已儲存' : '儲存'}
@@ -654,7 +654,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">工作列表</p>
                 <button
                   onClick={openNewJob}
-                  className="flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+                  className="flex items-center gap-1 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand-hover"
                 >
                   <PlusIcon className="size-3.5" />
                   新增
@@ -722,7 +722,7 @@ export default function SettingsPage() {
                   </ul>
                   <button
                     onClick={() => window.location.reload()}
-                    className="flex items-center justify-center rounded-xl bg-amber-400 py-2.5 text-sm font-medium text-white hover:bg-amber-500"
+                    className="flex items-center justify-center rounded-xl bg-brand py-2.5 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
                   >
                     我已經打開了，重新檢查
                   </button>
@@ -736,7 +736,7 @@ export default function SettingsPage() {
                     disabled={pushLoading}
                     className={cn(
                       'flex items-center justify-center rounded-xl py-2.5 text-sm font-medium disabled:opacity-60',
-                      pushSubscribed ? 'border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20' : 'bg-amber-400 text-white hover:bg-amber-500'
+                      pushSubscribed ? 'border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20' : 'bg-brand text-brand-foreground hover:bg-brand-hover'
                     )}
                   >
                     {pushLoading ? '處理中…' : pushSubscribed ? '關閉推播通知' : '開啟推播通知'}
@@ -860,7 +860,7 @@ export default function SettingsPage() {
             className="flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm hover:bg-muted/40 dark:bg-card"
           >
             <span className="flex items-center gap-2 text-sm font-medium">
-              <ShieldCheckIcon className="size-4 text-amber-500" />
+              <ShieldCheckIcon className="size-4 text-brand-text" />
               管理後台
             </span>
             <span className="text-base leading-none text-muted-foreground">›</span>
@@ -972,7 +972,7 @@ export default function SettingsPage() {
                       onClick={() => setForm(f => ({ ...f, pay_type: t }))}
                       className={cn(
                         'flex-1 rounded-xl py-2 text-sm font-medium transition-colors',
-                        form.pay_type === t ? 'bg-amber-400 text-white' : 'bg-muted text-muted-foreground'
+                        form.pay_type === t ? 'bg-brand text-brand-foreground' : 'bg-muted text-muted-foreground'
                       )}
                     >
                       {t === 'hourly' ? '時薪' : '月薪'}
@@ -1090,7 +1090,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleAddPreset}
                       disabled={presetSubmitting || !presetLabel.trim() || !presetStart || !presetEnd}
-                      className="flex shrink-0 size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-amber-100 hover:text-amber-600 disabled:opacity-50"
+                      className="flex shrink-0 size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-brand-soft hover:text-brand-text disabled:opacity-50"
                     >
                       <PlusIcon className="size-4" />
                     </button>
@@ -1102,7 +1102,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSubmitJob}
               disabled={submitting || !form.name || !form.rate || !form.payday}
-              className="mt-4 w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-50 hover:bg-amber-500"
+              className="mt-4 w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground transition-opacity disabled:opacity-50 hover:bg-brand-hover"
             >
               {submitting ? '儲存中…' : '儲存'}
             </button>

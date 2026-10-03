@@ -88,7 +88,7 @@ export default function LoginPage() {
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <label htmlFor="password" className="block text-sm font-medium">密碼</label>
-                <Link href="/forgot-password" className="text-xs text-amber-500 hover:text-amber-600">忘記密碼？</Link>
+                <Link href="/forgot-password" className="text-xs text-brand-text hover:opacity-80">忘記密碼？</Link>
               </div>
               <PasswordInput
                 id="password"
@@ -104,7 +104,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={pending}
-              className="mt-1 w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60 hover:bg-amber-500"
+              className="mt-1 w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground transition-opacity disabled:opacity-60 hover:bg-brand-hover"
             >
               {pending ? '登入中…' : '登入'}
             </button>
@@ -128,7 +128,7 @@ export default function LoginPage() {
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           還沒有帳號？{' '}
-          <Link href="/register" className="font-medium text-amber-500 hover:text-amber-600">
+          <Link href="/register" className="font-medium text-brand-text hover:opacity-80">
             註冊
           </Link>
         </p>

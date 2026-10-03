@@ -178,7 +178,7 @@ export default function ProfilePage() {
   if (!isLoaded) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-amber-400" />
+        <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-brand" />
       </div>
     )
   }
@@ -213,7 +213,7 @@ export default function ProfilePage() {
                 className="size-24 rounded-full object-cover ring-4 ring-white shadow-md dark:ring-card"
               />
             ) : (
-              <div className="flex size-24 items-center justify-center rounded-full bg-amber-400 text-4xl font-bold text-white ring-4 ring-white shadow-md dark:ring-card">
+              <div className="flex size-24 items-center justify-center rounded-full bg-brand text-4xl font-bold text-brand-foreground ring-4 ring-white shadow-md dark:ring-card">
                 {avatarLetter}
               </div>
             )}
@@ -223,7 +223,7 @@ export default function ProfilePage() {
               avatarUploading && 'opacity-60'
             )}>
               {avatarUploading
-                ? <div className="size-4 animate-spin rounded-full border-2 border-muted border-t-amber-400" />
+                ? <div className="size-4 animate-spin rounded-full border-2 border-muted border-t-brand" />
                 : <CameraIcon className="size-4 text-muted-foreground" />
               }
             </div>
@@ -251,12 +251,12 @@ export default function ProfilePage() {
               onChange={e => setName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSaveName()}
               placeholder="輸入你的名稱"
-              className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
+              className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-brand"
             />
             <button
               onClick={handleSaveName}
               disabled={nameSaving || !name.trim()}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
             >
               {nameSaved ? <><CheckIcon className="size-4" />已儲存</> : nameSaving ? '儲存中…' : '儲存名稱'}
             </button>
@@ -281,7 +281,7 @@ export default function ProfilePage() {
                       value={currentPw}
                       onChange={e => setCurrentPw(e.target.value)}
                       placeholder="輸入目前密碼"
-                      className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 pr-10 text-sm outline-none focus:border-amber-400"
+                      className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 pr-10 text-sm outline-none focus:border-brand"
                     />
                     <button
                       type="button"
@@ -302,7 +302,7 @@ export default function ProfilePage() {
                       value={newPw}
                       onChange={e => setNewPw(e.target.value)}
                       placeholder="至少 6 個字元"
-                      className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 pr-10 text-sm outline-none focus:border-amber-400"
+                      className="w-full rounded-xl border bg-muted/30 px-3 py-2.5 pr-10 text-sm outline-none focus:border-brand"
                     />
                     <button
                       type="button"
@@ -323,7 +323,7 @@ export default function ProfilePage() {
                     onChange={e => setConfirmPw(e.target.value)}
                     placeholder="再輸入一次新密碼"
                     className={cn(
-                      'w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400',
+                      'w-full rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-brand',
                       confirmPw && newPw !== confirmPw && 'border-rose-400'
                     )}
                   />
@@ -334,7 +334,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleChangePassword}
                   disabled={pwSaving || !currentPw || !newPw || !confirmPw}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
                 >
                   {pwSaved ? <><CheckIcon className="size-4" />密碼已更新</> : pwSaving ? '更新中…' : '更新密碼'}
                 </button>
@@ -370,7 +370,7 @@ export default function ProfilePage() {
                     className="size-12 rounded-full object-cover shrink-0"
                   />
                 ) : (
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-white">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand text-lg font-bold text-brand-foreground">
                     {googleProfile.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -382,7 +382,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleApplyGoogle}
                 disabled={applyingGoogle}
-                className="flex w-full items-center justify-center border-t py-3 text-sm font-medium text-amber-500 hover:bg-amber-50 disabled:opacity-60 dark:hover:bg-amber-950/20"
+                className="flex w-full items-center justify-center border-t py-3 text-sm font-medium text-brand-text hover:bg-brand-soft disabled:opacity-60"
               >
                 {applyingGoogle ? '套用中…' : '套用 Google 帳號的名稱和大頭照'}
               </button>

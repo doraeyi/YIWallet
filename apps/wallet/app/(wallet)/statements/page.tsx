@@ -102,7 +102,7 @@ export default function StatementsPage() {
         onDrop={handleDrop}
         onDragOver={e => e.preventDefault()}
         onClick={() => inputRef.current?.click()}
-        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-muted-foreground/30 py-12 transition-colors hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/10"
+        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-muted-foreground/30 py-12 transition-colors hover:border-brand hover:bg-brand-soft/50"
       >
         <span className="flex size-12 items-center justify-center rounded-full bg-muted">
           <UploadIcon className="size-5 text-muted-foreground" />
@@ -137,14 +137,14 @@ export default function StatementsPage() {
                 type="checkbox"
                 checked={allSelected}
                 onChange={e => toggleAll(e.target.checked)}
-                className="size-4 rounded accent-amber-400"
+                className="size-4 rounded accent-brand"
               />
               <span className="text-sm font-medium">全選（{items.length} 張發票）</span>
             </div>
             <button
               onClick={handleImport}
               disabled={importing || selectedCount === 0}
-              className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
             >
               {importing ? '匯入中…' : `匯入 ${selectedCount} 筆`}
             </button>
@@ -161,7 +161,7 @@ export default function StatementsPage() {
                   checked={item.selected}
                   disabled={item.duplicate}
                   onChange={() => toggleItem(item.invoiceNo)}
-                  className="mt-0.5 size-4 rounded accent-amber-400"
+                  className="mt-0.5 size-4 rounded accent-brand"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">

@@ -121,8 +121,8 @@ export function MobileNav() {
                 href={href}
                 className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium"
               >
-                <Icon className={cn('size-5', active ? 'text-primary' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
-                <span className={active ? 'text-primary' : 'text-muted-foreground'}>{label}</span>
+                <Icon className={cn('size-5', active ? 'text-brand-text' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
+                <span className={active ? 'text-brand-text' : 'text-muted-foreground'}>{label}</span>
               </Link>
             )
           })}
@@ -132,9 +132,9 @@ export function MobileNav() {
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="新增記帳"
-              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-amber-400 shadow-lg shadow-amber-400/30 active:scale-95 transition-transform"
+              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-brand shadow-lg shadow-brand/30 active:scale-95 transition-transform"
             >
-              <PlusIcon className="size-7 text-white" strokeWidth={2.5} />
+              <PlusIcon className="size-7 text-brand-foreground" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -147,8 +147,8 @@ export function MobileNav() {
                 href={href}
                 className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium"
               >
-                <Icon className={cn('size-5', active ? 'text-primary' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
-                <span className={active ? 'text-primary' : 'text-muted-foreground'}>{label}</span>
+                <Icon className={cn('size-5', active ? 'text-brand-text' : 'text-muted-foreground')} strokeWidth={active ? 2.5 : 1.8} />
+                <span className={active ? 'text-brand-text' : 'text-muted-foreground'}>{label}</span>
               </Link>
             )
           })}

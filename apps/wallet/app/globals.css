@@ -10,6 +10,14 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* 品牌色：全站唯一的主題色，元件一律用 bg-brand / text-brand-text 這些 class，
+     不要再寫死 amber-400 之類的色票，要換主題色只改下面 :root / .dark 的值 */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-text: var(--brand-text);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   /* 英數字用 Geist，中文交給各平台的黑體；以前這裡寫成 var(--font-sans) 引用自己，
@@ -56,14 +64,22 @@
 }
 
 :root {
+  /* ── 品牌色（琥珀金）── */
+  --brand: oklch(0.828 0.189 84.429);            /* 按鈕、選中狀態的底色 */
+  --brand-hover: oklch(0.769 0.188 70.08);       /* 按鈕 hover */
+  --brand-foreground: oklch(0.279 0.077 45.635); /* 品牌色底上的字（深咖啡，比白字好讀） */
+  --brand-text: oklch(0.666 0.179 58.318);       /* 白底上的品牌色文字、連結 */
+  --brand-soft: oklch(0.987 0.022 95.277);       /* 淡底：標籤、提示區塊 */
+  --brand-soft-foreground: oklch(0.555 0.163 48.998);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -73,7 +89,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: var(--brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -82,8 +98,8 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
@@ -91,14 +107,21 @@
 }
 
 .dark {
+  --brand: oklch(0.828 0.189 84.429);
+  --brand-hover: oklch(0.879 0.169 91.605);
+  --brand-foreground: oklch(0.279 0.077 45.635);
+  --brand-text: oklch(0.828 0.189 84.429);
+  --brand-soft: oklch(0.828 0.189 84.429 / 12%);
+  --brand-soft-foreground: oklch(0.879 0.169 91.605);
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -108,7 +131,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: var(--brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -116,8 +139,8 @@
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);

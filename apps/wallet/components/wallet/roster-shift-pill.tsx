@@ -160,7 +160,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
               <button
                 onClick={handleSaveEdit}
                 disabled={saving || !name.trim()}
-                className="flex-1 rounded-lg bg-amber-400 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-brand py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
               >
                 {saving ? '儲存中…' : '儲存'}
               </button>

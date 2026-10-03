@@ -296,14 +296,14 @@ export function CalendarFeedSettings() {
         className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
       >
         <div className="flex items-center gap-2.5">
-          <CalendarDaysIcon className="size-4 text-amber-500" />
+          <CalendarDaysIcon className="size-4 text-brand-text" />
           <span className="text-sm font-medium">班表同步到手機行事曆／小工具</span>
         </div>
         <div className="flex items-center gap-2">
           {token !== undefined && (
             <span className={cn(
               'rounded-full px-2 py-0.5 text-xs font-medium',
-              token ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-muted text-muted-foreground',
+              token ? 'bg-brand-soft text-brand-soft-foreground' : 'bg-muted text-muted-foreground',
             )}>
               {token ? '已開啟' : '未開啟'}
             </span>
@@ -323,7 +323,7 @@ export function CalendarFeedSettings() {
               <button
                 onClick={handleEnable}
                 disabled={busy || token === undefined}
-                className="flex items-center justify-center rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
+                className="flex items-center justify-center rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
               >
                 {busy ? '產生中…' : '開啟行事曆訂閱'}
               </button>
@@ -334,7 +334,7 @@ export function CalendarFeedSettings() {
                 <p className="text-xs font-medium">① 加到手機行事曆（推薦）</p>
                 <a
                   href={webcalUrl}
-                  className="flex items-center justify-center rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
+                  className="flex items-center justify-center rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
                 >
                   加入 iPhone 行事曆
                 </a>
@@ -417,7 +417,7 @@ export function CalendarFeedSettings() {
                   )
                 })}
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input type="checkbox" checked={transparentBg} onChange={e => setTransparentBg(e.target.checked)} className="accent-amber-500" />
+                  <input type="checkbox" checked={transparentBg} onChange={e => setTransparentBg(e.target.checked)} className="accent-brand" />
                   透明背景（讓桌布透出來）
                 </label>
                 <p className="text-xs text-muted-foreground">畫面會跟著手機的深色／淺色模式自動切換。月曆建議放 4×4 左右的大小。</p>

@@ -46,7 +46,7 @@ export function UpdateBanner() {
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 lg:bottom-4 lg:left-auto lg:right-4 lg:w-80">
       <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-card">
-        <div className="bg-amber-400 px-4 py-2.5 flex items-center justify-between">
+        <div className="bg-brand px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm font-bold text-white">🎉 易記帳 {APP_VERSION} 更新</span>
         </div>
         <div className="px-4 py-3">
@@ -54,7 +54,7 @@ export function UpdateBanner() {
           <ul className="mb-3 flex flex-col gap-1">
             {CHANGELOG.map((item, i) => (
               <li key={i} className="flex items-start gap-1.5 text-sm">
-                <span className="mt-0.5 text-amber-400">•</span>
+                <span className="mt-0.5 text-brand">•</span>
                 {item}
               </li>
             ))}
@@ -62,7 +62,7 @@ export function UpdateBanner() {
           <div className="flex gap-2">
             <button
               onClick={handleUpdate}
-              className="flex-1 rounded-xl bg-amber-400 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+              className="flex-1 rounded-xl bg-brand py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
             >
               立即更新
             </button>

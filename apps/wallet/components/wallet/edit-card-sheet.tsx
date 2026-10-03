@@ -91,7 +91,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
               onChange={e => setBalance(e.target.value.replace(/\D/g, ''))}
               placeholder="0"
               inputMode="numeric"
-              className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-amber-400"
+              className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-brand"
             />
           </div>
         </div>
@@ -105,7 +105,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
             type="date"
             value={passExpiryDate}
             onChange={e => setPassExpiryDate(e.target.value)}
-            className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
+            className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-brand"
           />
           <p className="text-[11px] text-muted-foreground">下方可設定推播提醒時機</p>
         </div>
@@ -146,7 +146,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
               placeholder="不設定則到期前 3 天內每天提醒"
               value={reminderDay}
               onChange={e => setReminderDay(e.target.value)}
-              className="w-24 rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-amber-400"
+              className="w-24 rounded-xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:border-brand"
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
@@ -160,7 +160,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+        className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
       >
         {saving ? '儲存中…' : '儲存'}
       </button>
@@ -221,7 +221,7 @@ function DayOfMonthField({ label, value, onChange, hint }: {
           }}
           placeholder="—"
           inputMode="numeric"
-          className="w-16 rounded-xl border bg-muted/30 px-3 py-2 text-center text-sm outline-none focus:border-amber-400"
+          className="w-16 rounded-xl border bg-muted/30 px-3 py-2 text-center text-sm outline-none focus:border-brand"
         />
         <span>號</span>
       </div>

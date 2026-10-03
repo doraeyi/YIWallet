@@ -22,7 +22,7 @@ export function AvatarStack({ people, max = 3, onClick }: AvatarStackProps) {
       {shown.map(p => (
         <div
           key={p.id}
-          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-white ring-2 ring-white dark:ring-card"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-brand-foreground ring-2 ring-white dark:ring-card"
           title={p.displayName}
         >
           {p.displayName.charAt(0).toUpperCase() || '?'}

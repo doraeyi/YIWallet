@@ -125,7 +125,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
             className={cn(
               'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors',
               type === opt.value
-                ? 'bg-amber-400 text-white'
+                ? 'bg-brand text-brand-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}
           >
@@ -150,7 +150,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
                 errors.bankCode ? 'border-rose-400' :
                 bankCode.length >= 3
                   ? bankName ? 'border-emerald-400' : 'border-rose-400'
-                  : 'focus:border-amber-400',
+                  : 'focus:border-brand',
               )}
             />
             {bankCode.length >= 3 && (
@@ -181,7 +181,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
           inputMode="numeric"
           className={cn(
             'rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none transition-colors',
-            errors.cardNumber ? 'border-rose-400' : 'focus:border-amber-400',
+            errors.cardNumber ? 'border-rose-400' : 'focus:border-brand',
           )}
         />
         {errors.cardNumber
@@ -201,7 +201,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
               onChange={e => setBalance(e.target.value.replace(/\D/g, ''))}
               placeholder="0"
               inputMode="numeric"
-              className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-amber-400"
+              className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-brand"
             />
           </div>
         </div>
@@ -226,7 +226,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
                   }}
                   placeholder="—"
                   inputMode="numeric"
-                  className="w-14 rounded-xl border bg-muted/30 px-2 py-2 text-center text-sm outline-none focus:border-amber-400"
+                  className="w-14 rounded-xl border bg-muted/30 px-2 py-2 text-center text-sm outline-none focus:border-brand"
                 />
                 <span>號</span>
               </div>
@@ -247,7 +247,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
                 onChange={e => setBalance(e.target.value.replace(/\D/g, ''))}
                 placeholder="0"
                 inputMode="numeric"
-                className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-amber-400"
+                className="w-full rounded-xl border bg-muted/30 py-2.5 pl-7 pr-3 text-sm outline-none focus:border-brand"
               />
             </div>
           </div>
@@ -257,7 +257,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
               type="date"
               value={passExpiryDate}
               onChange={e => setPassExpiryDate(e.target.value)}
-              className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-amber-400"
+              className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:border-brand"
             />
             <p className="text-[11px] text-muted-foreground">新增後可到編輯頁設定推播提醒時機</p>
           </div>
@@ -278,7 +278,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
             <button
               key={c}
               onClick={() => setColor(c)}
-              className={cn('size-9 shrink-0 rounded-full transition-transform', color === c && 'ring-2 ring-offset-2 ring-amber-400 scale-110')}
+              className={cn('size-9 shrink-0 rounded-full transition-transform', color === c && 'ring-2 ring-offset-2 ring-brand scale-110')}
               style={{ backgroundColor: c }}
             />
           ))}
@@ -316,7 +316,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
       <button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+        className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
       >
         {submitting ? '新增中…' : '新增'}
       </button>

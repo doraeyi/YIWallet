@@ -83,12 +83,12 @@ function BankScreenshotCard({
             ✓ 已自動辨識{item.matchedCardName ? `，卡片對到「${item.matchedCardName}」` : item.parsedLastFour ? `（卡末四碼 ${item.parsedLastFour} 沒有對到已登記的卡片）` : ''}
           </p>
         ) : (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 dark:bg-amber-900/20">
-            <p className="text-xs text-amber-700 dark:text-amber-300">辨識不出來，可以重試或手動填下面的欄位</p>
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-brand-soft px-2.5 py-1.5">
+            <p className="text-xs text-brand-soft-foreground">辨識不出來，可以重試或手動填下面的欄位</p>
             <button
               onClick={onReprocess}
               disabled={reprocessing}
-              className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
             >
               <RefreshCwIcon className={cn('size-3', reprocessing && 'animate-spin')} />
               {reprocessing ? '辨識中…' : '重新辨識'}
@@ -131,7 +131,7 @@ function BankScreenshotCard({
         <button
           onClick={handleImportClick}
           disabled={!canImport || importing || dismissing}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
         >
           <CheckIcon className="size-4" />
           {importing ? '匯入中…' : `匯入${canImport ? `　-${formatCurrency(amountValue)}` : ''}`}
@@ -309,7 +309,7 @@ export default function BankNotifyPage() {
               </div>
               <Link
                 href="/schedule/import"
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
               >
                 <ImageIcon className="size-4" />
                 前往辨識與確認匯入

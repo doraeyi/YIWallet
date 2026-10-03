@@ -49,7 +49,7 @@ function cardLastFour(card: Card): string | undefined {
 function viewColor(item: ViewItem): string {
   if (item.kind === 'card') return item.card.color
   if (item.kind === 'cash') return '#10B981'
-  return '#FBBF24'
+  return 'var(--brand)'
 }
 
 function viewEmoji(item: ViewItem): string {
@@ -451,7 +451,7 @@ export default function DashboardPage() {
         ))}
         <button
           onClick={() => setAddCardOpen(true)}
-          className="flex shrink-0 items-center gap-1 rounded-full border-2 border-dashed px-3 py-1.5 text-sm text-muted-foreground hover:border-amber-400 hover:text-amber-500 transition-colors"
+          className="flex shrink-0 items-center gap-1 rounded-full border-2 border-dashed px-3 py-1.5 text-sm text-muted-foreground hover:border-brand hover:text-brand-text transition-colors"
         >
           <PlusIcon className="size-3.5" />
           新增卡片
@@ -574,7 +574,7 @@ export default function DashboardPage() {
             className={cn(
               'flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] transition-colors',
               defaultCard?.id === currentView.card.id
-                ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30'
+                ? 'bg-brand-soft text-brand-text'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}
           >
@@ -615,13 +615,13 @@ export default function DashboardPage() {
       {defaultCard && unassignedCount > 0 && unassignedKey !== dismissedIds && (
         <button
           onClick={openUnassignedDialog}
-          className="mx-4 mb-3 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-2.5 dark:bg-amber-900/20 w-[calc(100%-2rem)]"
+          className="mx-4 mb-3 flex items-center justify-between rounded-xl bg-brand-soft px-4 py-2.5 w-[calc(100%-2rem)]"
         >
-          <span className="text-xs text-amber-700 dark:text-amber-300">
+          <span className="text-xs text-brand-soft-foreground">
             有 <span className="font-semibold">{unassignedCount}</span> 筆未分類，套用到{' '}
             <span className="font-semibold">{defaultCard.name}</span>？
           </span>
-          <ChevronRightIcon className="size-3.5 text-amber-500 shrink-0" />
+          <ChevronRightIcon className="size-3.5 text-brand-text shrink-0" />
         </button>
       )}
 
@@ -646,7 +646,7 @@ export default function DashboardPage() {
             <span className={cn(
               'flex size-4 items-center justify-center rounded border transition-colors',
               selectedTxIds.size === unassigned.length
-                ? 'border-amber-400 bg-amber-400 text-white'
+                ? 'border-brand bg-brand text-brand-foreground'
                 : 'border-muted-foreground/40',
             )}>
               {selectedTxIds.size === unassigned.length && <span className="text-[10px] font-bold">✓</span>}
@@ -667,7 +667,7 @@ export default function DashboardPage() {
                 >
                   <span className={cn(
                     'flex size-4 shrink-0 items-center justify-center rounded border transition-colors',
-                    checked ? 'border-amber-400 bg-amber-400 text-white' : 'border-muted-foreground/40',
+                    checked ? 'border-brand bg-brand text-brand-foreground' : 'border-muted-foreground/40',
                   )}>
                     {checked && <span className="text-[10px] font-bold">✓</span>}
                   </span>
@@ -697,7 +697,7 @@ export default function DashboardPage() {
             <button
               onClick={handleBulkAssign}
               disabled={bulkAssigning || selectedTxIds.size === 0}
-              className="flex-1 rounded-xl bg-amber-400 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
+              className="flex-1 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
             >
               {bulkAssigning ? '套用中…' : `套用 ${selectedTxIds.size} 筆`}
             </button>
@@ -737,7 +737,7 @@ export default function DashboardPage() {
       <div className="px-4 lg:px-6">
         <div className="mb-3 flex items-center justify-between">
           <span className="font-semibold">最近紀錄</span>
-          <Link href="/transactions" className="text-xs text-primary hover:underline">
+          <Link href="/transactions" className="text-xs font-medium text-brand-text hover:underline">
             查看全部
           </Link>
         </div>

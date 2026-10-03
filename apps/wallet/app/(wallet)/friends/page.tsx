@@ -134,7 +134,7 @@ export default function FriendsPage() {
           <Button
             onClick={handleSend}
             disabled={sending || !email.trim()}
-            className="h-auto gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500"
+            className="h-auto gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
           >
             <UserPlusIcon className="size-4" />
             {sending ? '送出中…' : '邀請'}
@@ -170,7 +170,7 @@ export default function FriendsPage() {
                           <p className="truncate text-sm font-medium">{f.friend.displayName}</p>
                           <p className="truncate text-xs text-muted-foreground">{maskEmail(f.friend.email)}</p>
                           {jobNames.length > 0 && (
-                            <p className="mt-0.5 truncate text-[11px] text-amber-600 dark:text-amber-400">
+                            <p className="mt-0.5 truncate text-[11px] text-brand-text">
                               🏢 {jobNames.join('、')}
                             </p>
                           )}
@@ -234,7 +234,7 @@ export default function FriendsPage() {
                           <Button
                             size="sm"
                             onClick={() => handleAccept(f.id)}
-                            className="shrink-0 rounded-lg bg-amber-400 font-semibold text-white hover:bg-amber-500"
+                            className="shrink-0 rounded-lg bg-brand font-semibold text-brand-foreground hover:bg-brand-hover"
                           >
                             接受
                           </Button>

@@ -188,7 +188,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
                   >
                     <span className={cn(
                       'flex size-6 items-center justify-center rounded-full text-xs font-medium',
-                      isToday && 'bg-amber-400 text-white',
+                      isToday && 'bg-brand text-brand-foreground',
                       !isToday && col === 0 && 'text-rose-500',
                       !isToday && col === 6 && 'text-blue-500',
                     )}>

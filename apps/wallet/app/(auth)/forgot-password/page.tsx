@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
               <input id="email" name="email" type="email" required autoComplete="email" placeholder="輸入 Email" className={INPUT} />
             </div>
             {sendState?.error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-500">{sendState.error}</p>}
-            <button type="submit" disabled={sending} className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60">
+            <button type="submit" disabled={sending} className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60">
               {sending ? '寄送中…' : '寄送驗證碼'}
             </button>
           </form>
@@ -50,14 +50,14 @@ export default function ForgotPasswordPage() {
               <PasswordInput id="confirm" name="confirm" required autoComplete="new-password" placeholder="再輸入一次" />
             </div>
             {resetState?.error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-500">{resetState.error}</p>}
-            <button type="submit" disabled={resetting} className="w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60">
+            <button type="submit" disabled={resetting} className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60">
               {resetting ? '設定中…' : '設定新密碼'}
             </button>
           </form>
         )}
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          <Link href="/login" className="font-medium text-amber-500 hover:text-amber-600">回到登入</Link>
+          <Link href="/login" className="font-medium text-brand-text hover:opacity-80">回到登入</Link>
         </p>
       </div>
     </div>

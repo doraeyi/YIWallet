@@ -12,7 +12,7 @@ export default function RegisterPage() {
     <div className="flex min-h-dvh items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-amber-400 text-white shadow-lg shadow-amber-400/30">
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-brand text-brand-foreground shadow-lg shadow-brand/30">
             <WalletIcon className="size-7" strokeWidth={2.5} />
           </span>
           <h1 className="text-2xl font-bold">易記帳</h1>
@@ -60,7 +60,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={pending}
-              className="mt-1 w-full rounded-xl bg-amber-400 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60 hover:bg-amber-500"
+              className="mt-1 w-full rounded-xl bg-brand py-3 text-sm font-semibold text-brand-foreground transition-opacity disabled:opacity-60 hover:bg-brand-hover"
             >
               {pending ? '註冊中…' : '註冊'}
             </button>
@@ -69,7 +69,7 @@ export default function RegisterPage() {
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           已有帳號？{' '}
-          <Link href="/login" className="font-medium text-amber-500 hover:text-amber-600">
+          <Link href="/login" className="font-medium text-brand-text hover:opacity-80">
             登入
           </Link>
         </p>
