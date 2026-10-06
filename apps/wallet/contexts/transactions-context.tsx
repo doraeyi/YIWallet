@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { Transaction } from '@/lib/types'
 import * as api from '@/lib/api'
+import { useRefreshOnResume } from '@/hooks/use-refresh-on-resume'
 
 const BUDGET_KEY = 'yiwallet_budget'
 
@@ -63,6 +64,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => { refetch() }, [])
+
+  // 回到前景時默默重抓，不切回載入中（畫面不會閃骨架），抓到再換掉
+  const refreshSilently = useCallback(() => {
+    api.fetchAllTransactions().then(setTransactions).catch(() => {})
+  }, [])
+  useRefreshOnResume(refreshSilently)
 
   const addTransaction = useCallback(async (data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> => {
     const tx = await api.createTransaction(data)

@@ -1,45 +1,89 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { APP_VERSION, CHANGELOG } from '@/lib/version'
+import { useEffect, useState } from 'react'
+import { SparklesIcon } from 'lucide-react'
+import { APP_VERSION } from '@/lib/version'
 
+interface RemoteVersion {
+  version: string
+  build: string
+  changes: string[]
+}
+
+// 有新版時從底部浮出來；內容向伺服器拿（新版自己報的版本號和更新內容），
+// 這支元件本身是舊版程式，裡面的 APP_VERSION 是「目前這版」
 export function UpdateBanner() {
-  const [ready, setReady] = useState(false)
+  const [remote, setRemote] = useState<RemoteVersion | null>(null)
+  const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
-    const handler = () => setReady(true)
-    window.addEventListener('sw-update-ready', handler)
-    return () => window.removeEventListener('sw-update-ready', handler)
+    async function onReady() {
+      try {
+        const res = await fetch('/api/version', { cache: 'no-store' })
+        setRemote(res.ok ? await res.json() : { version: '', build: '', changes: [] })
+      } catch {
+        setRemote({ version: '', build: '', changes: [] })
+      }
+    }
+    window.addEventListener('sw-update-ready', onReady)
+    return () => window.removeEventListener('sw-update-ready', onReady)
   }, [])
 
-  if (!ready) return null
+  if (!remote) return null
 
   async function applyUpdate() {
+    setUpdating(true)
     const reg = await navigator.serviceWorker.getRegistration()
-    reg?.waiting?.postMessage({ type: 'SKIP_WAITING' })
-    // Wait for the new SW to take control, then reload
+    if (!reg?.waiting) {
+      window.location.reload()
+      return
+    }
+    // 新版接手後重新載入
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true })
+    reg.waiting.postMessage({ type: 'SKIP_WAITING' })
   }
 
+  const isNewVersion = !!remote.version && remote.version !== APP_VERSION
+
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-50 rounded-2xl bg-white shadow-xl border px-4 py-3 lg:left-auto lg:right-6 lg:w-80 dark:bg-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold">新版本 {APP_VERSION} 可用</p>
-          {CHANGELOG.length > 0 && (
-            <ul className="mt-1 space-y-0.5">
-              {CHANGELOG.map((item, i) => (
-                <li key={i} className="text-xs text-muted-foreground">· {item}</li>
+    <div className="fixed bottom-24 left-4 right-4 z-50 animate-rise lg:bottom-6 lg:left-auto lg:right-6 lg:w-80">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-card">
+        <div className="flex items-center gap-2 bg-brand px-4 py-2.5 text-brand-foreground">
+          <SparklesIcon className="size-4" />
+          <span className="text-sm font-bold">
+            {isNewVersion ? `新版本 ${remote.version} 可以更新了` : '有小更新可以安裝'}
+          </span>
+        </div>
+        <div className="px-4 py-3">
+          {isNewVersion && remote.changes.length > 0 ? (
+            <ul className="mb-3 flex flex-col gap-1">
+              {remote.changes.map(item => (
+                <li key={item} className="flex items-start gap-1.5 text-sm">
+                  <span className="mt-0.5 text-brand-text">•</span>
+                  {item}
+                </li>
               ))}
             </ul>
+          ) : (
+            <p className="mb-3 text-sm text-muted-foreground">修正了一些小問題，讓 App 更穩定。</p>
           )}
+          <p className="mb-3 text-xs text-muted-foreground">目前版本 {APP_VERSION}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={applyUpdate}
+              disabled={updating}
+              className="flex-1 rounded-xl bg-brand py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
+            >
+              {updating ? '更新中…' : '立即更新'}
+            </button>
+            <button
+              onClick={() => setRemote(null)}
+              className="rounded-xl bg-muted px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/80"
+            >
+              稍後
+            </button>
+          </div>
         </div>
-        <button
-          onClick={applyUpdate}
-          className="shrink-0 rounded-xl bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand-hover"
-        >
-          立即更新
-        </button>
       </div>
     </div>
   )

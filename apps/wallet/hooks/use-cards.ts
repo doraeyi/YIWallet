@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Card } from '@/lib/types'
 import * as api from '@/lib/api'
+import { useRefreshOnResume } from '@/hooks/use-refresh-on-resume'
 
 const DEFAULT_CARD_KEY = 'yiwallet_default_card_id'
 
@@ -18,6 +19,12 @@ export function useCards() {
       .finally(() => setIsLoaded(true))
     setDefaultCardId(localStorage.getItem(DEFAULT_CARD_KEY))
   }, [])
+
+  // 卡片餘額會被自動記帳改到，回到前景時一起更新
+  const refreshCards = useCallback(() => {
+    api.fetchCards().then(setCards).catch(() => {})
+  }, [])
+  useRefreshOnResume(refreshCards)
 
   const addCard = useCallback(async (data: Omit<Card, 'id'>): Promise<Card> => {
     const card = await api.createCard(data)

@@ -1,9 +1,10 @@
-import { APP_VERSION } from '@/lib/version'
+import { APP_VERSION, BUILD_ID } from '@/lib/version'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const CACHE_NAME = `yiwallet-${APP_VERSION}`
+  // 快取名稱帶部署編號：每次部署 sw.js 內容就不同，瀏覽器才會裝新的 service worker
+  const CACHE_NAME = `yiwallet-${APP_VERSION}-${BUILD_ID}`
 
   const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -93,18 +94,20 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Navigation (HTML pages) — cache-first so the user sees the old version until they approve update
+  // Navigation (HTML pages) — cache-first：使用者按「更新」之前一直看到同一版。
+  // 以前會在背景把新版頁面寫進舊快取，結果有時新有時舊，現在只有快取裡沒有才去拿
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
         const cached = await cache.match(event.request)
-        // Refresh cache in background regardless
-        const networkFetch = fetch(event.request).then((response) => {
+        if (cached) return cached
+        try {
+          const response = await fetch(event.request)
           if (response.ok) cache.put(event.request, response.clone())
           return response
-        }).catch(() => null)
-        // Serve cached immediately if available; otherwise wait for network
-        return cached ?? networkFetch ?? caches.match('/offline')
+        } catch {
+          return (await caches.match('/offline')) ?? Response.error()
+        }
       })
     )
     return

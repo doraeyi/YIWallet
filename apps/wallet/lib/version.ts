@@ -1,6 +1,18 @@
-export const APP_VERSION = 'v1.6'
-
+// 發新版的流程：在 VERSION_HISTORY 最上面加一筆（版本號＋這版改了什麼），push 就好。
+// APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
+  {
+    version: 'v1.7',
+    changes: [
+      '全新開場動畫與全站動畫，主題色統一',
+      'Apple Pay 自動記帳，卡片自動對應',
+      '信用卡可設定結帳日、繳費日，首頁顯示本期消費',
+      '編輯紀錄可改卡片、日期、商家，也能直接刪除',
+      '班表可自訂時間、加備註，改錯可以復原',
+      '首頁「全部」可以自己選要計入哪些付款方式',
+      '忘記密碼、匯出 CSV、刪除帳號',
+    ],
+  },
   {
     version: 'v1.6',
     changes: [
@@ -45,5 +57,11 @@ export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   },
 ]
 
-// 當前版本的更新項目，顯示在更新通知 banner
-export const CHANGELOG = VERSION_HISTORY.find(v => v.version === APP_VERSION)?.changes ?? []
+export const APP_VERSION = VERSION_HISTORY[0].version
+
+// 當前版本的更新項目
+export const CHANGELOG = VERSION_HISTORY[0].changes
+
+// 每次部署都不一樣的編號（Vercel 的 commit SHA），用來讓 service worker 每次部署都換新，
+// 就算這次沒有升版本號（只修小 bug）也會提示使用者更新
+export const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)
