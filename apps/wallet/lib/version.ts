@@ -2,6 +2,14 @@
 // APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
+    version: 'v1.8',
+    changes: [
+      '首頁「全部」新增信用卡區塊：同一家銀行的卡合併加總，列出每張卡各花多少',
+      '顯示待繳金額、繳費截止日和可用額度',
+      '結帳日隔天通知「本期帳單出爐」，繳費日前提醒會附上要繳的金額',
+    ],
+  },
+  {
     version: 'v1.7',
     changes: [
       '全新開場動畫與全站動畫，主題色統一',

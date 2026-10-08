@@ -20,6 +20,7 @@ import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { useCountUp } from '@/hooks/use-count-up'
 import { useTotalScope, CASH_KEY } from '@/hooks/use-total-scope'
 import { TotalScopeDialog } from '@/components/wallet/total-scope-dialog'
+import { CreditOverview } from '@/components/wallet/credit-overview'
 
 type ViewItem =
   | { kind: 'all' }
@@ -775,6 +776,9 @@ export default function DashboardPage() {
       )}
 
       {/* ── Recent records ─────────────────────────────────── */}
+      {/* 全部：信用卡依銀行合併的本期消費、待繳金額 */}
+      {currentView.kind === 'all' && <CreditOverview cards={cards} transactions={transactions} />}
+
       <div className="px-4 lg:px-6">
         <div className="mb-3 flex items-center justify-between">
           <span className="font-semibold">最近紀錄</span>
