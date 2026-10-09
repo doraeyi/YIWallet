@@ -120,7 +120,7 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
               value={billingDay}
               onChange={setBillingDay}
               hint={billingDay
-                ? `每期是 ${Number(billingDay) % 31 + 1} 號到下個月 ${billingDay} 號，${billingDay} 號當天刷的算當期。${card.bank}的信用卡共用這個結帳日`
+                ? `每期是 ${billingDay} 號到${Number(billingDay) === 1 ? '月底' : `下個月 ${Number(billingDay) - 1} 號`}（照刷卡日）。${billingDay} 號當天刷的通常隔天才入帳，會算下一期。${card.bank}的信用卡共用這個結帳日`
                 : `${card.bank}的信用卡共用這個結帳日；沒設定的話本期消費會用日曆月計算`}
             />
           )}

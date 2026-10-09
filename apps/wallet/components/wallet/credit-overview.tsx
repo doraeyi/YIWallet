@@ -62,7 +62,7 @@ export function CreditOverview({ cards, transactions }: { cards: Card[]; transac
 
       if (summary && summary.billing_day != null && summary.last_closing_date) {
         const last = parseISO(summary.last_closing_date)
-        const start = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1)
+        const start = last
         const latestUnpaid = summary.unpaid_bills[0]
         return {
           bank,

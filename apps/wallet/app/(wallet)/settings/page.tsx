@@ -68,6 +68,16 @@ const EMPTY_FORM = {
 
 
 
+// 卡片依銀行分組：悠遊卡自成一組，沒填銀行的歸「其他」，組的先後照第一次出現的位置
+function groupCardsByBank(list: Card[]): { label: string; cards: Card[] }[] {
+  const groups = new Map<string, Card[]>()
+  for (const card of list) {
+    const label = card.type === 'easycard' ? '悠遊卡' : card.bank || '其他'
+    groups.set(label, [...(groups.get(label) ?? []), card])
+  }
+  return [...groups.entries()].map(([label, cards]) => ({ label, cards }))
+}
+
 export default function SettingsPage() {
   const { budget, setBudget, isLoaded: txLoaded, transactions } = useTransactions()
   const [input, setInput] = useState(budget > 0 ? String(budget) : '')
@@ -254,6 +264,10 @@ export default function SettingsPage() {
     return base.map(id => byId.get(id)).filter((c): c is Card => !!c)
   }, [cards, cardOrder, profile?.dashboard_order])
 
+  // 同一家銀行的卡排在一起、上面標銀行名稱（同一家的信用卡共用額度、帳單也一起繳）。
+  // 銀行之間的先後照目前順序裡第一次出現的位置，同一家裡面照拖拉的順序
+  const cardGroups = useMemo(() => groupCardsByBank(orderedCards), [orderedCards])
+
   function handleCardPointerDown(e: React.PointerEvent, id: string) {
     if (!cardOrder) setCardOrder(orderedCards.map(c => c.id))
     draggingCardRef.current = id
@@ -282,7 +296,11 @@ export default function SettingsPage() {
     if (!draggingCardRef.current) return
     draggingCardRef.current = null
     setDraggingCardId(null)
-    const order = cardOrder ?? orderedCards.map(c => c.id)
+    // 存的時候照分組後的順序存，首頁左右滑卡片的順序才會跟這裡看到的一樣
+    const byId = new Map(cards.map(c => [c.id, c]))
+    const current = (cardOrder ?? orderedCards.map(c => c.id)).map(id => byId.get(id)).filter((c): c is Card => !!c)
+    const order = groupCardsByBank(current).flatMap(g => g.cards.map(c => c.id))
+    setCardOrder(order)
     const encoded = JSON.stringify(order)
     setProfile(p => p ? { ...p, dashboard_order: encoded } : p)
     await fetch('/api/backend/users/me', {
@@ -540,7 +558,15 @@ export default function SettingsPage() {
                   {orderedCards.length > 1 && (
                     <p className="px-4 pt-2.5 text-[11px] text-muted-foreground">拖右邊的把手可以調整卡片順序</p>
                   )}
-                  {orderedCards.map(card => {
+                  {cardGroups.map(group => (
+                  <div key={group.label} className="divide-y">
+                  <div className="flex items-center gap-2 bg-muted/30 px-4 py-1.5">
+                    <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-soft-foreground">
+                      {group.label}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{group.cards.length} 張</span>
+                  </div>
+                  {group.cards.map(card => {
                     const emoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
                     return (
                       <div
@@ -587,6 +613,8 @@ export default function SettingsPage() {
                       </div>
                     )
                   })}
+                  </div>
+                  ))}
                 </>
               )}
             </div>

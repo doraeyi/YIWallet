@@ -247,17 +247,18 @@ export default function DashboardPage() {
     if (currentView.kind !== 'card' || currentView.card.type !== 'credit' || !isThisMonth) return null
     if (creditSummary?.billing_day == null || !creditSummary.last_closing_date) return null
     const last = parseISO(creditSummary.last_closing_date)
-    const start = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1)
+    // 本期 = 上次結帳日 ～ 下次結帳日前一天（結帳日當天刷的隔天才入帳，算下一期）
+    const start = last
     const nextMonthLastDay = new Date(last.getFullYear(), last.getMonth() + 2, 0).getDate()
-    const end = new Date(last.getFullYear(), last.getMonth() + 1, Math.min(creditSummary.billing_day, nextMonthLastDay))
-    return { after: creditSummary.last_closing_date, start, end }
+    const end = new Date(last.getFullYear(), last.getMonth() + 1, Math.min(creditSummary.billing_day, nextMonthLastDay) - 1)
+    return { from: creditSummary.last_closing_date, start, end }
   }, [currentView, isThisMonth, creditSummary])
 
   const filtered = useMemo(() => {
     if (currentView.kind === 'all') return scopeFilter(allFiltered)
     if (currentView.kind === 'cash') return allFiltered.filter(tx => !tx.cardId)
     if (creditPeriod) {
-      return transactions.filter(tx => tx.cardId === currentView.card.id && tx.date > creditPeriod.after)
+      return transactions.filter(tx => tx.cardId === currentView.card.id && tx.date >= creditPeriod.from)
     }
     return allFiltered.filter(tx => tx.cardId === currentView.card.id)
   }, [allFiltered, transactions, currentView, creditPeriod, scopeFilter])
