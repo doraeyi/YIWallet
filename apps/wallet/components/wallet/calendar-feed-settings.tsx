@@ -95,7 +95,8 @@ if (!data || !data.shifts) {
 }
 
 w.addSpacer()
-w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000)
+// 請 iOS 15 分鐘後就重抓（實際多久更新還是 iOS 決定，通常 15 分鐘～1 小時）
+w.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000)
 Script.setWidget(w)
 if (!config.runsInWidget) await w.presentMedium()
 Script.complete()
@@ -238,7 +239,8 @@ if (!data || !data.month) {
   })
 }
 
-w.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000)
+// 請 iOS 15 分鐘後就重抓（實際多久更新還是 iOS 決定，通常 15 分鐘～1 小時）
+w.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000)
 Script.setWidget(w)
 if (!config.runsInWidget) await w.presentLarge()
 Script.complete()

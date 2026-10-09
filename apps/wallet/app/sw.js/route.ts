@@ -23,9 +23,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-com
 firebase.initializeApp(${JSON.stringify(firebaseConfig)})
 const messaging = firebase.messaging()
 
-// App 在背景（分頁未開啟/未聚焦）時顯示系統通知
+// 後端送的推播帶 notification 欄位時，Firebase SDK 會自己跳通知；這裡再呼叫
+// showNotification 就會同一則出現兩次（以前上班提醒每次都收到兩則就是這樣）。
+// 只有沒帶 notification 的純資料推播才由這裡自己顯示。
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification || {}
+  if (payload.notification) return
+  const { title, body } = payload.data || {}
   self.registration.showNotification(title || '易記帳', {
     body,
     icon: '/icons/icon-192x192.png',
@@ -36,7 +39,9 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  // Firebase 自己跳的通知，資料包在 FCM_MSG 裡
+  const data = event.notification.data || {}
+  const url = data.url || (data.FCM_MSG && data.FCM_MSG.data && data.FCM_MSG.data.url) || '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((list) => {
       const existing = list.find((c) => c.url.includes(url))
