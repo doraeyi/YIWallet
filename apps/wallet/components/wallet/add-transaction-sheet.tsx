@@ -1,30 +1,31 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { XIcon, DeleteIcon, Trash2Icon } from 'lucide-react'
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from '@/components/ui/sheet'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { addDays, format, parseISO } from 'date-fns'
+import { zhTW } from 'date-fns/locale'
+import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, Trash2Icon, XIcon } from 'lucide-react'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useCards } from '@/hooks/use-cards'
-import { CATEGORIES, type Transaction, type TransactionType } from '@/lib/types'
+import { useTransactions } from '@/hooks/use-transactions'
+import { CATEGORIES, getCategoryById, type Transaction, type TransactionType } from '@/lib/types'
 import { todayString } from '@/lib/finance-utils'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
+import { CategoryBadge, CategoryGlyph } from './category-icon'
 
-// 新增交易時預選上次用的分類（收入、支出各記一個），常記同一類的不用每次重選
+// ── 上次用的分類（收入、支出各記一個），新增時預選 ─────────────────────────────
 const LAST_CATEGORY_KEY = 'yiwallet_last_category'
 
 function lastCategory(type: TransactionType): string {
-  try { return JSON.parse(localStorage.getItem(LAST_CATEGORY_KEY) ?? '{}')[type] ?? '' } catch { return '' }
+  try {
+    const id = JSON.parse(localStorage.getItem(LAST_CATEGORY_KEY) ?? '{}')[type] ?? ''
+    return getCategoryById(id)?.hidden ? '' : id // 已經下架的舊分類不要預選
+  } catch {
+    return ''
+  }
 }
 
 function rememberCategory(type: TransactionType, category: string) {
@@ -34,6 +35,43 @@ function rememberCategory(type: TransactionType, category: string) {
   } catch {}
 }
 
+// ── 計算機 ─────────────────────────────────────────────────────────────────────
+const OPERATORS = ['+', '−', '×', '÷']
+const isOperator = (c: string) => OPERATORS.includes(c)
+
+// "120+35×2" → 190：先乘除後加減；結尾是運算子就先忽略它；除以 0 當 0
+export function evaluateAmount(expr: string): number {
+  const tokens = expr.replace(/[+−×÷]$/, '').match(/[\d.]+|[+−×÷]/g)
+  if (!tokens) return 0
+  const terms: number[] = []
+  let sign = 1
+  let term = parseFloat(tokens[0]) || 0
+  for (let i = 1; i < tokens.length; i += 2) {
+    const op = tokens[i]
+    const n = parseFloat(tokens[i + 1]) || 0
+    if (op === '×') term *= n
+    else if (op === '÷') term = n === 0 ? 0 : term / n
+    else {
+      terms.push(sign * term)
+      sign = op === '−' ? -1 : 1
+      term = n
+    }
+  }
+  terms.push(sign * term)
+  return Math.round(terms.reduce((a, b) => a + b, 0) * 100) / 100
+}
+
+// 計算機鍵盤：5 欄 × 4 列，照畫面順序排；OK 佔右下兩列（row-span-2），grid 會自動把
+// 第 4 列的最後一格讓給它
+type PadKey = { key: string; kind: 'num' | 'op' | 'fn' | 'ok' }
+const PAD: PadKey[] = [
+  { key: '7', kind: 'num' }, { key: '8', kind: 'num' }, { key: '9', kind: 'num' }, { key: '÷', kind: 'op' }, { key: 'AC', kind: 'fn' },
+  { key: '4', kind: 'num' }, { key: '5', kind: 'num' }, { key: '6', kind: 'num' }, { key: '×', kind: 'op' }, { key: '⌫', kind: 'fn' },
+  { key: '1', kind: 'num' }, { key: '2', kind: 'num' }, { key: '3', kind: 'num' }, { key: '+', kind: 'op' }, { key: 'OK', kind: 'ok' },
+  { key: '00', kind: 'num' }, { key: '0', kind: 'num' }, { key: '.', kind: 'num' }, { key: '−', kind: 'op' },
+]
+const KEY_LABEL: Record<string, string> = { '÷': '除', '×': '乘', '+': '加', '−': '減', '⌫': '刪除一位', AC: '全部清除', OK: '儲存' }
+
 interface AddTransactionSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -42,43 +80,17 @@ interface AddTransactionSheetProps {
   onDelete?: () => Promise<void>
 }
 
-// 右邊一欄放 + − 讓使用者直接算「120+35」，金額會即時算出結果，儲存時用結果
-const PAD_KEYS = [
-  '1','2','3','⌫',
-  '4','5','6','+',
-  '7','8','9','−',
-  '.','0','00','✓',
-] as const
-
-const OPERATORS = ['+', '−']
-
-// "120+35−5" → 150；結尾是運算子的話先忽略那個運算子
-function evaluateAmount(expr: string): number {
-  const trimmed = expr.replace(/[+−]$/, '')
-  if (!trimmed) return 0
-  let total = 0
-  for (const m of trimmed.matchAll(/([+−]?)([\d.]+)/g)) {
-    const n = parseFloat(m[2]) || 0
-    total += m[1] === '−' ? -n : n
-  }
-  return Math.round(total * 100) / 100
-}
-
-export function AddTransactionSheet({
-  open,
-  onOpenChange,
-  onSubmit,
-  initialData,
-  onDelete,
-}: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData, onDelete }: AddTransactionSheetProps) {
   const isDesktop = useIsDesktop()
   const { cards, defaultCard } = useCards()
+  const { transactions } = useTransactions()
 
-  const [type,       setType]       = useState<TransactionType>(initialData?.type     ?? 'expense')
-  const [category,   setCategory]   = useState(() =>
+  const [type, setType] = useState<TransactionType>(initialData?.type ?? 'expense')
+  const [category, setCategory] = useState(() =>
     initialData ? initialData.category : (typeof window !== 'undefined' ? lastCategory('expense') : ''))
-  const [amount,     setAmount]     = useState(initialData ? String(initialData.amount) : '')
-  const [note,       setNote]       = useState(() => {
+  const [amount, setAmount] = useState(initialData ? String(initialData.amount) : '')
+  // 轉帳的備註存成「對象|備註」
+  const [note, setNote] = useState(() => {
     if (initialData?.category === 'transfer' && initialData.note) {
       const idx = initialData.note.indexOf('|')
       return idx === -1 ? '' : initialData.note.slice(idx + 1)
@@ -92,13 +104,12 @@ export function AddTransactionSheet({
     }
     return ''
   })
-  const [date,     setDate]     = useState(initialData?.date     ?? todayString())
+  const [date, setDate] = useState(initialData?.date ?? todayString())
   // 商家／品名：Apple Pay、電子發票、LINE 記帳帶進來的，編輯時才顯示讓人改
   const [description, setDescription] = useState(
     initialData?.description && initialData.description !== initialData.note ? initialData.description : '')
-  const [cardId,        setCardId]        = useState<string | undefined>(
-    initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id)
-  )
+  const [cardId, setCardId] = useState<string | undefined>(
+    initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id))
   const [isExplicitCash, setIsExplicitCash] = useState(!!initialData?.isCash && !initialData.cardId)
   const [saving, setSaving] = useState(false)
 
@@ -106,11 +117,24 @@ export function AddTransactionSheet({
   const isDebitCard = selectedCard?.type === 'debit'
 
   const categories = CATEGORIES.filter(c => {
+    if (c.hidden && c.id !== initialData?.category) return false
     if (c.id === 'transfer') return isDebitCard
     return c.type === type
   })
 
-  // 當 cards 載入完成後，若是新增模式且尚未選卡，自動帶入 defaultCard
+  // 快選備註：這個分類最常打的備註（像「康是美」「早餐店」），點一下就填好
+  const noteSuggestions = useMemo(() => {
+    if (!category) return []
+    const counts = new Map<string, number>()
+    for (const t of transactions) {
+      const n = t.note?.trim()
+      if (t.category !== category || !n || n.length > 12 || /領現|薪資/.test(n)) continue
+      counts.set(n, (counts.get(n) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n]) => n)
+  }, [transactions, category])
+
+  // 卡片載入完成後，新增模式還沒選卡就帶入常用卡
   useEffect(() => {
     if (!initialData && cardId === undefined && !isExplicitCash) {
       const preferred = defaultCard?.id ?? cards[0]?.id
@@ -118,7 +142,7 @@ export function AddTransactionSheet({
     }
   }, [defaultCard?.id, cards.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 切換離開金融卡時，重置轉帳分類
+  // 換到不是金融卡時，轉帳分類不能用了
   useEffect(() => {
     if (category === 'transfer' && !isDebitCard) {
       setCategory('')
@@ -127,6 +151,7 @@ export function AddTransactionSheet({
   }, [isDebitCard]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleTypeChange(t: TransactionType) {
+    if (t === type) return
     setType(t)
     setCategory(initialData ? '' : lastCategory(t))
     setTransferTo('')
@@ -159,48 +184,41 @@ export function AddTransactionSheet({
     setIsExplicitCash(false)
     setCardId(defaultCard?.id ?? cards[0]?.id)
     onOpenChange(false)
-  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, cards.length, onSubmit, onOpenChange, defaultCard?.id, saving, initialData, description])
+  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, onSubmit, onOpenChange, defaultCard?.id, saving, initialData, description, cards])
 
   const handleKey = useCallback((key: string) => {
-    if (key === '✓') { handleSave(); return }
+    if (key === 'OK') { handleSave(); return }
+    if (key === 'AC') { setAmount(''); return }
     if (key === '⌫') { setAmount(prev => prev.slice(0, -1)); return }
     if (key === '=') {
       const result = evaluateAmount(amount)
       setAmount(result > 0 ? String(result) : '')
       return
     }
-    if (key === '')   return
-    const lastChar = amount.slice(-1)
-    if (OPERATORS.includes(key)) {
+    if (isOperator(key)) {
       if (!amount) return
       // 連按兩個運算子就換成後按的那個
-      setAmount(prev => (OPERATORS.includes(prev.slice(-1)) ? prev.slice(0, -1) : prev) + key)
+      setAmount(prev => (isOperator(prev.slice(-1)) ? prev.slice(0, -1) : prev) + key)
       return
     }
-    const current = amount.split(/[+−]/).pop() ?? ''
+    const current = amount.split(/[+−×÷]/).pop() ?? ''
     if (key === '.' && current.includes('.')) return
-    if (key === '00' && (current === '' || OPERATORS.includes(lastChar))) return
+    if (key === '00' && current === '') return
     if (current.replace('.', '').length >= 8) return
     setAmount(prev => prev + key)
   }, [amount, handleSave])
 
-  // 電腦上直接用實體鍵盤輸入金額：數字、小數點、+ -、Backspace、Enter 存檔。
+  // 電腦上直接用實體鍵盤：數字、小數點、+ - * /、Backspace、Esc 清除、Enter 存檔。
   // 正在備註欄這類輸入框打字時不攔截。
   useEffect(() => {
     if (!open) return
+    const MAP: Record<string, string> = { '+': '+', '-': '−', '*': '×', '/': '÷', '=': '=', Backspace: '⌫', Delete: 'AC', Enter: 'OK', '.': '.' }
     function onKeyDown(e: KeyboardEvent) {
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
-      let key: string | null = null
-      if (/^[0-9]$/.test(e.key)) key = e.key
-      else if (e.key === '.') key = '.'
-      else if (e.key === '+') key = '+'
-      else if (e.key === '-') key = '−'
-      else if (e.key === '=') key = '='
-      else if (e.key === 'Backspace') key = '⌫'
-      else if (e.key === 'Enter') key = '✓'
-      if (key === null) return
+      const key = /^[0-9]$/.test(e.key) ? e.key : MAP[e.key]
+      if (!key) return
       e.preventDefault()
       handleKey(key)
     }
@@ -209,14 +227,11 @@ export function AddTransactionSheet({
   }, [open, handleKey])
 
   const evaluated = evaluateAmount(amount)
-  const hasExpression = /[+−]/.test(amount)
-  const displayAmount = amount
-    ? new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(evaluated)
-    : '0'
-
+  const hasExpression = /[+−×÷]/.test(amount)
+  const displayAmount = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(evaluated)
   const isValid = evaluated > 0 && !!category
 
-  // 已經輸入金額卻按 ✕／點外面關掉，先確認，避免誤觸把剛打的內容丟掉
+  // 已經輸入金額卻按返回／點外面，先確認，避免誤觸把剛打的內容丟掉
   const initialAmount = initialData ? String(initialData.amount) : ''
   async function requestClose() {
     if (amount && amount !== initialAmount
@@ -248,221 +263,222 @@ export function AddTransactionSheet({
     else requestClose()
   }
 
+  const dateObj = parseISO(date)
+  const today = todayString()
+  const dayPrefix = date === today ? '今日' : date === format(addDays(new Date(), -1), 'yyyy-MM-dd') ? '昨日' : ''
+  const accent = type === 'expense' ? 'text-rose-500' : 'text-emerald-600'
+
   const inner = (
-    <div ref={panelRef} tabIndex={-1} className="flex flex-col outline-none">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <button
-          onClick={requestClose}
-          aria-label="關閉"
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-        >
-          <XIcon className="size-4" />
+    <div ref={panelRef} tabIndex={-1} className="flex h-full flex-col outline-none">
+      {/* ── 標題列：返回／支出收入切換／刪除 ── */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5">
+        <button onClick={requestClose} aria-label="關閉" className="flex size-9 items-center justify-center rounded-full hover:bg-muted">
+          <XIcon className="size-5" />
         </button>
-        <span className="text-base font-semibold">{initialData ? '編輯紀錄' : '新增紀錄'}</span>
-        {onDelete ? (
-          <button
-            onClick={handleDelete}
-            aria-label="刪除這筆"
-            className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/20"
-          >
-            <Trash2Icon className="size-4" />
-          </button>
-        ) : (
-          <div className="size-8" />
-        )}
-      </div>
-
-      {/* Type toggle */}
-      <div className="flex gap-2 px-4 pb-3">
-        <button
-          onClick={() => handleTypeChange('expense')}
-          className={cn(
-            'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors',
-            type === 'expense' ? 'bg-rose-500 text-white' : 'bg-muted text-muted-foreground'
-          )}
-        >
-          支出
-        </button>
-        <button
-          onClick={() => handleTypeChange('income')}
-          className={cn(
-            'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors',
-            type === 'income' ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'
-          )}
-        >
-          收入
-        </button>
-      </div>
-
-      {!category && (
-        <p className="px-4 pb-1 text-xs text-muted-foreground">選一個分類 <span className="text-rose-500">*</span></p>
-      )}
-      {/* Category grid — 2 rows, horizontal scroll if overflow */}
-      <div className="grid grid-rows-2 grid-flow-col auto-cols-[72px] gap-3 overflow-x-auto px-4 pb-3 scrollbar-none">
-        {categories.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setCategory(cat.id)}
-            aria-pressed={category === cat.id}
-            aria-label={cat.name}
+        <div role="tablist" className="relative grid w-44 grid-cols-2 rounded-full bg-muted p-1">
+          {/* 滑動的選中底色 */}
+          <span
+            aria-hidden="true"
             className={cn(
-              'flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all',
-              category === cat.id
-                ? (type === 'expense' ? 'bg-rose-50 ring-2 ring-rose-400 dark:bg-rose-400/10' : 'bg-emerald-50 ring-2 ring-emerald-400 dark:bg-emerald-400/10')
-                : category && 'opacity-50'
+              'absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full shadow-sm transition-transform duration-300 ease-(--ease-spring)',
+              type === 'expense' ? 'translate-x-0 bg-brand' : 'translate-x-full bg-emerald-500',
             )}
-          >
-            <span
-              className="flex size-12 items-center justify-center rounded-full text-2xl"
-              style={{ backgroundColor: cat.color }}
-            >
-              {cat.emoji}
-            </span>
-            <span className={cn('text-xs', category === cat.id ? 'font-bold' : 'font-medium')}>{cat.name}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Amount display */}
-      <div className="flex flex-col items-end px-6 pb-2">
-        {hasExpression && (
-          <span className="text-sm tabular-nums text-muted-foreground">{amount}</span>
-        )}
-        <span className={cn(
-          'text-4xl font-bold tabular-nums',
-          type === 'expense' ? 'text-rose-500' : 'text-emerald-500'
-        )}>
-          ${displayAmount}
-        </span>
-      </div>
-
-      {initialData && (
-        <div className="flex items-center gap-2 border-t px-4 py-2.5">
-          <label htmlFor="tx-description" className="shrink-0 text-xs text-muted-foreground">商家</label>
-          <input
-            id="tx-description"
-            placeholder="商家或品名（選填）"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            maxLength={100}
-            className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
           />
-        </div>
-      )}
-
-      {/* Date + note/transfer-to */}
-      <div className="flex items-center gap-2 border-t px-4 py-2.5">
-        <input
-          type="date"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-          className="rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none focus:border-ring"
-        />
-        {category === 'transfer' ? (
-          <input
-            placeholder="轉帳對象（選填）"
-            value={transferTo}
-            onChange={e => setTransferTo(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-          />
-        ) : (
-          <input
-            placeholder="新增備註"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-          />
-        )}
-      </div>
-      {/* Transfer extra note row */}
-      {category === 'transfer' && (
-        <div className="flex items-center border-t px-4 py-2.5">
-          <input
-            placeholder="備註（選填）"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            className="w-full rounded-lg border bg-muted/50 px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-          />
-        </div>
-      )}
-
-      {/* Card selector — only shown when cards exist */}
-      {cards.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto border-t px-4 py-2.5 scrollbar-none">
-          {/* 現金 option */}
-          <button
-            onClick={() => { setCardId(undefined); setIsExplicitCash(true) }}
-            className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-              !cardId && isExplicitCash
-                ? 'bg-emerald-500 text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80',
-            )}
-          >
-            💵 現金
-          </button>
-          {cards.map(card => (
+          {(['expense', 'income'] as const).map(t => (
             <button
-              key={card.id}
-              onClick={() => { setCardId(card.id); setIsExplicitCash(false) }}
+              key={t}
+              role="tab"
+              aria-selected={type === t}
+              onClick={() => handleTypeChange(t)}
               className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                cardId === card.id ? 'text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                'relative z-10 py-1.5 text-sm font-semibold transition-colors',
+                type === t ? (t === 'expense' ? 'text-brand-foreground' : 'text-white') : 'text-muted-foreground',
               )}
-              style={cardId === card.id ? { backgroundColor: card.color } : undefined}
             >
-              {card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'}
-              {card.type === 'credit' ? '信用卡' : card.type === 'easycard' ? '悠遊卡' : '金融卡'}
-              {(() => {
-                const last4 = card.lastFour ?? (/^\d{4,}$/.test(card.name) ? card.name.slice(-4) : undefined)
-                return last4 ? <span className="opacity-70"> ···· {last4}</span> : null
-              })()}
+              {t === 'expense' ? '支出' : '收入'}
             </button>
           ))}
         </div>
-      )}
+        {onDelete ? (
+          <button onClick={handleDelete} aria-label="刪除這筆" className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/20">
+            <Trash2Icon className="size-4" />
+          </button>
+        ) : (
+          <div className="size-9" />
+        )}
+      </div>
 
-      {/* Number pad——固定在面板底部，小螢幕不用往下捲才看得到「儲存」 */}
-      <div className="sticky bottom-0 grid grid-cols-4 border-t bg-background">
-        {PAD_KEYS.map((key, idx) => {
-          if (key === '✓') {
+      {/* ── 分類格子（可捲動）── */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div key={type} className="stagger grid grid-cols-4 gap-x-2 gap-y-4 px-4 py-5">
+          {categories.map(cat => {
+            const selected = category === cat.id
             return (
               <button
-                key={idx}
-                onClick={handleSave}
-                className={cn(
-                  'flex items-center justify-center py-4 text-base font-bold text-white transition-opacity',
-                  isValid ? 'bg-brand active:opacity-70' : 'bg-brand/50 cursor-not-allowed'
-                )}
+                key={cat.id}
+                onClick={() => setCategory(cat.id)}
+                aria-pressed={selected}
+                aria-label={cat.name}
+                className="group flex flex-col items-center gap-1.5"
               >
-                儲存
+                <span
+                  className={cn(
+                    'relative flex size-14 items-center justify-center rounded-2xl transition-all duration-300 ease-(--ease-spring)',
+                    selected ? 'scale-105 shadow-md' : 'bg-muted/60 group-hover:bg-muted',
+                  )}
+                  style={selected ? { backgroundColor: cat.color, color: cat.text } : undefined}
+                >
+                  <CategoryGlyph id={cat.id} className="size-7" strokeWidth={1.8} />
+                  {selected && <span className="absolute -right-1 -top-1 size-3 rounded-full bg-brand ring-2 ring-background" />}
+                </span>
+                <span className={cn('text-xs', selected ? 'font-bold' : 'text-muted-foreground')}>{cat.name}</span>
               </button>
             )
-          }
-          return (
+          })}
+        </div>
+      </div>
+
+      {/* ── 下半部：金額、備註、付款方式、日期、計算機 ── */}
+      <div className="shrink-0 rounded-t-3xl border-t bg-background shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.15)]">
+        {/* 金額 + 備註 */}
+        <div className="flex items-center gap-3 px-4 pt-3">
+          {category ? <CategoryBadge id={category} className="size-11" /> : (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-dashed text-[10px] text-muted-foreground">分類</span>
+          )}
+          <div className="flex min-w-0 flex-col">
+            {hasExpression && <span className="truncate text-xs tabular-nums text-muted-foreground">{amount}</span>}
+            <span key={displayAmount} className={cn('text-3xl font-bold tabular-nums animate-pop', accent)}>${displayAmount}</span>
+          </div>
+          <div className="ml-auto h-10 w-px bg-border" />
+          <input
+            placeholder={category === 'transfer' ? '轉給誰（選填）' : '輸入備註'}
+            value={category === 'transfer' ? transferTo : note}
+            onChange={e => (category === 'transfer' ? setTransferTo(e.target.value) : setNote(e.target.value))}
+            className="w-28 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-36"
+          />
+        </div>
+
+        {/* 快選備註、商家（編輯時）、轉帳的額外備註 */}
+        {(noteSuggestions.length > 0 || initialData || category === 'transfer') && (
+          <div className="flex gap-2 overflow-x-auto px-4 pt-2.5 scrollbar-none">
+            {category === 'transfer' && (
+              <input
+                placeholder="備註（選填）"
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                className="w-32 shrink-0 rounded-full bg-muted px-3 py-1 text-xs outline-none placeholder:text-muted-foreground"
+              />
+            )}
+            {initialData && (
+              <input
+                aria-label="商家"
+                placeholder="商家／品名"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                maxLength={100}
+                className="w-32 shrink-0 rounded-full bg-muted px-3 py-1 text-xs outline-none placeholder:text-muted-foreground"
+              />
+            )}
+            {category !== 'transfer' && noteSuggestions.map(n => (
+              <button
+                key={n}
+                onClick={() => setNote(n)}
+                className={cn(
+                  'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                  note === n ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 付款方式 */}
+        {cards.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto px-4 pt-2.5 scrollbar-none">
             <button
-              key={idx}
-              onClick={() => handleKey(key)}
-              aria-label={key === '⌫' ? '刪除' : key === '+' ? '加' : key === '−' ? '減' : undefined}
+              onClick={() => { setCardId(undefined); setIsExplicitCash(true) }}
               className={cn(
-                'flex items-center justify-center py-4 text-lg font-medium hover:bg-muted active:bg-muted transition-colors',
-                OPERATORS.includes(key) && 'text-brand-text',
+                'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                !cardId && isExplicitCash ? 'border-emerald-500 bg-emerald-500 text-white' : 'text-muted-foreground hover:bg-muted',
               )}
             >
-              {key === '⌫' ? <DeleteIcon className="size-5 text-muted-foreground" /> : key}
+              💵 現金
             </button>
-          )
-        })}
+            {cards.map(card => (
+              <button
+                key={card.id}
+                onClick={() => { setCardId(card.id); setIsExplicitCash(false) }}
+                className={cn(
+                  'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                  cardId === card.id ? 'text-white' : 'text-muted-foreground hover:bg-muted',
+                )}
+                style={cardId === card.id ? { backgroundColor: card.color, borderColor: card.color } : undefined}
+              >
+                {card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'} {card.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 計算機區：日期列 + 圓形按鍵 */}
+        <div className="mt-3 bg-brand-soft px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+          <div className="mb-3 flex items-center rounded-full bg-background shadow-sm ring-1 ring-foreground/10">
+            <button onClick={() => setDate(format(addDays(dateObj, -1), 'yyyy-MM-dd'))} aria-label="前一天" className="flex size-10 items-center justify-center rounded-full hover:bg-muted">
+              <ChevronLeftIcon className="size-5" />
+            </button>
+            <label className="relative flex flex-1 cursor-pointer items-center justify-center gap-2 text-sm font-semibold">
+              <CalendarDaysIcon className="size-4 text-brand-text" />
+              {dayPrefix && <span>{dayPrefix}</span>}
+              <span className="tabular-nums">{format(dateObj, 'yyyy/MM/dd')}</span>
+              <span className="text-muted-foreground">{format(dateObj, 'EEEE', { locale: zhTW })}</span>
+              {/* 點日期打開系統的日期選擇器 */}
+              <input
+                type="date"
+                aria-label="選擇日期"
+                value={date}
+                onChange={e => e.target.value && setDate(e.target.value)}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </label>
+            <button onClick={() => setDate(format(addDays(dateObj, 1), 'yyyy-MM-dd'))} aria-label="後一天" className="flex size-10 items-center justify-center rounded-full hover:bg-muted">
+              <ChevronRightIcon className="size-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-5 gap-2">
+            {PAD.map(({ key, kind }) => (
+              <button
+                key={key}
+                onClick={() => handleKey(key)}
+                disabled={kind === 'ok' && saving}
+                aria-label={KEY_LABEL[key]}
+                className={cn(
+                  'flex items-center justify-center rounded-full font-semibold shadow-sm transition-colors',
+                  kind === 'ok' ? 'row-span-2 text-lg' : 'aspect-square max-h-16 w-full text-xl',
+                  kind === 'num' && 'bg-background ring-1 ring-foreground/10 hover:bg-muted',
+                  kind === 'op' && 'bg-foreground/85 text-background hover:bg-foreground',
+                  kind === 'fn' && 'bg-foreground/10 hover:bg-foreground/15',
+                  kind === 'ok' && (isValid ? 'bg-brand text-brand-foreground hover:bg-brand-hover' : 'bg-brand/40 text-brand-foreground/60'),
+                )}
+              >
+                {key === '⌫' ? <DeleteIcon className="size-5" /> : kind === 'ok' && saving ? '…' : key}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
 
+  const title = initialData ? '編輯紀錄' : '新增紀錄'
+
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent showCloseButton={false} onOpenAutoFocus={focusPanel} className="gap-0 overflow-hidden p-0 sm:max-w-sm">
-          <DialogTitle className="sr-only">{initialData ? '編輯紀錄' : '新增紀錄'}</DialogTitle>
+        <DialogContent showCloseButton={false} onOpenAutoFocus={focusPanel} className="h-[min(820px,92dvh)] gap-0 overflow-hidden p-0 sm:max-w-md">
+          <DialogTitle className="sr-only">{title}</DialogTitle>
           {inner}
         </DialogContent>
       </Dialog>
@@ -471,8 +487,8 @@ export function AddTransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" showCloseButton={false} onOpenAutoFocus={focusPanel} className="gap-0 rounded-t-2xl p-0 max-h-[92dvh] overflow-y-auto">
-        <SheetTitle className="sr-only">{initialData ? '編輯紀錄' : '新增紀錄'}</SheetTitle>
+      <SheetContent side="bottom" showCloseButton={false} onOpenAutoFocus={focusPanel} className="h-dvh gap-0 p-0">
+        <SheetTitle className="sr-only">{title}</SheetTitle>
         {inner}
       </SheetContent>
     </Sheet>

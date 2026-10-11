@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { confirmDialog } from '@/lib/confirm'
+import { CategoryBadge } from '@/components/wallet/category-icon'
 
 export default function TransactionsPage() {
   const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear } = useTransactions()
@@ -165,12 +166,7 @@ export default function TransactionsPage() {
                       const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                       return (
                         <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}>
-                          <span
-                            className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg"
-                            style={{ backgroundColor: cat?.color }}
-                          >
-                            {cat?.emoji ?? '💸'}
-                          </span>
+                          <CategoryBadge id={tx.category} />
                           <button onClick={() => setEditTx(tx)} className="min-w-0 flex-1 text-left">
                             <p className="truncate text-sm font-medium">{title}</p>
                             {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}

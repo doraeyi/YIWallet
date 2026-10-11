@@ -21,6 +21,7 @@ import { useCountUp } from '@/hooks/use-count-up'
 import { useTotalScope, CASH_KEY } from '@/hooks/use-total-scope'
 import { TotalScopeDialog } from '@/components/wallet/total-scope-dialog'
 import { CreditOverview } from '@/components/wallet/credit-overview'
+import { CategoryBadge } from '@/components/wallet/category-icon'
 
 type ViewItem =
   | { kind: 'all' }
@@ -714,9 +715,7 @@ export default function DashboardPage() {
                   )}>
                     {checked && <span className="text-[10px] font-bold">✓</span>}
                   </span>
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-lg" style={{ backgroundColor: cat?.color }}>
-                    {cat?.emoji ?? '💸'}
-                  </span>
+                  <CategoryBadge id={tx.category} className="size-8" />
                   <div className="min-w-0 flex-1 text-left">
                     <p className="text-sm font-medium">{cat?.name ?? tx.category}</p>
                     {tx.note && <p className="truncate text-xs text-muted-foreground">{tx.note}</p>}
@@ -818,12 +817,7 @@ export default function DashboardPage() {
                         onClick={() => setEditTx(tx)}
                         className={cn('flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30', idx > 0 && 'border-t')}
                       >
-                        <span
-                          className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg"
-                          style={{ backgroundColor: cat?.color }}
-                        >
-                          {cat?.emoji ?? '💸'}
-                        </span>
+                        <CategoryBadge id={tx.category} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{title}</p>
                           {subtitle && (
