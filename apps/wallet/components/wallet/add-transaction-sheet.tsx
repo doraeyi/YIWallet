@@ -343,13 +343,13 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
             return (
               <button
                 key={cat.id}
-                onClick={() => setCategory(cat.id)}
+                onClick={() => setCategory(prev => (prev === cat.id ? '' : cat.id))}
                 onPointerDown={() => startLongPress(cat)}
                 onPointerUp={cancelLongPress}
                 onPointerLeave={cancelLongPress}
                 onContextMenu={e => { if (cat.custom) { e.preventDefault(); setEditor({ editing: cat }) } }}
                 aria-pressed={selected}
-                aria-label={cat.custom ? `${cat.name}（長按可編輯）` : cat.name}
+                aria-label={selected ? `${cat.name}（已選，再點一次取消）` : cat.custom ? `${cat.name}（長按可編輯）` : cat.name}
                 className="group flex select-none flex-col items-center gap-1.5 [-webkit-touch-callout:none]"
               >
                 <span
@@ -529,7 +529,9 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" showCloseButton={false} onOpenAutoFocus={focusPanel} className="h-dvh gap-0 p-0">
+      {/* 高度要寫成 data-[side=bottom]:h-dvh 才蓋得過 Sheet 內建的 data-[side=bottom]:h-auto；
+          只寫 h-dvh 會輸給它，面板變得比螢幕高，最上面的支出／收入切換被推到畫面外 */}
+      <SheetContent side="bottom" showCloseButton={false} onOpenAutoFocus={focusPanel} className="gap-0 p-0 data-[side=bottom]:h-dvh">
         <SheetTitle className="sr-only">{title}</SheetTitle>
         {inner}
       </SheetContent>
