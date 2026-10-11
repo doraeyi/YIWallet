@@ -25,6 +25,7 @@ import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { confirmDialog } from '@/lib/confirm'
 import { DeleteAccountDialog } from '@/components/wallet/delete-account-dialog'
 import { CustomCategorySettings } from '@/components/wallet/custom-category-settings'
+import { PaymentIcon } from '@/components/wallet/payment-icon'
 
 interface UserProfile {
   id: string
@@ -568,7 +569,6 @@ export default function SettingsPage() {
                     <span className="text-[11px] text-muted-foreground">{group.cards.length} 張</span>
                   </div>
                   {group.cards.map(card => {
-                    const emoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
                     return (
                       <div
                         key={card.id}
@@ -578,7 +578,7 @@ export default function SettingsPage() {
                           draggingCardId === card.id && 'scale-[1.01] bg-brand-soft',
                         )}
                       >
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg text-white" style={{ backgroundColor: card.color }}>{emoji}</div>
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: card.color }}><PaymentIcon kind={card.type} className="size-4" /></div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">{card.name}</p>
                           <p className="text-xs text-muted-foreground">

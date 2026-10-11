@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils'
 import { MonthNav } from '@/components/wallet/month-nav'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { useTotalScope } from '@/hooks/use-total-scope'
+import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
+import { CategoryBadge } from '@/components/wallet/category-icon'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week',  label: '週' },
@@ -22,11 +24,6 @@ const PERIODS: { value: Period; label: string }[] = [
 
 const FALLBACK_COLORS = ['#EF4444','#3B82F6','#8B5CF6','#F59E0B','#10B981','#EC4899','#14B8A6','#6B7280']
 
-function viewEmoji(type: 'debit' | 'credit' | 'easycard'): string {
-  if (type === 'credit') return '💳'
-  if (type === 'easycard') return '🚌'
-  return '🏧'
-}
 
 function StatsContent() {
   const [period, setPeriod] = useState<Period>('month')
@@ -69,14 +66,14 @@ function StatsContent() {
     const cashTxs = filtered.filter(tx => !tx.cardId)
     const rows = [
       {
-        id: 'cash', name: '現金', emoji: '💵', color: '#10B981',
+        id: 'cash', name: '現金', kind: 'cash' as PaymentKind, color: '#10B981',
         expense: sumByType(cashTxs, 'expense'),
         income:  sumByType(cashTxs, 'income'),
       },
       ...cards.map(card => {
         const txs = filtered.filter(tx => tx.cardId === card.id)
         return {
-          id: card.id, name: card.name, emoji: viewEmoji(card.type), color: card.color,
+          id: card.id, name: card.name, kind: card.type as PaymentKind, color: card.color,
           expense: sumByType(txs, 'expense'),
           income:  sumByType(txs, 'income'),
         }
@@ -172,10 +169,10 @@ function StatsContent() {
                 return (
                   <div key={row.id} className="flex items-center gap-3">
                     <span
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-base"
-                      style={{ backgroundColor: row.color + '33' }}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: row.color + '26', color: row.color }}
                     >
-                      {row.emoji}
+                      <PaymentIcon kind={row.kind} className="size-4" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between mb-1">
@@ -271,12 +268,7 @@ function StatsContent() {
                     const cat = getCategoryById(tx.category)
                     return (
                       <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}>
-                        <span
-                          className="flex size-9 shrink-0 items-center justify-center rounded-full text-lg"
-                          style={{ backgroundColor: cat?.color }}
-                        >
-                          {cat?.emoji ?? '💸'}
-                        </span>
+                        <CategoryBadge id={tx.category} />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">{cat?.name ?? tx.category}</p>
                           {tx.note && <p className="truncate text-xs text-muted-foreground">{tx.note}</p>}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
-import { UserPlusIcon, LockIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { UserPlusIcon, LockIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, CheckIcon, FlagIcon, StickyNoteIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate, shiftTypeLabel, shiftHours } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
@@ -576,7 +576,7 @@ export default function SchedulePage() {
             {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日
           </p>
           {holidays.has(selectedDate) && (
-            <p className="mt-1 text-center text-xs font-medium text-rose-500">🎌 國定假日・這天上班時薪雙倍</p>
+            <p className="mt-1 flex items-center justify-center gap-1 text-xs font-medium text-rose-500"><FlagIcon className="size-3" />國定假日・這天上班時薪雙倍</p>
           )}
           <button
             onClick={() => setSelectedDate(null)}
@@ -626,7 +626,7 @@ export default function SchedulePage() {
                             )}
                             style={on ? { backgroundColor: job.color } : undefined}
                           >
-                            {on && '✓ '}{preset.label} {preset.start_time.slice(0, 5)}–{preset.end_time.slice(0, 5)}
+                            {on && <CheckIcon className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={3} />}{preset.label} {preset.start_time.slice(0, 5)}–{preset.end_time.slice(0, 5)}
                           </button>
                         )
                       })}
@@ -635,11 +635,11 @@ export default function SchedulePage() {
                   {/* 不是預設班別的班（自訂時間）也要看得到，還有備註 */}
                   {selectedShifts.filter(s => s.job_id === job.id && !job.presets.some(p => p.label === s.shift_type)).map(s => (
                     <p key={s.id} className="mt-2 rounded-xl px-3 py-2 text-sm font-medium text-white" style={{ backgroundColor: job.color }}>
-                      ✓ 自訂 {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
+                      <CheckIcon className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={3} />自訂 {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
                     </p>
                   ))}
                   {selectedShifts.filter(s => s.job_id === job.id && s.note).map(s => (
-                    <p key={`note-${s.id}`} className="mt-2 text-xs text-muted-foreground">📝 {s.note}</p>
+                    <p key={`note-${s.id}`} className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><StickyNoteIcon className="size-3" />{s.note}</p>
                   ))}
                   {customFor === job.id ? (
                     <div className="mt-2 flex flex-col gap-2 rounded-xl bg-muted/50 p-3">
@@ -697,7 +697,7 @@ export default function SchedulePage() {
                           : 'bg-muted text-muted-foreground hover:bg-brand-soft hover:text-brand-text'
                       )}
                     >
-                      {advanceTx ? '✓ 已領現　點擊取消' : `+ 領現　${formatCurrency(shiftAmount(job, selectedDate))}`}
+                      {advanceTx ? '已領現・點一下取消' : `領現 ${formatCurrency(shiftAmount(job, selectedDate))}`}
                     </button>
                   )}
                   {hasShift && !advanceTx && (
@@ -897,7 +897,7 @@ export default function SchedulePage() {
                     )}>
                       {day}
                     </span>
-                    {isHolidayDate && <span aria-label="國定假日" className="text-[10px] leading-none">🎌</span>}
+                    {isHolidayDate && <FlagIcon aria-label="國定假日" className="size-2.5 text-rose-500" />}
                     </span>
                     <div className="mt-0.5 flex flex-col gap-0.5">
                       {dayShifts.map(s => (
@@ -929,7 +929,7 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <p className="pt-2 text-[11px] text-muted-foreground">🎌 國定假日（這天上班時薪雙倍）</p>
+          <p className="flex items-center gap-1 pt-2 text-[11px] text-muted-foreground"><FlagIcon className="size-2.5 text-rose-500" />國定假日（這天上班時薪雙倍）</p>
 
           {/* 手機版目前檢視指示（可左右滑動切換），只在有多個工作時顯示 */}
           {jobs.length > 1 && (<>
@@ -1056,8 +1056,8 @@ export default function SchedulePage() {
                             )}
                           >
                             {addingJob === job.id ? '新增中…'
-                              : added ? '✓ 已新增到收入'
-                              : allReceived ? '✓ 已全數領現'
+                              : added ? '已新增到收入'
+                              : allReceived ? '已全數領現'
                               : remaining < Math.round(net) ? `新增剩餘薪資 ${formatCurrency(remaining)}`
                               : '新增薪資到收入'}
                           </button>

@@ -181,14 +181,15 @@
 }
 
 @utility animate-card-spin-in {
-  animation: card-spin-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: card-spin-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 /* ───────────────────────── 動畫 ─────────────────────────
    全站共用的進場／回饋動畫都放這裡，元件只套 class，不各自寫 keyframes。
    使用者系統設定「減少動態效果」時全部關掉。 */
 
 @theme inline {
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* 快速出發、平順停下；不用會回彈的 spring 曲線，看起來很廉價 */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -204,6 +205,29 @@
   from { stroke-dashoffset: var(--ring-length); }
 }
 
+@keyframes fade {
+  from { opacity: 0; }
+}
+
+/* 剛記好／剛改好的那一筆：淡淡的品牌色底慢慢退掉，讓人一眼看到它落在列表哪裡 */
+@keyframes flash {
+  0%, 30% { background-color: var(--brand-soft); }
+}
+
+/* 首頁左右滑卡片：照滑的方向進來，帶一點模糊，像是從旁邊滑進視線 */
+@keyframes slide-from-right {
+  from { opacity: 0; translate: 32px 0; filter: blur(6px); }
+}
+
+@keyframes slide-from-left {
+  from { opacity: 0; translate: -32px 0; filter: blur(6px); }
+}
+
+/* 記帳完成的打勾：線條畫出來 */
+@keyframes check-draw {
+  from { stroke-dashoffset: 24; }
+}
+
 /* 頁面／區塊進場：往上浮現。用 backwards 而不是 both，動畫結束後不留 translate，
    不然裡面 position: fixed 的元素（彈窗、遮罩）會被當成相對這層定位而跑掉 */
 @utility animate-rise {
@@ -211,7 +235,24 @@
 }
 
 @utility animate-pop {
-  animation: pop 0.35s var(--ease-spring) backwards;
+  animation: pop 0.35s var(--ease-out-expo) backwards;
+}
+
+/* 換頁只淡入，不再每頁都往上浮一次 */
+@utility animate-fade {
+  animation: fade 0.18s ease-out backwards;
+}
+
+@utility animate-flash {
+  animation: flash 1.6s ease-out;
+}
+
+@utility animate-slide-from-right {
+  animation: slide-from-right 0.32s var(--ease-out-soft) backwards;
+}
+
+@utility animate-slide-from-left {
+  animation: slide-from-left 0.32s var(--ease-out-soft) backwards;
 }
 
 /* 列表逐項進場：套在列表容器上，前 10 個子項目依序延遲 40ms */

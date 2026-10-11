@@ -177,7 +177,7 @@ export function RosterShiftPill({ shift, friends, myUserId, onChanged, onDateCha
               className="w-full touch-manipulation rounded-lg border bg-muted/30 px-2 py-1.5 text-xs outline-none focus:border-ring disabled:opacity-50"
             >
               <option value="">不標註</option>
-              {myUserId && <option value={myUserId}>👤 這是我本人</option>}
+              {myUserId && <option value={myUserId}>這是我本人</option>}
               {friends.map(f => (
                 <option key={f.friend.id} value={f.friend.id}>{f.friend.displayName}</option>
               ))}

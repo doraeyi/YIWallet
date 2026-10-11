@@ -8,6 +8,7 @@ import { useIsDesktop } from '@/hooks/use-is-desktop'
 import type { Card } from '@/lib/types'
 import * as api from '@/lib/api'
 import { dayOfMonth } from '@/lib/utils'
+import { PaymentIcon } from '@/components/wallet/payment-icon'
 
 interface EditCardSheetProps {
   card: Card
@@ -61,7 +62,6 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
     }
   }
 
-  const typeEmoji = card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'
   const typeLabel = card.type === 'credit' ? '信用卡' : card.type === 'easycard' ? '悠遊卡' : '金融卡'
 
   const formContent = (
@@ -69,10 +69,10 @@ export function EditCardSheet({ card, open, onOpenChange, onSave }: EditCardShee
       {/* 卡片資訊（唯讀） */}
       <div className="flex items-center gap-3 rounded-xl bg-muted/30 px-3 py-2.5">
         <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-xl text-white"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
           style={{ backgroundColor: card.color }}
         >
-          {typeEmoji}
+          <PaymentIcon kind={card.type} className="size-5" />
         </div>
         <div>
           <p className="text-sm font-semibold">{card.name}</p>

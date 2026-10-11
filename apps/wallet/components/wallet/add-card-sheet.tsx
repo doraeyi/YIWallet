@@ -10,6 +10,7 @@ import { lookupBank } from '@/lib/bank-codes'
 import { cn } from '@/lib/utils'
 import * as api from '@/lib/api'
 import type { Card } from '@/lib/types'
+import { PaymentIcon } from '@/components/wallet/payment-icon'
 
 const PRESET_COLORS = [
   '#1E293B', '#1D4ED8', '#0891B2', '#7C3AED',
@@ -24,10 +25,10 @@ interface AddCardSheetProps {
   onCreated?: (card: Card) => void
 }
 
-const TYPE_OPTIONS: { value: CardType; label: string; emoji: string }[] = [
-  { value: 'debit',    label: '金融卡', emoji: '🏧' },
-  { value: 'credit',   label: '信用卡', emoji: '💳' },
-  { value: 'easycard', label: '悠遊卡', emoji: '🚌' },
+const TYPE_OPTIONS: { value: CardType; label: string }[] = [
+  { value: 'debit',    label: '金融卡' },
+  { value: 'credit',   label: '信用卡' },
+  { value: 'easycard', label: '悠遊卡' },
 ]
 
 export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProps) {
@@ -129,7 +130,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}
           >
-            {opt.emoji} {opt.label}
+            <PaymentIcon kind={opt.value} className="mr-1 inline size-4 align-[-3px]" />{opt.label}
           </button>
         ))}
       </div>
@@ -288,10 +289,10 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
       {/* Preview */}
       <div className="flex items-center gap-3 rounded-xl bg-muted/30 p-3">
         <div
-          className="flex size-12 shrink-0 items-center justify-center rounded-full text-2xl text-white shadow"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full text-white shadow"
           style={{ backgroundColor: color }}
         >
-          {type === 'easycard' ? '🚌' : type === 'credit' ? '💳' : '🏧'}
+          <PaymentIcon kind={type} className="size-5" />
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{cardLabel}</p>
@@ -309,7 +310,7 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
 
       {submitError && (
         <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">
-          ❌ {submitError}
+          {submitError}
         </p>
       )}
 

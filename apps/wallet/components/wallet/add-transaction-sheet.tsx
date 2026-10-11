@@ -17,6 +17,7 @@ import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { CategoryBadge, CategoryGlyph } from './category-icon'
 import { CategoryEditorDialog } from './category-editor-dialog'
+import { PaymentIcon } from './payment-icon'
 
 // ── 上次用的分類（收入、支出各記一個），新增時預選 ─────────────────────────────
 const LAST_CATEGORY_KEY = 'yiwallet_last_category'
@@ -114,6 +115,8 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id))
   const [isExplicitCash, setIsExplicitCash] = useState(!!initialData?.isCash && !initialData.cardId)
   const [saving, setSaving] = useState(false)
+  // 存好之後 OK 鍵先畫一個打勾，停一下才關面板——這是整個 App 最常做的動作，給它一個確實的完成感
+  const [justSaved, setJustSaved] = useState(false)
 
   const selectedCard = cards.find(c => c.id === cardId)
   const isDebitCard = selectedCard?.type === 'debit'
@@ -198,8 +201,11 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     } finally {
       setSaving(false)
     }
-    toast(initialData ? '已更新' : '已記帳')
-    if (!initialData) rememberCategory(type, category)
+    setJustSaved(true)
+    await new Promise(resolve => setTimeout(resolve, 450))
+    setJustSaved(false)
+    if (initialData) toast('已更新')
+    else rememberCategory(type, category)
     setAmount(''); setNote(''); setTransferTo(''); setDate(todayString()); setType('expense')
     setCategory(initialData ? '' : lastCategory('expense'))
     setIsExplicitCash(false)
@@ -301,7 +307,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           <span
             aria-hidden="true"
             className={cn(
-              'absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full shadow-sm transition-transform duration-300 ease-(--ease-spring)',
+              'absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full shadow-sm transition-transform duration-300 ease-(--ease-out-expo)',
               type === 'expense' ? 'translate-x-0 bg-brand' : 'translate-x-full bg-emerald-500',
             )}
           />
@@ -354,7 +360,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
               >
                 <span
                   className={cn(
-                    'relative flex size-14 items-center justify-center rounded-2xl transition-all duration-300 ease-(--ease-spring)',
+                    'relative flex size-14 items-center justify-center rounded-2xl transition-all duration-300 ease-(--ease-out-expo)',
                     selected ? 'scale-105 shadow-md' : 'bg-muted/60 group-hover:bg-muted',
                   )}
                   style={selected ? { backgroundColor: cat.color, color: cat.text } : undefined}
@@ -435,7 +441,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
                 !cardId && isExplicitCash ? 'border-emerald-500 bg-emerald-500 text-white' : 'text-muted-foreground hover:bg-muted',
               )}
             >
-              💵 現金
+              <PaymentIcon kind="cash" className="mr-1 inline size-3.5 align-[-2px]" />現金
             </button>
             {cards.map(card => (
               <button
@@ -447,7 +453,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
                 )}
                 style={cardId === card.id ? { backgroundColor: card.color, borderColor: card.color } : undefined}
               >
-                {card.type === 'credit' ? '💳' : card.type === 'easycard' ? '🚌' : '🏧'} {card.name}
+                <PaymentIcon kind={card.type} className="mr-1 inline size-3.5 align-[-2px]" />{card.name}
               </button>
             ))}
           </div>
@@ -491,10 +497,27 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
                   kind === 'num' && 'bg-background ring-1 ring-foreground/10 hover:bg-muted',
                   kind === 'op' && 'bg-foreground/85 text-background hover:bg-foreground',
                   kind === 'fn' && 'bg-foreground/10 hover:bg-foreground/15',
-                  kind === 'ok' && (isValid ? 'bg-brand text-brand-foreground hover:bg-brand-hover' : 'bg-brand/40 text-brand-foreground/60'),
+                  kind === 'ok' && (justSaved
+                    ? 'scale-105 bg-emerald-500 text-white transition-[background-color,scale] duration-200'
+                    : isValid ? 'bg-brand text-brand-foreground hover:bg-brand-hover' : 'bg-brand/40 text-brand-foreground/60'),
                 )}
               >
-                {key === '⌫' ? <DeleteIcon className="size-5" /> : kind === 'ok' && saving ? '…' : key}
+                {key === '⌫' ? <DeleteIcon className="size-5" />
+                  : kind === 'ok' && justSaved ? (
+                    <svg viewBox="0 0 24 24" className="size-8" aria-hidden="true">
+                      <path
+                        d="M5 12.5l4.5 4.5L19 7.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeDasharray={24}
+                        style={{ animation: 'check-draw 0.35s var(--ease-out-soft) backwards' }}
+                      />
+                    </svg>
+                  )
+                  : kind === 'ok' && saving ? '…' : key}
               </button>
             ))}
           </div>

@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { renewSessionIfStale } from '@yiwallet/auth/session'
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const session = request.cookies.get('session')
   if (!session) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-  return NextResponse.next()
+  // 有在用就自動續期，不會每 7 天被登出一次
+  const response = NextResponse.next()
+  await renewSessionIfStale(request, response)
+  return response
 }
 
 export const config = {

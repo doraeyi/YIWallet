@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { setCustomCategories, type Transaction } from '@/lib/types'
 import * as api from '@/lib/api'
 import { useRefreshOnResume } from '@/hooks/use-refresh-on-resume'
@@ -22,6 +22,7 @@ interface TransactionsContextValue {
   deleteTransaction: (id: string) => Promise<void>
   setBudget: (value: number) => void
   refetch: () => Promise<void>
+  highlightId: string | null // 剛記好／剛改好的那一筆，列表上閃一下
 }
 
 const TransactionsContext = createContext<TransactionsContextValue | null>(null)
@@ -75,11 +76,20 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
   }, [])
   useRefreshOnResume(refreshSilently)
 
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const highlight = useCallback((id: string) => {
+    if (highlightTimer.current) clearTimeout(highlightTimer.current)
+    setHighlightId(id)
+    highlightTimer.current = setTimeout(() => setHighlightId(null), 1800)
+  }, [])
+
   const addTransaction = useCallback(async (data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> => {
     const tx = await api.createTransaction(data)
     setTransactions(prev => [tx, ...prev])
+    highlight(tx.id)
     return tx
-  }, [])
+  }, [highlight])
 
   const updateTransaction = useCallback(async (id: string, data: Omit<Transaction, 'id' | 'createdAt'>) => {
     // 卡片要走另一支 API（會順便調整新舊卡片的餘額），先改卡片再改其他欄位，
@@ -90,7 +100,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     if (cardChanged || becameCash) await api.setTransactionCard(id, data.cardId ?? null)
     const tx = await api.updateTransaction(id, data)
     setTransactions(prev => prev.map(t => t.id === id ? tx : t))
-  }, [transactions])
+    highlight(id)
+  }, [transactions, highlight])
 
   const deleteTransaction = useCallback(async (id: string) => {
     await api.deleteTransaction(id)
@@ -105,7 +116,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
   return (
     <TransactionsContext.Provider value={{
       transactions, budget, isLoaded, year, setYear, month, setMonth, prevMonth, nextMonth,
-      addTransaction, updateTransaction, deleteTransaction, setBudget, refetch,
+      addTransaction, updateTransaction, deleteTransaction, setBudget, refetch, highlightId,
     }}>
       {children}
     </TransactionsContext.Provider>

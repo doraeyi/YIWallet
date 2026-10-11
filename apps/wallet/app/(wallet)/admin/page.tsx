@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, ShieldCheckIcon, MessageCircleIcon, UsersIcon, ScanLineIcon, Trash2Icon } from 'lucide-react'
+import { ChevronLeftIcon, ShieldCheckIcon, MessageCircleIcon, UsersIcon, ScanLineIcon, Trash2Icon, LockIcon } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   AlertDialog,
@@ -109,7 +109,7 @@ export default function AdminPage() {
   if (!allowed) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-        <p className="text-3xl">🔒</p>
+        <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"><LockIcon className="size-6" /></span>
         <p className="text-sm text-muted-foreground">你沒有管理員權限</p>
         <Link href="/settings" className="mt-2 text-xs text-brand-text hover:opacity-80">回設定頁</Link>
       </div>

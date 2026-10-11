@@ -122,7 +122,7 @@ export function MobileNav() {
                 className="flex flex-1 flex-col items-center gap-0.5 pt-2.5 pb-1.5 text-xs font-medium"
               >
                 <Icon
-                  className={cn('size-5 transition-all duration-300 ease-(--ease-spring)', active ? 'scale-110 text-brand-text' : 'text-muted-foreground')}
+                  className={cn('size-5 transition-all duration-300 ease-(--ease-out-expo)', active ? 'scale-110 text-brand-text' : 'text-muted-foreground')}
                   strokeWidth={active ? 2.5 : 1.8}
                 />
                 <span className={cn('transition-colors', active ? 'text-brand-text' : 'text-muted-foreground')}>{label}</span>
@@ -139,7 +139,7 @@ export function MobileNav() {
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="新增記帳"
-              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-hover shadow-lg shadow-brand/40 transition-transform duration-300 ease-(--ease-spring) hover:rotate-90 active:scale-90"
+              className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-brand shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-transform duration-200 ease-(--ease-out-expo) active:scale-90"
             >
               <PlusIcon className="size-7 text-brand-foreground" strokeWidth={2.5} />
             </button>
@@ -155,7 +155,7 @@ export function MobileNav() {
                 className="flex flex-1 flex-col items-center gap-0.5 pt-2.5 pb-1.5 text-xs font-medium"
               >
                 <Icon
-                  className={cn('size-5 transition-all duration-300 ease-(--ease-spring)', active ? 'scale-110 text-brand-text' : 'text-muted-foreground')}
+                  className={cn('size-5 transition-all duration-300 ease-(--ease-out-expo)', active ? 'scale-110 text-brand-text' : 'text-muted-foreground')}
                   strokeWidth={active ? 2.5 : 1.8}
                 />
                 <span className={cn('transition-colors', active ? 'text-brand-text' : 'text-muted-foreground')}>{label}</span>

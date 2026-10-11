@@ -171,7 +171,7 @@ export default function FriendsPage() {
                           <p className="truncate text-xs text-muted-foreground">{maskEmail(f.friend.email)}</p>
                           {jobNames.length > 0 && (
                             <p className="mt-0.5 truncate text-[11px] text-brand-text">
-                              🏢 {jobNames.join('、')}
+                              <BriefcaseIcon className="mr-1 inline size-3 align-[-1px]" />{jobNames.join('、')}
                             </p>
                           )}
                         </div>

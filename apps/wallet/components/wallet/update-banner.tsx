@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { SparklesIcon } from 'lucide-react'
+import { ArrowDownToLineIcon } from 'lucide-react'
 import { APP_VERSION } from '@/lib/version'
 
 interface RemoteVersion {
@@ -49,7 +49,7 @@ export function UpdateBanner() {
     <div className="fixed bottom-24 left-4 right-4 z-50 animate-rise lg:bottom-6 lg:left-auto lg:right-6 lg:w-80">
       <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-card">
         <div className="flex items-center gap-2 bg-brand px-4 py-2.5 text-brand-foreground">
-          <SparklesIcon className="size-4" />
+          <ArrowDownToLineIcon className="size-4" />
           <span className="text-sm font-bold">
             {isNewVersion ? `新版本 ${remote.version} 可以更新了` : '有小更新可以安裝'}
           </span>

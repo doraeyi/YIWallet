@@ -2,6 +2,15 @@
 // APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
+    version: 'v1.11',
+    changes: [
+      '圖示全面換成一致的線條風格',
+      '記一筆帳時 OK 鍵會打勾，剛記的那筆在列表上會亮一下',
+      '首頁左右切換卡片時，會照滑動方向滑進來',
+      '登入維持更久，有在用就不會被登出；工具 App 登入一次就好',
+    ],
+  },
+  {
     version: 'v1.10',
     changes: [
       '可以新增自己的分類：自選名稱、圖示和顏色',

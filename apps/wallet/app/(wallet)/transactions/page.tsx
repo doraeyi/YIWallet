@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { SearchIcon, PencilIcon, Trash2Icon, ChevronLeftIcon } from 'lucide-react'
+import { SearchIcon, SearchXIcon, NotebookPenIcon, PencilIcon, Trash2Icon, ChevronLeftIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useCards } from '@/hooks/use-cards'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -13,9 +13,10 @@ import { toast } from '@/lib/toast'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { confirmDialog } from '@/lib/confirm'
 import { CategoryBadge } from '@/components/wallet/category-icon'
+import { EmptyState } from '@/components/wallet/empty-state'
 
 export default function TransactionsPage() {
-  const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear } = useTransactions()
+  const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear, highlightId } = useTransactions()
   const now = new Date()
   const [month,  setMonth]  = useState(now.getMonth() + 1)
   const [search, setSearch] = useState('')
@@ -115,7 +116,7 @@ export default function TransactionsPage() {
         {/* 付款方式篩選 */}
         {cards.length > 0 && (
           <div className="mx-4 mb-3 flex gap-1.5 overflow-x-auto scrollbar-none lg:mx-6">
-            {[{ id: 'all', name: '全部' }, { id: 'cash', name: '💵 現金' }, ...cards.map(c => ({ id: c.id, name: c.name }))].map(o => (
+            {[{ id: 'all', name: '全部' }, { id: 'cash', name: '現金' }, ...cards.map(c => ({ id: c.id, name: c.name }))].map(o => (
               <button
                 key={o.id}
                 onClick={() => setPayFilter(o.id)}
@@ -143,10 +144,11 @@ export default function TransactionsPage() {
         {/* List */}
         <div className="flex flex-col gap-3 px-4 lg:px-6">
           {groups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-16 shadow-sm dark:bg-card">
-              <p className="text-3xl">📒</p>
-              <p className="mt-2 text-sm text-muted-foreground">{isFiltering ? '沒有符合的紀錄' : '這個月還沒有紀錄'}</p>
-            </div>
+            <EmptyState
+              icon={isFiltering ? SearchXIcon : NotebookPenIcon}
+              title={isFiltering ? '沒有符合的紀錄' : '這個月還沒有紀錄'}
+              hint={isFiltering ? '換個關鍵字，或把付款方式切回「全部」' : undefined}
+            />
           ) : (
             <div key={`${year}-${month}`} className="stagger flex flex-col gap-3 lg:grid lg:grid-cols-2">
               {groups.map(({ date, items }) => {
@@ -165,7 +167,7 @@ export default function TransactionsPage() {
                       const cat = getCategoryById(tx.category)
                       const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                       return (
-                        <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}>
+                        <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t', tx.id === highlightId && 'animate-flash')}>
                           <CategoryBadge id={tx.category} />
                           <button onClick={() => setEditTx(tx)} className="min-w-0 flex-1 text-left">
                             <p className="truncate text-sm font-medium">{title}</p>

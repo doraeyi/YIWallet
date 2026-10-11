@@ -46,9 +46,6 @@ export function SplashScreen() {
 
   return (
     <div className={cn(styles.root, phase === 'exit' && styles.exit)} onClick={skip} aria-hidden="true">
-      <div className={styles.glow} />
-      <div className={styles.glow} />
-
       <div className={styles.mark}>
         <svg className={styles.ring} viewBox="0 0 140 140">
           <circle cx="70" cy="70" r="68" />
@@ -62,7 +59,6 @@ export function SplashScreen() {
         <span>記</span>
         <span>帳</span>
       </div>
-      <p className={styles.tagline}>記帳・班表・薪水，一次搞定</p>
     </div>
   )
 }

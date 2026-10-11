@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { renewSessionIfStale } from '@yiwallet/auth/session'
 
 // sop app 沒有自己的登入頁：沒 session cookie 時導去 wallet app 的 /login，
 // 帶 return_to 讓登入完可以導回原本要去的頁面（wallet 那邊會驗證這個網址）。
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const session = request.cookies.get('session')
   if (!session) {
     const returnTo = request.nextUrl.toString()
@@ -11,7 +12,10 @@ export function proxy(request: NextRequest) {
     url.searchParams.set('return_to', returnTo)
     return NextResponse.redirect(url)
   }
-  return NextResponse.next()
+  // 跟易記帳一樣自動續期：工具在 iPhone 主畫面上有自己的 cookie，登入一次後就不用一直重登
+  const response = NextResponse.next()
+  await renewSessionIfStale(request, response)
+  return response
 }
 
 export const config = {

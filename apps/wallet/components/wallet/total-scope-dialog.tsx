@@ -7,8 +7,8 @@ import { CASH_KEY } from '@/hooks/use-total-scope'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import type { Card } from '@/lib/types'
+import { PaymentIcon } from '@/components/wallet/payment-icon'
 
-const TYPE_EMOJI: Record<Card['type'], string> = { debit: '🏧', credit: '💳', easycard: '🚌' }
 
 // 勾選「全部」要計入哪些付款方式；按完成才存，中途取消不會改到
 export function TotalScopeDialog({
@@ -24,8 +24,8 @@ export function TotalScopeDialog({
   const [saving, setSaving] = useState(false)
 
   const options = [
-    { key: CASH_KEY, emoji: '💵', name: '現金' },
-    ...cards.map(c => ({ key: c.id, emoji: TYPE_EMOJI[c.type], name: c.name })),
+    { key: CASH_KEY, kind: 'cash' as const, name: '現金' },
+    ...cards.map(c => ({ key: c.id, kind: c.type, name: c.name })),
   ]
 
   function toggle(key: string) {
@@ -70,7 +70,7 @@ export function TotalScopeDialog({
                   included ? 'border-brand bg-brand-soft' : 'hover:bg-muted/50',
                 )}
               >
-                <span className="text-lg">{o.emoji}</span>
+                <PaymentIcon kind={o.kind} className="size-5 text-muted-foreground" />
                 <span className="flex-1 font-medium">{o.name}</span>
                 <span
                   className={cn(

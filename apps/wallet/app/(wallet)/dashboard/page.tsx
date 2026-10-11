@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { SlidersHorizontalIcon, BellIcon, ReceiptTextIcon, BarcodeIcon, BookOpenIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
+import { createElement, useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { CheckIcon, CloudSunIcon, MoonIcon, NotebookPenIcon, SunIcon, SlidersHorizontalIcon, BellIcon, ReceiptTextIcon, BarcodeIcon, BookOpenIcon, ChevronRightIcon, PlusIcon, Trash2Icon, StarIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -22,6 +22,8 @@ import { useTotalScope, CASH_KEY } from '@/hooks/use-total-scope'
 import { TotalScopeDialog } from '@/components/wallet/total-scope-dialog'
 import { CreditOverview } from '@/components/wallet/credit-overview'
 import { CategoryBadge } from '@/components/wallet/category-icon'
+import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
+import { EmptyState } from '@/components/wallet/empty-state'
 
 type ViewItem =
   | { kind: 'all' }
@@ -57,14 +59,9 @@ function viewColor(item: ViewItem): string {
   return 'var(--brand)'
 }
 
-function viewEmoji(item: ViewItem): string {
-  if (item.kind === 'card') {
-    if (item.card.type === 'credit') return '💳'
-    if (item.card.type === 'easycard') return '🚌'
-    return '🏧'
-  }
-  if (item.kind === 'cash') return '💵'
-  return '🏦'
+function viewKind(item: ViewItem): PaymentKind {
+  if (item.kind === 'card') return item.card.type
+  return item.kind
 }
 
 // ── SVG Donut ──────────────────────────────────────────────────────────────
@@ -146,7 +143,7 @@ function DonutChart({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction, deleteTransaction } = useTransactions()
+  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction, deleteTransaction, highlightId } = useTransactions()
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { cards, removeCard, defaultCard, setDefaultCard, updateCard } = useCards()
   const { filter: scopeFilter, excluded: scopeExcluded, setExcluded: setScopeExcluded } = useTotalScope(cards)
@@ -388,13 +385,22 @@ export default function DashboardPage() {
   }, [currentView, renewingPass, updateCard])
 
   const hour = now.getHours()
-  const greeting = hour < 12 ? '早安 ☀️' : hour < 18 ? '午安 🌤️' : '晚安 🌙'
+  const greeting = hour < 12 ? '早安' : hour < 18 ? '午安' : '晚安'
+  const GreetingIcon = hour < 12 ? SunIcon : hour < 18 ? CloudSunIcon : MoonIcon
 
+  // 換卡片時記住方向，卡片照滑的方向從右邊／左邊滑進來
+  const [slideFrom, setSlideFrom] = useState<'left' | 'right' | null>(null)
   function goNext() {
+    setSlideFrom('right')
     setViewIndex(i => (i + 1) % total)
   }
   function goPrev() {
+    setSlideFrom('left')
     setViewIndex(i => (i - 1 + total) % total)
+  }
+  function goTo(i: number) {
+    setSlideFrom(i > safeIndex ? 'right' : 'left')
+    setViewIndex(i)
   }
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -420,7 +426,10 @@ export default function DashboardPage() {
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground">{greeting}</span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            {createElement(GreetingIcon, { className: 'size-3.5', 'aria-hidden': true })}
+            {greeting}
+          </span>
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -453,7 +462,7 @@ export default function DashboardPage() {
         {viewItems.map((item, i) => (
           <button
             key={i}
-            onClick={() => setViewIndex(i)}
+            onClick={() => goTo(i)}
             className={cn(
               'flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors shrink-0',
               i === safeIndex
@@ -462,7 +471,7 @@ export default function DashboardPage() {
             )}
             style={i === safeIndex ? { backgroundColor: viewColor(item) } : undefined}
           >
-            <span>{viewEmoji(item)}</span>
+            <PaymentIcon kind={viewKind(item)} className="size-3.5" />
             {viewLabel(item)}
             {item.kind === 'card' && cardLastFour(item.card) && (
               <span className="opacity-70">···· {cardLastFour(item.card)}</span>
@@ -502,7 +511,10 @@ export default function DashboardPage() {
       {/* ── Mobile: swipeable donut／卡片 ──────────────────── */}
       <div
         key={safeIndex}
-        className="relative flex justify-center px-8 py-6 lg:py-4 select-none animate-pop"
+        className={cn(
+          'relative flex justify-center px-8 py-6 lg:py-4 select-none',
+          slideFrom === 'right' ? 'animate-slide-from-right' : slideFrom === 'left' ? 'animate-slide-from-left' : 'animate-pop',
+        )}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -604,7 +616,7 @@ export default function DashboardPage() {
       {/* Current view label + 設為常用 */}
       <div className="flex items-center justify-center gap-2 -mt-3 mb-2">
         <p className="text-xs font-medium text-muted-foreground">
-          {viewEmoji(currentView)}{' '}
+          <PaymentIcon kind={viewKind(currentView)} className="mr-1 inline size-3.5 align-[-2px]" />
           {viewLabel(currentView)}
           {currentView.kind === 'card' && cardLastFour(currentView.card)
             ? ` ···· ${cardLastFour(currentView.card)}`
@@ -634,7 +646,7 @@ export default function DashboardPage() {
         {viewItems.map((item, i) => (
           <button
             key={i}
-            onClick={() => setViewIndex(i)}
+            onClick={() => goTo(i)}
             className={cn(
               'rounded-full transition-all duration-200',
               i === safeIndex ? 'size-2.5' : 'size-2 bg-muted-foreground/25',
@@ -693,7 +705,7 @@ export default function DashboardPage() {
                 ? 'border-brand bg-brand text-brand-foreground'
                 : 'border-muted-foreground/40',
             )}>
-              {selectedTxIds.size === unassigned.length && <span className="text-[10px] font-bold">✓</span>}
+              {selectedTxIds.size === unassigned.length && <CheckIcon className="size-3" strokeWidth={3} />}
             </span>
             全選（{unassigned.length} 筆）
           </button>
@@ -713,7 +725,7 @@ export default function DashboardPage() {
                     'flex size-4 shrink-0 items-center justify-center rounded border transition-colors',
                     checked ? 'border-brand bg-brand text-brand-foreground' : 'border-muted-foreground/40',
                   )}>
-                    {checked && <span className="text-[10px] font-bold">✓</span>}
+                    {checked && <CheckIcon className="size-3" strokeWidth={3} />}
                   </span>
                   <CategoryBadge id={tx.category} className="size-8" />
                   <div className="min-w-0 flex-1 text-left">
@@ -788,10 +800,7 @@ export default function DashboardPage() {
         </div>
 
         {recentGroups.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-12 shadow-sm dark:bg-card">
-            <p className="text-3xl">📒</p>
-            <p className="mt-2 text-sm text-muted-foreground">這個月還沒有紀錄</p>
-          </div>
+          <EmptyState icon={NotebookPenIcon} title="這個月還沒有紀錄" hint="按下面的 ＋ 記下第一筆" />
         ) : (
           <div key={`${safeIndex}-${year}-${month}`} className="stagger overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:grid lg:grid-cols-2 lg:items-start">
             {recentGroups.map(({ date, items }, groupIdx) => {
@@ -815,7 +824,7 @@ export default function DashboardPage() {
                       <button
                         key={tx.id}
                         onClick={() => setEditTx(tx)}
-                        className={cn('flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30', idx > 0 && 'border-t')}
+                        className={cn('flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30', idx > 0 && 'border-t', tx.id === highlightId && 'animate-flash')}
                       >
                         <CategoryBadge id={tx.category} />
                         <div className="min-w-0 flex-1">

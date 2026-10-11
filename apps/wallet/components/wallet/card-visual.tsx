@@ -3,17 +3,12 @@
 import type { Card } from '@/lib/types'
 import { formatCurrency } from '@/lib/finance-utils'
 import { cn, shadeColor } from '@/lib/utils'
+import { PaymentIcon } from '@/components/wallet/payment-icon'
 
 const TYPE_LABEL: Record<Card['type'], string> = {
   debit: '金融卡',
   credit: '信用卡',
   easycard: '悠遊卡',
-}
-
-const TYPE_EMOJI: Record<Card['type'], string> = {
-  debit: '🏧',
-  credit: '💳',
-  easycard: '🚌',
 }
 
 function maskedNumber(card: Card): string {
@@ -68,7 +63,7 @@ export function CardVisual({
               {card.bank && <span className="truncate text-sm font-semibold drop-shadow-sm">{card.bank}</span>}
             </div>
             <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium backdrop-blur-sm">
-              {TYPE_EMOJI[card.type]} {TYPE_LABEL[card.type]}
+              <PaymentIcon kind={card.type} className="size-3" /> {TYPE_LABEL[card.type]}
             </span>
           </div>
 

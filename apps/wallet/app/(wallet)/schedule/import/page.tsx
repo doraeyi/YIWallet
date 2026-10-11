@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, ImageIcon, RefreshCwIcon, Trash2Icon, XIcon, UsersIcon, CalendarPlusIcon } from 'lucide-react'
+import { ChevronLeftIcon, ImageIcon, RefreshCwIcon, Trash2Icon, XIcon, UsersIcon, CalendarPlusIcon, LockIcon } from 'lucide-react'
 import * as api from '@/lib/api'
 import type { Job, Friendship } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -216,7 +216,7 @@ export default function RosterImportPage() {
   if (!hasOcrPermission) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-        <p className="text-3xl">🔒</p>
+        <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"><LockIcon className="size-6" /></span>
         <p className="text-sm text-muted-foreground">這個功能目前需要權限才能使用，請聯絡管理員開通</p>
         <Link href="/schedule" className="mt-2 text-xs text-brand-text hover:opacity-80">回排班頁</Link>
       </div>
@@ -294,7 +294,7 @@ export default function RosterImportPage() {
                             className="w-24 rounded-lg border bg-muted/30 px-1 py-1 text-[10px] text-muted-foreground outline-none focus:border-ring"
                           >
                             <option value="">不標註</option>
-                            {myUserId && <option value={myUserId}>👤 這是我本人</option>}
+                            {myUserId && <option value={myUserId}>這是我本人</option>}
                             {friends.map(f => (
                               <option key={f.friend.id} value={f.friend.id}>{f.friend.displayName}</option>
                             ))}
