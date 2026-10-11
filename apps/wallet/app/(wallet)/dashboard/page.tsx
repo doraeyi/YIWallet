@@ -280,6 +280,10 @@ export default function DashboardPage() {
     : currentView.card.balance ?? balance
     : balance
   const recentGroups = groupByDate(filtered)
+  // 「查看全部」帶上目前看的卡片／現金和月份，收支明細打開就是同一個範圍
+  const transactionsHref = `/transactions?m=${month}${
+    currentView.kind === 'card' ? `&pay=${currentView.card.id}` : currentView.kind === 'cash' ? '&pay=cash' : ''
+  }`
   const scopeSummary = (() => {
     const cashIn = !scopeExcluded.has(CASH_KEY)
     const cardsIn = cards.filter(c => !scopeExcluded.has(c.id)).length
@@ -794,7 +798,7 @@ export default function DashboardPage() {
       <div className="px-4 lg:px-6">
         <div className="mb-3 flex items-center justify-between">
           <span className="font-semibold">最近紀錄</span>
-          <Link href="/transactions" className="text-xs font-medium text-brand-text hover:underline">
+          <Link href={transactionsHref} className="text-xs font-medium text-brand-text hover:underline">
             查看全部
           </Link>
         </div>

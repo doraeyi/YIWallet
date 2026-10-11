@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useCards } from '@/hooks/use-cards'
-import { filterByPeriod, sumByType, groupByCategory, buildChartData, formatCurrency, groupByDate, formatDate } from '@/lib/finance-utils'
+import { filterByPeriod, sumByType, groupByCategory, buildChartData, formatCurrency, groupByDate, formatDate, transactionLabels, paymentLabel } from '@/lib/finance-utils'
 import { getCategoryById, type Period } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { MonthNav } from '@/components/wallet/month-nav'
@@ -60,7 +60,11 @@ function StatsContent() {
     return scopeFilter(transactions)
   }, [transactions, cardIdParam, filterParam, scopeFilter])
   const chartData   = useMemo(() => buildChartData(cardFiltered, period, referenceDate), [cardFiltered, period, referenceDate])
-  const groups      = useMemo(() => groupByDate(filtered), [filtered])
+  // 點「總收入」或「總支出」只看那一種的明細，再點一次恢復全部
+  const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | null>(null)
+  const listed      = useMemo(() => (typeFilter ? filtered.filter(t => t.type === typeFilter) : filtered), [filtered, typeFilter])
+  const groups      = useMemo(() => groupByDate(listed), [listed])
+  const toggleType  = (t: 'income' | 'expense') => setTypeFilter(prev => (prev === t ? null : t))
 
   const cardStats = useMemo(() => {
     const cashTxs = filtered.filter(tx => !tx.cardId)
@@ -141,14 +145,23 @@ function StatsContent() {
       <div className="flex flex-col gap-4 px-4 lg:px-6">
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
-            <p className="text-xs text-muted-foreground">總收入</p>
-            <p className="mt-1 text-lg font-bold text-emerald-600">{formatCurrency(income)}</p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
-            <p className="text-xs text-muted-foreground">總支出</p>
-            <p className="mt-1 text-lg font-bold text-rose-500">{formatCurrency(expense)}</p>
-          </div>
+          {([
+            { type: 'income', label: '總收入', value: income, color: 'text-emerald-600', ring: 'ring-emerald-500' },
+            { type: 'expense', label: '總支出', value: expense, color: 'text-rose-500', ring: 'ring-rose-500' },
+          ] as const).map(item => (
+            <button
+              key={item.type}
+              onClick={() => toggleType(item.type)}
+              aria-pressed={typeFilter === item.type}
+              className={cn(
+                'rounded-2xl bg-white p-4 text-left shadow-sm transition-all duration-200 dark:bg-card',
+                typeFilter === item.type ? `ring-2 ${item.ring}` : typeFilter && 'opacity-50',
+              )}
+            >
+              <p className="text-xs text-muted-foreground">{item.label}</p>
+              <p className={cn('mt-1 text-lg font-bold', item.color)}>{formatCurrency(item.value)}</p>
+            </button>
+          ))}
           <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
             <p className="text-xs text-muted-foreground">結餘</p>
             <p className={cn('mt-1 text-lg font-bold', balance >= 0 ? 'text-foreground' : 'text-rose-500')}>
@@ -246,13 +259,25 @@ function StatsContent() {
 
         {/* Transaction list for this period */}
         <div className="flex flex-col gap-2">
-          <p className="px-1 text-sm font-semibold">本期明細</p>
+          <div className="flex items-center justify-between px-1">
+            <p className="text-sm font-semibold">
+              本期明細{typeFilter && <span className="font-normal text-muted-foreground">・只看{typeFilter === 'income' ? '收入' : '支出'}</span>}
+            </p>
+            {typeFilter ? (
+              <button onClick={() => setTypeFilter(null)} className="text-xs font-medium text-brand-text hover:underline">顯示全部</button>
+            ) : (
+              <span className="text-xs text-muted-foreground">點上面的收入或支出可以篩選</span>
+            )}
+          </div>
           {groups.length === 0 ? (
             <div className="flex items-center justify-center rounded-2xl bg-white py-10 shadow-sm dark:bg-card">
-              <p className="text-sm text-muted-foreground">此期間暫無紀錄</p>
+              <p className="text-sm text-muted-foreground">
+                {typeFilter ? `這段期間沒有${typeFilter === 'income' ? '收入' : '支出'}` : '這段期間還沒有紀錄'}
+              </p>
             </div>
           ) : (
-            groups.map(({ date, items }) => {
+            <div key={typeFilter ?? 'all'} className="stagger flex flex-col gap-2">
+            {groups.map(({ date, items }) => {
               const dayIncome  = items.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0)
               const dayExpense = items.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0)
               return (
@@ -266,12 +291,13 @@ function StatsContent() {
                   </div>
                   {items.map((tx, idx) => {
                     const cat = getCategoryById(tx.category)
+                    const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                     return (
                       <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t')}>
                         <CategoryBadge id={tx.category} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{cat?.name ?? tx.category}</p>
-                          {tx.note && <p className="truncate text-xs text-muted-foreground">{tx.note}</p>}
+                          <p className="truncate text-sm font-medium">{title}</p>
+                          {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
                         </div>
                         <p className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
                           {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
@@ -281,7 +307,8 @@ function StatsContent() {
                   })}
                 </div>
               )
-            })
+            })}
+            </div>
           )}
         </div>
       </div>

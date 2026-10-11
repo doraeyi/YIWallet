@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { SearchIcon, SearchXIcon, NotebookPenIcon, PencilIcon, Trash2Icon, ChevronLeftIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useCards } from '@/hooks/use-cards'
@@ -15,15 +16,28 @@ import { confirmDialog } from '@/lib/confirm'
 import { CategoryBadge } from '@/components/wallet/category-icon'
 import { EmptyState } from '@/components/wallet/empty-state'
 
+// 網址可以帶 ?m=月份&pay=cash|卡片id（首頁「查看全部」會帶），打開就是那個範圍
 export default function TransactionsPage() {
+  return (
+    <Suspense>
+      <TransactionsContent />
+    </Suspense>
+  )
+}
+
+function TransactionsContent() {
   const { transactions, isLoaded, updateTransaction, deleteTransaction, year, setYear, highlightId } = useTransactions()
+  const searchParams = useSearchParams()
   const now = new Date()
-  const [month,  setMonth]  = useState(now.getMonth() + 1)
+  const [month,  setMonth]  = useState(() => {
+    const m = Number(searchParams.get('m'))
+    return m >= 1 && m <= 12 ? m : now.getMonth() + 1
+  })
   const [search, setSearch] = useState('')
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { cards } = useCards()
   // 付款方式篩選：all / cash / 某張卡的 id
-  const [payFilter, setPayFilter] = useState('all')
+  const [payFilter, setPayFilter] = useState(() => searchParams.get('pay') || 'all')
 
   const byMonth  = useMemo(() => filterByMonth(transactions, year, month), [transactions, year, month])
   const filtered = useMemo(() => {
