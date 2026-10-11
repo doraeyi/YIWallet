@@ -2,6 +2,15 @@
 // APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
+    version: 'v1.10',
+    changes: [
+      '可以新增自己的分類：自選名稱、圖示和顏色',
+      '記帳時長按自訂分類可以編輯，設定頁也能管理',
+      'Apple Pay、LINE 記帳依消費時段自動分到早餐、午餐、點心、晚餐',
+      '咖啡、手搖飲自動歸飲品，加油歸汽機車，藥妝歸美容',
+    ],
+  },
+  {
     version: 'v1.9',
     changes: [
       '記帳畫面改版：大分類格子、圓形計算機，支援 ＋ − × ÷',

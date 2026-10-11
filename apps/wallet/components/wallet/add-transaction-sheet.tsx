@@ -3,18 +3,20 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
-import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, Trash2Icon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useCards } from '@/hooks/use-cards'
 import { useTransactions } from '@/hooks/use-transactions'
-import { CATEGORIES, getCategoryById, type Transaction, type TransactionType } from '@/lib/types'
+import { getCategoryById, pickableCategories, type Category, type Transaction, type TransactionType } from '@/lib/types'
+import { useCustomCategories } from '@/hooks/use-custom-categories'
 import { todayString } from '@/lib/finance-utils'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { CategoryBadge, CategoryGlyph } from './category-icon'
+import { CategoryEditorDialog } from './category-editor-dialog'
 
 // ── 上次用的分類（收入、支出各記一個），新增時預選 ─────────────────────────────
 const LAST_CATEGORY_KEY = 'yiwallet_last_category'
@@ -116,11 +118,30 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   const selectedCard = cards.find(c => c.id === cardId)
   const isDebitCard = selectedCard?.type === 'debit'
 
-  const categories = CATEGORIES.filter(c => {
-    if (c.hidden && c.id !== initialData?.category) return false
-    if (c.id === 'transfer') return isDebitCard
-    return c.type === type
-  })
+  // 自訂分類有新增／修改時重新 render
+  useCustomCategories()
+  const [editor, setEditor] = useState<{ editing?: Category } | null>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 內建＋自訂；編輯舊紀錄時，就算它的分類已經下架也要列出來（不然看不出選了什麼）
+  const legacy = initialData && getCategoryById(initialData.category)
+  const categories = [
+    ...pickableCategories(type),
+    ...(legacy?.hidden && legacy.type === type ? [legacy] : []),
+  ].filter(c => c.id !== 'transfer' || isDebitCard)
+
+  // 自訂分類長按 0.5 秒打開編輯（手機上沒有右鍵）；電腦上右鍵也可以
+  function startLongPress(cat: Category) {
+    if (!cat.custom) return
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null
+      setEditor({ editing: cat })
+    }, 500)
+  }
+  function cancelLongPress() {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    longPressTimer.current = null
+  }
 
   // 快選備註：這個分類最常打的備註（像「康是美」「早餐店」），點一下就填好
   const noteSuggestions = useMemo(() => {
@@ -311,15 +332,25 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
       {/* ── 分類格子（可捲動）── */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div key={type} className="stagger grid grid-cols-4 gap-x-2 gap-y-4 px-4 py-5">
+          <button onClick={() => setEditor({})} aria-label="新增分類" className="group flex flex-col items-center gap-1.5">
+            <span className="flex size-14 items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/30 text-muted-foreground transition-colors group-hover:border-brand group-hover:text-brand-text">
+              <PlusIcon className="size-6" />
+            </span>
+            <span className="text-xs text-muted-foreground">新增分類</span>
+          </button>
           {categories.map(cat => {
             const selected = category === cat.id
             return (
               <button
                 key={cat.id}
                 onClick={() => setCategory(cat.id)}
+                onPointerDown={() => startLongPress(cat)}
+                onPointerUp={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                onContextMenu={e => { if (cat.custom) { e.preventDefault(); setEditor({ editing: cat }) } }}
                 aria-pressed={selected}
-                aria-label={cat.name}
-                className="group flex flex-col items-center gap-1.5"
+                aria-label={cat.custom ? `${cat.name}（長按可編輯）` : cat.name}
+                className="group flex select-none flex-col items-center gap-1.5 [-webkit-touch-callout:none]"
               >
                 <span
                   className={cn(
@@ -474,6 +505,16 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
 
   const title = initialData ? '編輯紀錄' : '新增紀錄'
 
+  const editorDialog = editor && (
+    <CategoryEditorDialog
+      open
+      onOpenChange={o => { if (!o) setEditor(null) }}
+      type={type}
+      editing={editor.editing}
+      onSaved={c => { if (!editor.editing) setCategory(c.id) }}
+    />
+  )
+
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -481,6 +522,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           <DialogTitle className="sr-only">{title}</DialogTitle>
           {inner}
         </DialogContent>
+        {editorDialog}
       </Dialog>
     )
   }
@@ -491,6 +533,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
         <SheetTitle className="sr-only">{title}</SheetTitle>
         {inner}
       </SheetContent>
+      {editorDialog}
     </Sheet>
   )
 }

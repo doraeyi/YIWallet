@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import type { Transaction } from '@/lib/types'
+import { setCustomCategories, type Transaction } from '@/lib/types'
 import * as api from '@/lib/api'
 import { useRefreshOnResume } from '@/hooks/use-refresh-on-resume'
 
@@ -54,8 +54,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
   const refetch = useCallback(async () => {
     setIsLoaded(false)
-    api.fetchAllTransactions()
-      .then(setTransactions)
+    // 自訂分類先登記好再放交易進來，列表第一次畫就認得自訂分類
+    Promise.all([
+      api.fetchAllTransactions(),
+      api.fetchCategories().then(setCustomCategories).catch(() => {}),
+    ])
+      .then(([txs]) => setTransactions(txs))
       .catch((err) => {
         console.error('fetchAllTransactions failed:', err)
         setTransactions([])

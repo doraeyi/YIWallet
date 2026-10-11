@@ -1,4 +1,4 @@
-import { guessCategory } from './invoice-utils'
+import { guessCategory, taipeiHour } from './invoice-utils'
 import { todayString } from './finance-utils'
 
 export type PaymentType = 'cash' | 'debit' | 'credit'
@@ -48,15 +48,18 @@ export function parseLineNotification(text: string): ParsedPayment | null {
   const merchant = merchantMatch[1].replace(/\u3000/g, ' ').trim()
 
   let date = todayString()
+  let hour: number | undefined = taipeiHour()
   const dateMatch = text.match(
-    /(?:交易|消費|刷卡)時間[：:]\s*(\d{4})[\/\-](\d{2})[\/\-](\d{2})/,
+    /(?:交易|消費|刷卡)時間[：:]\s*(\d{4})[\/\-](\d{2})[\/\-](\d{2})(?:\s+(\d{1,2}):\d{2})?/,
   )
   if (dateMatch) {
     date = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+    // 通知有寫刷卡時間就照那個時間分早午晚餐；只有日期又不是今天就不猜時段
+    hour = dateMatch[4] !== undefined ? Number(dateMatch[4]) : date === todayString() ? hour : undefined
   }
 
   // 銀行通知通常是刷卡
-  return { amount, merchant, note: merchant, date, suggestedCategory: guessCategory(merchant), paymentType: 'credit' }
+  return { amount, merchant, note: merchant, date, suggestedCategory: guessCategory(merchant, hour), paymentType: 'credit' }
 }
 
 // 解析快速手動輸入
@@ -92,7 +95,8 @@ export function parseQuickEntry(text: string): ParsedPayment | null {
     merchant,
     note,
     date: todayString(),
-    suggestedCategory: guessCategory(merchant),
+    // 直接打字記帳＝剛剛花的，照現在的時段分早午晚餐
+    suggestedCategory: guessCategory(merchant, taipeiHour()),
     paymentType,
   }
 }

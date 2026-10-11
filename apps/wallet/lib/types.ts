@@ -10,6 +10,8 @@ export interface Category {
   color: string   // icon background color (hex)
   text: string    // icon foreground color
   hidden?: boolean // 舊分類：還認得（舊資料要顯示），但不出現在記帳的分類選單裡
+  icon?: string    // 圖示 key（見 category-icon.tsx）；內建分類不填，直接用 id
+  custom?: boolean // 使用者自訂的分類（id 是 "u{數字}"）
 }
 
 export interface Transaction {
@@ -72,8 +74,34 @@ export const CATEGORIES: Category[] = [
   { id: 'other-income',  name: '其他',     type: 'income',  emoji: '💰', color: '#E5E7EB', text: '#6B7280' },
 ]
 
+// ── 自訂分類 ──
+// 存在後端（/categories），登入後由 TransactionsProvider 跟交易一起載入、登記在這裡，
+// 所以 getCategoryById 在任何地方都認得自訂分類，不用每個元件自己去抓。
+// 要在分類有變動時重新 render 的元件用 hooks/use-custom-categories.ts。
+let customCategories: Category[] = []
+const customListeners = new Set<() => void>()
+
+export function setCustomCategories(list: Category[]) {
+  customCategories = list
+  customListeners.forEach(fn => fn())
+}
+
+export function getCustomCategories(): Category[] {
+  return customCategories
+}
+
+export function subscribeCustomCategories(listener: () => void): () => void {
+  customListeners.add(listener)
+  return () => { customListeners.delete(listener) }
+}
+
 export function getCategoryById(id: string): Category | undefined {
-  return CATEGORIES.find(c => c.id === id)
+  return CATEGORIES.find(c => c.id === id) ?? customCategories.find(c => c.id === id)
+}
+
+// 記帳選單裡可以選的分類：內建＋自訂，不含已下架／已刪除的
+export function pickableCategories(type: TransactionType): Category[] {
+  return [...CATEGORIES, ...customCategories].filter(c => !c.hidden && c.type === type)
 }
 
 export interface Card {

@@ -1,4 +1,4 @@
-import type { Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile } from './types'
+import type { Category, Transaction, Card, Friendship, FriendUser, JobShare, FriendShift, AdminUser, LineQuota, MeProfile } from './types'
 
 const API = '/api/backend'
 
@@ -133,6 +133,55 @@ function normalizeCard(c: ApiCard): Card {
     paymentDueDate: c.payment_due_date ?? undefined,
     reminderDay: c.reminder_day ?? undefined,
   }
+}
+
+// ── 自訂分類 ─────────────────────────────────────────────────────────
+
+interface ApiCategory {
+  id: string
+  name: string
+  type: 'expense' | 'income'
+  icon: string
+  color: string
+  text: string
+  hidden: boolean
+}
+
+function normalizeCategory(c: ApiCategory): Category {
+  return { id: c.id, name: c.name, type: c.type, emoji: '', color: c.color, text: c.text, icon: c.icon, hidden: c.hidden, custom: true }
+}
+
+export type CategoryInput = Pick<Category, 'name' | 'color' | 'text'> & { type: 'expense' | 'income'; icon: string }
+
+export async function fetchCategories(): Promise<Category[]> {
+  const res = await fetch(`${API}/categories`)
+  if (!res.ok) throw new Error('Failed to fetch categories')
+  return ((await res.json()) as ApiCategory[]).map(normalizeCategory)
+}
+
+export async function createCategory(data: CategoryInput): Promise<Category> {
+  const res = await fetch(`${API}/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to create category')
+  return normalizeCategory(await res.json())
+}
+
+export async function updateCategory(id: string, data: Partial<CategoryInput>): Promise<Category> {
+  const res = await fetch(`${API}/categories/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to update category')
+  return normalizeCategory(await res.json())
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  const res = await fetch(`${API}/categories/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete category')
 }
 
 export async function fetchCards(): Promise<Card[]> {

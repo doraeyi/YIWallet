@@ -24,6 +24,7 @@ import type { Card } from '@/lib/types'
 import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { confirmDialog } from '@/lib/confirm'
 import { DeleteAccountDialog } from '@/components/wallet/delete-account-dialog'
+import { CustomCategorySettings } from '@/components/wallet/custom-category-settings'
 
 interface UserProfile {
   id: string
@@ -800,6 +801,9 @@ export default function SettingsPage() {
             onSave={async (id, data) => { await updateCard(id, data) }}
           />
         )}
+
+        {/* ── 自訂分類 ── */}
+        <CustomCategorySettings />
 
         {/* ── 自動記帳（設定一次就好的進階功能，放在常用的卡片／工作後面）── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
