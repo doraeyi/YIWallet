@@ -99,6 +99,14 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // 登入／註冊／忘記密碼一律直接向伺服器拿最新的頁面：這幾頁的送出按鈕是 Server Action，
+  // 快取裡的舊版頁面在新版部署後會找不到對應的動作，按了沒反應（Google 登入鈕也會卡住）
+  const AUTH_PAGES = ['/login', '/register', '/forgot-password']
+  if (event.request.mode === 'navigate' && AUTH_PAGES.some((p) => url.pathname === p || url.pathname.startsWith(p + '/'))) {
+    event.respondWith(fetch(event.request).catch(() => caches.match('/offline')))
+    return
+  }
+
   // Navigation (HTML pages) — cache-first：使用者按「更新」之前一直看到同一版。
   // 以前會在背景把新版頁面寫進舊快取，結果有時新有時舊，現在只有快取裡沒有才去拿
   if (event.request.mode === 'navigate') {
