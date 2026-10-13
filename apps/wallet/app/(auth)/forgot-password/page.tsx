@@ -19,7 +19,9 @@ export default function ForgotPasswordPage() {
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold">忘記密碼</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {sentTo ? `驗證碼已寄到 ${sentTo}，10 分鐘內有效` : '輸入註冊的 Email，我們會寄 6 位數驗證碼給你'}
+            {sentTo
+              ? '驗證碼已傳到你綁定的 LINE（有設定的話也會寄到 Email），10 分鐘內有效'
+              : '輸入註冊的 Email，我們會把 6 位數驗證碼傳到你綁定的 LINE'}
           </p>
         </div>
 
