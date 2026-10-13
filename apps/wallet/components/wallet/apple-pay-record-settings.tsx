@@ -11,8 +11,8 @@ import { confirmDialog } from '@/lib/confirm'
 // 分享出去的 iCloud 捷徑。裡面沒有寫死任何人的網址，加入時會用「匯入問題」要使用者貼上自己的，
 // 預設答案是空的。換捷徑時記得重新確認這兩點，不然別人付的錢會記到分享者的帳號
 const SHORTCUT_LINKS = {
-  applePay: 'https://www.icloud.com/shortcuts/9af5e40551a64976af5e4569d126258e',
-  linePay: 'https://www.icloud.com/shortcuts/6d73dfffcf6f4bf58957534cad4e9d5a',
+  applePay: 'https://www.icloud.com/shortcuts/d54f6d40f04847858e25805da1612b3b',
+  linePay: 'https://www.icloud.com/shortcuts/8d4af8f3f58c4340aba5e65e2df5a875',
 }
 
 export function ApplePayRecordSettings() {
@@ -119,11 +119,11 @@ export function ApplePayRecordSettings() {
               <div className="border-t pt-4">
                 <ShortcutSetup
                   title="② LINE Pay 付款通知（iOS 27 以上）"
-                  shortcutName="Line Pay"
+                  shortcutName="Linepay"
                   copied={copied === 'notification'}
                   onCopy={() => copy('notification')}
                   onInstall={() => install('notification', SHORTCUT_LINKS.linePay)}
-                  automation={<>自動化 → ＋ → 選「<b>通知</b>」→ App 選 <b>LINE</b> → 過濾條件：名稱包含「<b>LINE錢包</b>」、內文包含「<b>付款完成</b>」→ 勾「<b>立即執行</b>」→「<b>執行捷徑</b>」選「<b>Line Pay</b>」</>}
+                  automation={<>自動化 → ＋ → 選「<b>通知</b>」→ App 選 <b>LINE</b> → 過濾條件：名稱包含「<b>LINE錢包</b>」、內文包含「<b>付款完成</b>」→ 勾「<b>立即執行</b>」→「<b>執行捷徑</b>」選「<b>Linepay</b>」</>}
                   note="金額和商店從通知裡自動抓，依時段分到早餐、午餐、晚餐；第一次會在 LINE 問你 LINE Pay 扣的是哪張卡。同一筆付款收到兩家通知也只記一次。"
                   manual={
                     <ol className="list-decimal space-y-1 pl-4">
@@ -186,7 +186,7 @@ function ShortcutSetup({ title, shortcutName, copied, onCopy, onInstall, automat
               <DownloadIcon className="size-4" />
               安裝「{shortcutName}」捷徑
             </button>
-            <p className="text-muted-foreground">會先幫你複製好記帳網址，加入捷徑時跳出「貼上記帳網址」，直接貼上就好</p>
+            <p className="text-muted-foreground">會先幫你複製好記帳網址；加入捷徑時，在網址那一格<b>長按 → 貼上</b>，再按「加入捷徑」</p>
           </div>
         </li>
         <li className="flex gap-2">
