@@ -223,7 +223,7 @@ export default function SettingsPage() {
 
   async function handleCopyCode() {
     if (!linkCode) return
-    await navigator.clipboard.writeText(`/link ${linkCode}`)
+    await navigator.clipboard.writeText(`綁定 ${linkCode}`)
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
   }
@@ -861,7 +861,7 @@ export default function SettingsPage() {
                         className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
                       >
                         {codeCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-                        {codeCopied ? '已複製！' : '複製指令（/link 綁定碼）'}
+                        {codeCopied ? '已複製！' : `複製「綁定 ${linkCode}」`}
                       </button>
                       <p className="text-center text-xs text-muted-foreground">複製後貼到 Bot 聊天室傳送即完成綁定</p>
                     </div>
