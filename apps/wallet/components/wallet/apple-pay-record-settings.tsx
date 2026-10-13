@@ -26,8 +26,10 @@ export function ApplePayRecordSettings() {
   }, [])
 
   // 同一組 token、兩個入口：Apple Pay 捷徑送結構化資料，iOS 27「收到通知」捷徑送整段通知文字
-  const base = token ? `${window.location.origin}/api/auto-record/${token}` : ''
-  const urls = { 'apple-pay': `${base}/apple-pay`, notification: `${base}/notification` }
+  // 兩種捷徑貼同一個網址就好：後端看送來的內容（金額 or 通知內文）判斷是哪一種，
+  // 以前分 /apple-pay、/notification 兩個網址，常被貼錯
+  const recordUrl = token ? `${window.location.origin}/api/auto-record/${token}` : ''
+  const urls = { 'apple-pay': recordUrl, notification: recordUrl }
 
   async function handleEnable() {
     setBusy(true)
@@ -186,12 +188,20 @@ function ShortcutSetup({ title, shortcutName, copied, onCopy, onInstall, automat
               <DownloadIcon className="size-4" />
               安裝「{shortcutName}」捷徑
             </button>
-            <p className="text-muted-foreground">會先幫你複製好記帳網址；加入捷徑時，在網址那一格<b>長按 → 貼上</b>，再按「加入捷徑」</p>
+            <p className="text-muted-foreground">會先幫你複製好記帳網址。如果「加入捷徑」按不下去，按下面的「<b>略過設定</b>」就好</p>
           </div>
         </li>
         <li className="flex gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">2</span>
-          <p className="flex-1 leading-relaxed text-muted-foreground">在「捷徑」App 建一個自動化：{automation}</p>
+          <p className="flex-1 leading-relaxed text-muted-foreground">
+            打開剛加入的「<b>{shortcutName}</b>」捷徑，在「取得 URL 內容」的網址那一格<b>長按 → 貼上</b>（加入時已經貼過就跳過）
+          </p>
+        </li>
+        <li className="flex gap-2">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">3</span>
+          <p className="flex-1 leading-relaxed text-muted-foreground">
+            到「捷徑」App 的<b>自動化</b>看一下有沒有它；沒有的話照這樣建：{automation}
+          </p>
         </li>
       </ol>
       <p className="text-xs text-muted-foreground">{note}</p>
