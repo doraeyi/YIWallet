@@ -14,7 +14,7 @@ export interface InvoiceItem {
 const SELLER_RULES: Array<{ keywords: string[]; category: string }> = [
   { keywords: ['星巴克', 'Starbucks', '路易莎', 'Louisa', 'cama', '咖啡', '飲料', '茶', '50嵐', '可不可', '清心', '迷客夏', '麻古', '得正', '烏弄'], category: 'drink' },
   { keywords: ['全家', '7-ELEVEN', '7eleven', '統一超商', '萊爾富', 'OK超商', 'FamilyMart', 'Hi-Life'], category: 'meal' },
-  { keywords: ['麥當勞', '肯德基', 'KFC', '摩斯', '漢堡王', '早餐', '便當', '餐廳', '小吃', '飲食', '麵', '拉麵', '壽司', '火鍋', '牛排', '食堂'], category: 'meal' },
+  { keywords: ['麥當勞', '肯德基', 'KFC', '摩斯', '漢堡王', '早餐', '便當', '餐', '小吃', '食', '麵', '飯', '羹', '鍋', '壽司', '牛排', '肉圓', '滷味'], category: 'meal' },
   { keywords: ['加油', 'CPC', '台灣中油', '中油', '全國加油', '停車'], category: 'car' },
   { keywords: ['捷運', '台鐵', '高鐵', 'YouBike', '公車', 'Uber', '計程車', '客運'], category: 'transport' },
   { keywords: ['全聯', '家樂福', '大潤發', '愛買', 'Costco', '好市多', '頂好', '美廉社'], category: 'daily' },

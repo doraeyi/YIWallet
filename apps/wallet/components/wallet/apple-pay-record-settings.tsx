@@ -12,13 +12,15 @@ export function ApplePayRecordSettings() {
   const [expanded, setExpanded] = useState(false)
   const [token, setToken] = useState<string | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'apple-pay' | 'notification' | null>(null)
 
   useEffect(() => {
     api.fetchRecordToken().then(setToken).catch(() => setToken(null))
   }, [])
 
-  const url = token ? `${window.location.origin}/api/auto-record/${token}/apple-pay` : ''
+  // 同一組 token、兩個入口：Apple Pay 捷徑送結構化資料，iOS 27「收到通知」捷徑送整段通知文字
+  const base = token ? `${window.location.origin}/api/auto-record/${token}` : ''
+  const urls = { 'apple-pay': `${base}/apple-pay`, notification: `${base}/notification` }
 
   async function handleEnable() {
     setBusy(true)
@@ -36,10 +38,10 @@ export function ApplePayRecordSettings() {
     try { await api.disableRecordToken(); setToken(null) } finally { setBusy(false) }
   }
 
-  async function copy() {
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function copy(kind: 'apple-pay' | 'notification') {
+    await navigator.clipboard.writeText(urls[kind])
+    setCopied(kind)
+    setTimeout(() => setCopied(null), 2000)
   }
 
   return (
@@ -50,7 +52,7 @@ export function ApplePayRecordSettings() {
       >
         <div className="flex items-center gap-2.5">
           <ZapIcon className="size-4 text-brand-text" />
-          <span className="text-sm font-medium">Apple Pay 自動記帳</span>
+          <span className="text-sm font-medium">Apple Pay／LINE Pay 自動記帳</span>
         </div>
         <div className="flex items-center gap-2">
           {token !== undefined && (
@@ -70,25 +72,26 @@ export function ApplePayRecordSettings() {
           {!token ? (
             <>
               <p className="text-xs text-muted-foreground">
-                開啟後會產生一個專屬網址，搭配 iPhone「捷徑」的錢包自動化，每次用 Apple Pay 付款
-                就會自動記一筆支出（商家、金額、卡片），不用手動輸入。需要 iOS 17 以上。
+                開啟後會產生專屬網址，搭配 iPhone「捷徑」的自動化：用 Apple Pay 付款（iOS 17 以上），
+                或收到 LINE Pay 付款完成通知（iOS 27 以上）時，自動記一筆支出，不用手動輸入。
               </p>
               <button
                 onClick={handleEnable}
                 disabled={busy || token === undefined}
                 className="flex items-center justify-center rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
               >
-                {busy ? '產生中…' : '開啟 Apple Pay 自動記帳'}
+                {busy ? '產生中…' : '開啟自動記帳'}
               </button>
             </>
           ) : (
             <>
+              <p className="text-sm font-semibold">① Apple Pay</p>
               <button
-                onClick={copy}
+                onClick={() => copy('apple-pay')}
                 className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
               >
-                {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-                {copied ? '已複製！' : '複製記帳網址'}
+                {copied === 'apple-pay' ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                {copied === 'apple-pay' ? '已複製！' : '複製 Apple Pay 記帳網址'}
               </button>
 
               <div className="flex flex-col gap-1.5">
@@ -113,6 +116,33 @@ export function ApplePayRecordSettings() {
                 卡片會用錢包裡的卡名比對「卡片管理」的卡名或銀行，對不到就不綁卡、把錢包卡名寫在備註。
                 分類依商家自動判斷，判斷不出來的歸「其他」。只有 Apple Pay 付款會觸發，條碼支付、實體卡刷卡不會。
               </p>
+
+              <div className="flex flex-col gap-2 border-t pt-4">
+                <p className="text-sm font-semibold">② LINE Pay 付款通知（iOS 27 以上）</p>
+                <button
+                  onClick={() => copy('notification')}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold hover:bg-muted/50"
+                >
+                  {copied === 'notification' ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                  {copied === 'notification' ? '已複製！' : '複製通知記帳網址'}
+                </button>
+                <ol className="list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
+                  <li>「捷徑」→ 自動化 → ＋ → 選「<b>通知</b>」，App 選 <b>LINE</b></li>
+                  <li>加入過濾條件：<b>標題</b> 包含「<b>LINE錢包</b>」、<b>訊息</b> 包含「<b>付款完成</b>」</li>
+                  <li>勾「<b>立即執行</b>」→ 新增空白捷徑 → 加入動作「<b>取得 URL 內容</b>」，網址貼上剛剛複製的</li>
+                  <li>
+                    方法選 <b>POST</b>、要求本文選 <b>JSON</b>，新增 2 個「文字」欄位：
+                    <ul className="mt-1 space-y-0.5 pl-1">
+                      <li>• <code>title</code> → 變數「捷徑輸入」改成「<b>標題</b>」</li>
+                      <li>• <code>text</code> → 變數「捷徑輸入」改成「<b>訊息</b>」</li>
+                    </ul>
+                  </li>
+                </ol>
+                <p className="text-xs text-muted-foreground">
+                  金額和商店從通知裡自動抓出來，依時段分到早餐、午餐、晚餐。第一次會在 LINE 問你 LINE Pay 扣的是哪張卡，之後就記住。
+                  10 分鐘內同金額的自動記帳只會記一次，同一筆付款收到兩家通知也不會重複。
+                </p>
+              </div>
 
               <div className="flex gap-2 border-t pt-4">
                 <button

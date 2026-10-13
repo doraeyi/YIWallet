@@ -2,6 +2,14 @@
 // APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
+    version: 'v1.12',
+    changes: [
+      'LINE Pay 付款完成通知可以自動記帳（iOS 27 捷徑），金額、商店自動抓',
+      '同一筆付款收到多家通知只會記一次',
+      '「阿秋食坊」「鴨肉羹」這類小吃店也會依時段分到早午晚餐',
+    ],
+  },
+  {
     version: 'v1.11',
     changes: [
       '圖示全面換成一致的線條風格',
