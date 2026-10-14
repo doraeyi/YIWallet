@@ -15,11 +15,43 @@ const SHORTCUT_LINKS = {
   linePay: 'https://www.icloud.com/shortcuts/8d4af8f3f58c4340aba5e65e2df5a875',
 }
 
+type Platform = 'ios' | 'android'
+
+// iPhone／iPad 跟 Android 的自動記帳做法不一樣（捷徑 vs MacroDroid）。
+// 看到 Android 就是 Android，其他一律先顯示 iPhone 的：iPadOS 的 Safari 會假裝成 Mac、
+// 電腦上也猜不到使用者拿哪種手機，反正可以自己切換
+function detectPlatform(): Platform {
+  if (typeof navigator === 'undefined') return 'ios'
+  const ua = navigator.userAgent
+  if (/android/i.test(ua)) return 'android'
+  return 'ios'
+}
+
+function PlatformTabs({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
+  return (
+    <div role="tablist" className="grid grid-cols-2 rounded-xl bg-muted p-1 text-xs font-medium">
+      {([['ios', 'iPhone'], ['android', 'Android']] as const).map(([key, label]) => (
+        <button
+          key={key}
+          role="tab"
+          aria-selected={value === key}
+          onClick={() => onChange(key)}
+          className={cn('rounded-lg py-1.5 transition-colors', value === key ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function ApplePayRecordSettings() {
   const [expanded, setExpanded] = useState(false)
   const [token, setToken] = useState<string | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState<'apple-pay' | 'notification' | null>(null)
+  // 只顯示這支手機用得到的做法；判斷錯了（或要幫別人設定）可以自己切換
+  const [platform, setPlatform] = useState<Platform>(detectPlatform)
 
   useEffect(() => {
     api.fetchRecordToken().then(setToken).catch(() => setToken(null))
@@ -101,45 +133,49 @@ export function ApplePayRecordSettings() {
             </>
           ) : (
             <>
-              <ShortcutSetup
-                title="① Apple Pay"
-                shortcutName="錢包"
-                copied={copied === 'apple-pay'}
-                onCopy={() => copy('apple-pay')}
-                onInstall={() => install('apple-pay', SHORTCUT_LINKS.applePay)}
-                automation={<>自動化 → ＋ → 選「<b>錢包</b>」→ 卡片和類別全選 → 勾「<b>立即執行</b>」→「<b>執行捷徑</b>」選「<b>錢包</b>」</>}
-                note="卡片會用錢包裡的卡名對應「卡片管理」的卡，對不到時 LINE 會問你一次。只有 Apple Pay 付款會觸發，條碼支付、實體卡刷卡不會。"
-                manual={
-                  <ol className="list-decimal space-y-1 pl-4">
-                    <li>自動化 → ＋ →「錢包」→ 卡片和類別全選 → 立即執行 →「新增空白捷徑」</li>
-                    <li>加入「取得 URL 內容」，網址貼上記帳網址；方法 POST、要求本文 JSON</li>
-                    <li>文字欄位：<code>amount</code>＝捷徑輸入的「金額」、<code>merchant</code>＝「商家」、<code>card</code>＝「卡片或票卡」</li>
-                  </ol>
-                }
-              />
+              <PlatformTabs value={platform} onChange={setPlatform} />
 
-              <div className="border-t pt-4">
+              {platform === 'ios' ? (
+                <>
                 <ShortcutSetup
-                  title="② LINE Pay 付款通知（iOS 27 以上）"
-                  shortcutName="Linepay"
-                  copied={copied === 'notification'}
-                  onCopy={() => copy('notification')}
-                  onInstall={() => install('notification', SHORTCUT_LINKS.linePay)}
-                  automation={<>自動化 → ＋ → 選「<b>通知</b>」→ App 選 <b>LINE</b> → 過濾條件：名稱包含「<b>LINE錢包</b>」、內文包含「<b>付款完成</b>」→ 勾「<b>立即執行</b>」→「<b>執行捷徑</b>」選「<b>Linepay</b>」</>}
-                  note="金額和商店從通知裡自動抓，依時段分到早餐、午餐、晚餐；第一次會在 LINE 問你 LINE Pay 扣的是哪張卡。同一筆付款收到兩家通知也只記一次。"
+                  title="① Apple Pay"
+                  shortcutName="錢包"
+                  copied={copied === 'apple-pay'}
+                  onCopy={() => copy('apple-pay')}
+                  onInstall={() => install('apple-pay', SHORTCUT_LINKS.applePay)}
+                  automation={<>自動化 → ＋ → 選「<b>錢包</b>」→ 卡片和類別全選 → 勾「<b>立即執行</b>」→「<b>執行捷徑</b>」選「<b>錢包</b>」</>}
+                  note="卡片會用錢包裡的卡名對應「卡片管理」的卡，對不到時 LINE 會問你一次。只有 Apple Pay 付款會觸發，條碼支付、實體卡刷卡不會。"
                   manual={
                     <ol className="list-decimal space-y-1 pl-4">
-                      <li>自動化 → ＋ →「通知」→ LINE → 名稱包含 LINE錢包、內文包含 付款完成 → 立即執行 →「新增空白捷徑」</li>
+                      <li>自動化 → ＋ →「錢包」→ 卡片和類別全選 → 立即執行 →「新增空白捷徑」</li>
                       <li>加入「取得 URL 內容」，網址貼上記帳網址；方法 POST、要求本文 JSON</li>
-                      <li>文字欄位：<code>title</code>＝捷徑輸入的「名稱」、<code>text</code>＝「內文」</li>
+                      <li>文字欄位：<code>amount</code>＝捷徑輸入的「金額」、<code>merchant</code>＝「商家」、<code>card</code>＝「卡片或票卡」</li>
                     </ol>
                   }
                 />
-              </div>
 
-              <div className="border-t pt-4">
+                <div className="border-t pt-4">
+                  <ShortcutSetup
+                    title="② LINE Pay 付款通知（iOS 27 以上）"
+                    shortcutName="Linepay"
+                    copied={copied === 'notification'}
+                    onCopy={() => copy('notification')}
+                    onInstall={() => install('notification', SHORTCUT_LINKS.linePay)}
+                    automation={<>自動化 → ＋ → 選「<b>通知</b>」→ App 選 <b>LINE</b> → 過濾條件：名稱包含「<b>LINE錢包</b>」、內文包含「<b>付款完成</b>」→ 勾「<b>立即執行</b>」→「<b>執行捷徑</b>」選「<b>Linepay</b>」</>}
+                    note="金額和商店從通知裡自動抓，依時段分到早餐、午餐、晚餐；第一次會在 LINE 問你 LINE Pay 扣的是哪張卡。同一筆付款收到兩家通知也只記一次。"
+                    manual={
+                      <ol className="list-decimal space-y-1 pl-4">
+                        <li>自動化 → ＋ →「通知」→ LINE → 名稱包含 LINE錢包、內文包含 付款完成 → 立即執行 →「新增空白捷徑」</li>
+                        <li>加入「取得 URL 內容」，網址貼上記帳網址；方法 POST、要求本文 JSON</li>
+                        <li>文字欄位：<code>title</code>＝捷徑輸入的「名稱」、<code>text</code>＝「內文」</li>
+                      </ol>
+                    }
+                  />
+                </div>
+                </>
+              ) : (
                 <AndroidSetup recordUrl={recordUrl} />
-              </div>
+              )}
 
               <div className="flex gap-2 border-t pt-4">
                 <button
@@ -241,7 +277,7 @@ function AndroidSetup({ recordUrl }: { recordUrl: string }) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      <p className="text-sm font-semibold">③ Android（LINE Pay 付款通知）</p>
+      <p className="text-sm font-semibold">LINE Pay 付款通知</p>
       <ol className="flex flex-col gap-2 text-xs">
         {[
           <>Play 商店安裝免費的 <b>MacroDroid</b>，打開後照指示允許「通知存取」</>,
