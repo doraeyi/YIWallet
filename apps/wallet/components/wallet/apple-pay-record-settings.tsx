@@ -13,7 +13,7 @@ import { confirmDialog } from '@/lib/confirm'
 const SHORTCUT_LINKS = {
   applePay: 'https://www.icloud.com/shortcuts/d54f6d40f04847858e25805da1612b3b',
   linePay: 'https://www.icloud.com/shortcuts/8d4af8f3f58c4340aba5e65e2df5a875',
-  siri: 'https://www.icloud.com/shortcuts/ffaae750143c4675866e68faabb36852',
+  siri: 'https://www.icloud.com/shortcuts/035b813689dd4c6186dbfdc3afcc6a2d',
 }
 
 type Platform = 'ios' | 'android'
@@ -320,7 +320,7 @@ function AndroidSetup({ recordUrl }: { recordUrl: string }) {
   )
 }
 
-// Siri 語音記帳：「嘿 Siri，記一筆」→ 說「午餐一百二 LINE Pay」→ Siri 問缺的（分類、付款方式）
+// Siri 語音記帳：「嘿 Siri，我要記帳」（「記一筆」會被 Siri 當成付款、「易記帳」會撞到 App Store 的 App）→ 說「午餐一百二 LINE Pay」→ Siri 問缺的（分類、付款方式）
 // 跟確認 → 記帳。問什麼都由伺服器決定（routers/voice.py），伺服器回一句話、以「？」結尾就是還在問，
 // 捷徑只是照著問、把回答送回去，所以捷徑本身是固定的，以後改問法不用重裝。
 function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
@@ -341,7 +341,7 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
     <div className="flex flex-col gap-2.5">
       <p className="text-sm font-semibold">③ 用 Siri 語音記帳</p>
       <p className="text-xs text-muted-foreground">
-        說「<b>嘿 Siri，記一筆</b>」，再說「午餐一百二 LINE Pay」。Siri 會跟你確認，沒聽出分類或付款方式也會問你，用說的回答，說「對」才記。
+        說「<b>嘿 Siri，我要記帳</b>」，再說「午餐一百二 LINE Pay」。Siri 會跟你確認，沒聽出分類或付款方式也會問你，用說的回答，說「對」才記。
       </p>
 <ol className="flex flex-col gap-2 text-xs">
         <li className="flex gap-2">
@@ -352,7 +352,7 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
               className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
             >
               <DownloadIcon className="size-4" />
-              安裝「記一筆」捷徑
+              安裝「我要記帳」捷徑
             </button>
             <p className="text-muted-foreground">會先幫你複製好語音記帳網址</p>
           </div>
@@ -360,13 +360,13 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
         <li className="flex gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">2</span>
           <p className="flex-1 leading-relaxed text-muted-foreground">
-            按「<b>設定捷徑</b>」，在網址那一格<b>長按 → 貼上</b>，再按「<b>加入捷徑</b>」
+            按「<b>加入捷徑</b>」，打開剛加入的「<b>我要記帳</b>」，在最上面「文字」那一格<b>長按 → 貼上</b>（安裝時有問網址、已經貼過就跳過）
           </p>
         </li>
         <li className="flex gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">3</span>
           <p className="flex-1 leading-relaxed text-muted-foreground">
-            說「<b>嘿 Siri，記一筆</b>」試試看
+            說「<b>嘿 Siri，我要記帳</b>」試試看
           </p>
         </li>
       </ol>
@@ -382,7 +382,7 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
           不用安裝，自己做這個捷徑 <span className="inline-block transition-transform group-open:rotate-90">›</span>
         </summary>
         <ol className="mt-2 list-decimal space-y-1.5 rounded-xl bg-muted/40 p-3 pl-7">
-          <li>捷徑 App → ＋ 新捷徑，名稱取「<b>記一筆</b>」（就是對 Siri 說的那句話）</li>
+          <li>捷徑 App → ＋ 新捷徑，名稱取「<b>我要記帳</b>」（就是對 Siri 說的那句話）</li>
           <li>加入「<b>聽寫文字</b>」，語言選中文（台灣）</li>
           <li>加入「<b>取得 URL 內容</b>」：網址貼上語音記帳網址、方法 POST、要求本文 JSON，欄位 <code>text</code>＝「聽寫的文字」</li>
           <li>加入「<b>設定變數</b>」：名稱 <code>回應</code>，值＝「URL 的內容」</li>

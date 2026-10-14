@@ -4,7 +4,7 @@ export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
     version: 'v1.16',
     changes: [
-      'Siri 記帳可以一鍵安裝：設定 → 自動記帳 → 安裝「記一筆」捷徑',
+      'Siri 記帳可以一鍵安裝：設定 → 自動記帳 → 安裝「我要記帳」捷徑，說「嘿 Siri，我要記帳」',
       'Siri 問問題時直接用說的回答，例如「中油卡」「付現」「對」，也可以直接說分類',
     ],
   },
