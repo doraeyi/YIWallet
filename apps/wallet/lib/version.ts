@@ -2,6 +2,13 @@
 // APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
+    version: 'v1.16',
+    changes: [
+      'Siri 記帳可以一鍵安裝：設定 → 自動記帳 → 安裝「記一筆」捷徑',
+      'Siri 問問題時直接用說的回答，例如「中油卡」「付現」「對」，也可以直接說分類',
+    ],
+  },
+  {
     version: 'v1.15',
     changes: [
       '語音記帳：記帳畫面按麥克風，說「午餐一百二 LINE Pay」就幫你填好',

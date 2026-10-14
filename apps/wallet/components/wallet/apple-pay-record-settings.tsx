@@ -13,6 +13,7 @@ import { confirmDialog } from '@/lib/confirm'
 const SHORTCUT_LINKS = {
   applePay: 'https://www.icloud.com/shortcuts/d54f6d40f04847858e25805da1612b3b',
   linePay: 'https://www.icloud.com/shortcuts/8d4af8f3f58c4340aba5e65e2df5a875',
+  siri: 'https://www.icloud.com/shortcuts/ffaae750143c4675866e68faabb36852',
 }
 
 type Platform = 'ios' | 'android'
@@ -331,12 +332,44 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function install() {
+    await copy()
+    window.location.href = SHORTCUT_LINKS.siri
+  }
+
   return (
     <div className="flex flex-col gap-2.5">
       <p className="text-sm font-semibold">③ 用 Siri 語音記帳</p>
       <p className="text-xs text-muted-foreground">
         說「<b>嘿 Siri，記一筆</b>」，再說「午餐一百二 LINE Pay」。Siri 會跟你確認，沒聽出分類或付款方式也會問你，用說的回答，說「對」才記。
       </p>
+<ol className="flex flex-col gap-2 text-xs">
+        <li className="flex gap-2">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">1</span>
+          <div className="flex flex-1 flex-col gap-1.5">
+            <button
+              onClick={install}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
+            >
+              <DownloadIcon className="size-4" />
+              安裝「記一筆」捷徑
+            </button>
+            <p className="text-muted-foreground">會先幫你複製好語音記帳網址</p>
+          </div>
+        </li>
+        <li className="flex gap-2">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">2</span>
+          <p className="flex-1 leading-relaxed text-muted-foreground">
+            按「<b>設定捷徑</b>」，在網址那一格<b>長按 → 貼上</b>，再按「<b>加入捷徑</b>」
+          </p>
+        </li>
+        <li className="flex gap-2">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">3</span>
+          <p className="flex-1 leading-relaxed text-muted-foreground">
+            說「<b>嘿 Siri，記一筆</b>」試試看
+          </p>
+        </li>
+      </ol>
       <button
         onClick={copy}
         className="flex items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium hover:bg-muted/50"
@@ -346,7 +379,7 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
       </button>
       <details className="group text-xs text-muted-foreground">
         <summary className="cursor-pointer list-none font-medium text-brand-text">
-          怎麼做這個捷徑 <span className="inline-block transition-transform group-open:rotate-90">›</span>
+          不用安裝，自己做這個捷徑 <span className="inline-block transition-transform group-open:rotate-90">›</span>
         </summary>
         <ol className="mt-2 list-decimal space-y-1.5 rounded-xl bg-muted/40 p-3 pl-7">
           <li>捷徑 App → ＋ 新捷徑，名稱取「<b>記一筆</b>」（就是對 Siri 說的那句話）</li>
