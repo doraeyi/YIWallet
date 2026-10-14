@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
-import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, MicIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
@@ -18,6 +18,8 @@ import { confirmDialog } from '@/lib/confirm'
 import { CategoryBadge, CategoryGlyph } from './category-icon'
 import { CategoryEditorDialog } from './category-editor-dialog'
 import { PaymentIcon } from './payment-icon'
+import { useSpeech } from '@/hooks/use-speech'
+import * as api from '@/lib/api'
 
 // ── 上次用的分類（收入、支出各記一個），新增時預選 ─────────────────────────────
 const LAST_CATEGORY_KEY = 'yiwallet_last_category'
@@ -117,6 +119,39 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   const [saving, setSaving] = useState(false)
   // 存好之後 OK 鍵先畫一個打勾，停一下才關面板——這是整個 App 最常做的動作，給它一個確實的完成感
   const [justSaved, setJustSaved] = useState(false)
+
+  // 語音記帳：說「午餐一百二 LINE Pay」，聽完把欄位填好讓使用者確認再按 OK。
+  // 跟 Siri 同一套規則：聽不出分類就不選（請使用者選），沒說付款方式就不預選卡片
+  const speech = useSpeech()
+  const [parsingVoice, setParsingVoice] = useState(false)
+  async function applyVoice(text: string) {
+    setParsingVoice(true)
+    try {
+      const r = await api.parseVoice(text)
+      if (r.amount == null) {
+        toast('沒聽到金額，再說一次，例如「午餐 120 現金」', 'error')
+        return
+      }
+      setType(r.type)
+      setCategory(r.category ?? '')
+      setAmount(String(r.amount))
+      setNote(r.note)
+      setDate(r.date)
+      if (r.card_id) { setCardId(r.card_id); setIsExplicitCash(false) }
+      else if (r.is_cash) { setCardId(undefined); setIsExplicitCash(true) }
+      else { setCardId(undefined); setIsExplicitCash(false) }
+      const missing = [!r.category && '分類', !r.card_id && !r.is_cash && cards.length > 0 && '付款方式'].filter(Boolean)
+      toast(missing.length ? `聽好了，再選一下${missing.join('和')}` : '聽好了，確認沒問題就按 OK')
+    } catch {
+      toast('語音辨識失敗，請再試一次', 'error')
+    } finally {
+      setParsingVoice(false)
+    }
+  }
+  function toggleVoice() {
+    if (speech.listening) speech.stop()
+    else speech.start(applyVoice, err => { if (err !== 'aborted' && err !== 'no-speech') toast('沒辦法使用麥克風，請確認有允許麥克風權限', 'error') })
+  }
 
   const selectedCard = cards.find(c => c.id === cardId)
   const isDebitCard = selectedCard?.type === 'debit'
@@ -386,7 +421,22 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
             {hasExpression && <span className="truncate text-xs tabular-nums text-muted-foreground">{amount}</span>}
             <span key={displayAmount} className={cn('text-3xl font-bold tabular-nums animate-pop', accent)}>${displayAmount}</span>
           </div>
-          <div className="ml-auto h-10 w-px bg-border" />
+          {speech.supported && (
+            <button
+              onClick={toggleVoice}
+              disabled={parsingVoice}
+              aria-label={speech.listening ? '停止語音輸入' : '用說的記帳'}
+              aria-pressed={speech.listening}
+              className={cn(
+                'relative ml-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors',
+                speech.listening ? 'bg-rose-500 text-white' : 'bg-muted text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {speech.listening && <span className="absolute inset-0 animate-ping rounded-full bg-rose-500/40" />}
+              <MicIcon className="relative size-5" />
+            </button>
+          )}
+          <div className={cn('h-10 w-px bg-border', !speech.supported && 'ml-auto')} />
           <input
             placeholder={category === 'transfer' ? '轉給誰（選填）' : '輸入備註'}
             value={category === 'transfer' ? transferTo : note}
@@ -394,6 +444,13 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
             className="w-28 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-36"
           />
         </div>
+
+        {/* 說話中：即時顯示聽到的內容 */}
+        {(speech.listening || parsingVoice) && (
+          <p className="mx-4 mt-2 animate-fade rounded-xl bg-muted/60 px-3 py-2 text-sm">
+            {parsingVoice ? '整理中…' : speech.transcript || '請說，例如「午餐一百二 LINE Pay」'}
+          </p>
+        )}
 
         {/* 快選備註、商家（編輯時）、轉帳的額外備註 */}
         {(noteSuggestions.length > 0 || initialData || category === 'transfer') && (

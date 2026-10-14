@@ -135,6 +135,28 @@ function normalizeCard(c: ApiCard): Card {
   }
 }
 
+// ── 語音記帳：把一句話拆成欄位（不記帳，前端填好讓使用者確認）──────────
+
+export interface VoiceParseResult {
+  amount: number | null
+  type: 'expense' | 'income'
+  category: string | null // null = 聽不出分類
+  card_id: string | null
+  is_cash: boolean        // card_id 跟 is_cash 都沒有 = 沒說付款方式
+  date: string
+  note: string
+}
+
+export async function parseVoice(text: string): Promise<VoiceParseResult> {
+  const res = await fetch(`${API}/voice/parse`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) throw new Error('Failed to parse voice')
+  return res.json()
+}
+
 // ── 自訂分類 ─────────────────────────────────────────────────────────
 
 interface ApiCategory {

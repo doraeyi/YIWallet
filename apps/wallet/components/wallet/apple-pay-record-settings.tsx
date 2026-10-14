@@ -172,6 +172,10 @@ export function ApplePayRecordSettings() {
                     }
                   />
                 </div>
+
+                <div className="border-t pt-4">
+                  <SiriSetup voiceUrl={`${recordUrl}/voice`} />
+                </div>
                 </>
               ) : (
                 <AndroidSetup recordUrl={recordUrl} />
@@ -311,6 +315,55 @@ function AndroidSetup({ recordUrl }: { recordUrl: string }) {
         金額和商店從通知裡自動抓，跟 iPhone 一樣依時段分類、第一次會在 LINE 問你扣哪張卡。
         MacroDroid 各版本的選項名稱可能略有不同，找意思相近的就可以。
       </p>
+    </div>
+  )
+}
+
+// Siri 語音記帳：「嘿 Siri，記一筆」→ 說「午餐一百二 LINE Pay」→ Siri 問缺的（分類、付款方式）
+// 跟確認 → 記帳。問什麼都由伺服器決定（routers/voice.py），捷徑只是照著念、照著問，
+// 所以捷徑本身是固定的，以後改問法不用重裝。
+function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    await navigator.clipboard.writeText(voiceUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className="text-sm font-semibold">③ 用 Siri 語音記帳</p>
+      <p className="text-xs text-muted-foreground">
+        說「<b>嘿 Siri，記一筆</b>」，再說「午餐一百二 LINE Pay」。Siri 會跟你確認，沒聽出分類或付款方式也會問你，說「對」才記。
+      </p>
+      <button
+        onClick={copy}
+        className="flex items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium hover:bg-muted/50"
+      >
+        {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+        {copied ? '已複製！' : '複製語音記帳網址'}
+      </button>
+      <details className="group text-xs text-muted-foreground">
+        <summary className="cursor-pointer list-none font-medium text-brand-text">
+          怎麼做這個捷徑 <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        </summary>
+        <ol className="mt-2 list-decimal space-y-1.5 rounded-xl bg-muted/40 p-3 pl-7">
+          <li>捷徑 App → ＋ 新捷徑，名稱取「<b>記一筆</b>」（就是對 Siri 說的那句話）</li>
+          <li>加入「<b>聽寫文字</b>」，語言選中文（台灣）</li>
+          <li>加入「<b>取得 URL 內容</b>」：網址貼上語音記帳網址、方法 POST、要求本文 JSON，欄位 <code>text</code>＝「聽寫的文字」</li>
+          <li>加入「<b>設定變數</b>」：名稱 <code>回應</code>，值＝「URL 的內容」</li>
+          <li>加入「<b>重複</b>」5 次，裡面依序放：
+            <ul className="mt-1 space-y-1 pl-1">
+              <li>• 「<b>如果</b>」<code>回應</code> 的 <code>status</code> 是 <code>done</code> →「<b>說出文字</b>」<code>回應</code> 的 <code>say</code> →「<b>停止此捷徑</b>」</li>
+              <li>• 「<b>從清單中選取</b>」：清單＝<code>回應</code> 的 <code>choices</code>，提示＝<code>回應</code> 的 <code>say</code></li>
+              <li>• 「<b>取得 URL 內容</b>」：同一個網址、POST、JSON，欄位 <code>session</code>＝<code>回應</code> 的 <code>session</code>、<code>answer</code>＝「選取的項目」</li>
+              <li>• 「<b>設定變數</b>」<code>回應</code>＝這次「URL 的內容」</li>
+            </ul>
+          </li>
+        </ol>
+        <p className="mt-2">取 <code>回應</code> 裡的欄位用「取得字典值」。用 Siri 執行時，選項可以直接用說的。</p>
+      </details>
     </div>
   )
 }
