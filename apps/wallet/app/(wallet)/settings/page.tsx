@@ -930,6 +930,11 @@ export default function SettingsPage() {
             <span className="text-base leading-none text-muted-foreground">›</span>
           </button>
           <div className="border-t" />
+          <Link href="/dashboard?tour=1" className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40">
+            <span className="text-sm font-medium">再看一次使用教學</span>
+            <span className="text-base leading-none text-muted-foreground">›</span>
+          </Link>
+          <div className="border-t" />
           <button
             onClick={() => setDeleteAccountOpen(true)}
             className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"

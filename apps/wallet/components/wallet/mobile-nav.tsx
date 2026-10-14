@@ -119,6 +119,7 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
+                data-tour={`nav-${href.slice(1)}`}
                 className="flex flex-1 flex-col items-center gap-0.5 pt-2.5 pb-1.5 text-xs font-medium"
               >
                 <Icon
@@ -139,6 +140,7 @@ export function MobileNav() {
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="新增記帳"
+              data-tour="add"
               className="mb-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-brand shadow-[0_6px_16px_-4px_rgb(0_0_0/0.25)] transition-transform duration-200 ease-(--ease-out-expo) active:scale-90"
             >
               <PlusIcon className="size-7 text-brand-foreground" strokeWidth={2.5} />
@@ -152,6 +154,7 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
+                data-tour={`nav-${href.slice(1)}`}
                 className="flex flex-1 flex-col items-center gap-0.5 pt-2.5 pb-1.5 text-xs font-medium"
               >
                 <Icon

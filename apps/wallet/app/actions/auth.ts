@@ -53,7 +53,7 @@ export async function register(_state: unknown, formData: FormData) {
 
   const { access_token: token, user } = await res.json()
   await createSession(token, String(user?.id ?? email))
-  redirect('/dashboard')
+  redirect('/dashboard?welcome=1')
 }
 
 export async function logout() {

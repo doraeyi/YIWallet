@@ -487,6 +487,7 @@ export default function DashboardPage() {
         ))}
         <button
           onClick={() => setAddCardOpen(true)}
+          data-tour="add-card"
           className="flex shrink-0 items-center gap-1 rounded-full border-2 border-dashed px-3 py-1.5 text-sm text-muted-foreground hover:border-brand hover:text-brand-text transition-colors"
         >
           <PlusIcon className="size-3.5" />
@@ -664,6 +665,7 @@ export default function DashboardPage() {
       <div className="flex items-center px-6 pb-4 lg:hidden">
         <button
           onClick={() => setAddCardOpen(true)}
+          data-tour="add-card"
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <PlusIcon className="size-3.5" />

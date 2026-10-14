@@ -53,6 +53,7 @@ export function Sidebar() {
         <div className="px-3 pt-4 pb-2">
           <button
             onClick={() => setOpen(true)}
+            data-tour="add"
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-foreground shadow-sm shadow-brand/30 hover:bg-brand-hover active:scale-95 transition-all"
           >
             <PlusIcon className="size-4" strokeWidth={2.5} />
@@ -76,7 +77,7 @@ export function Sidebar() {
                 {label}
               </a>
             ) : (
-              <Link key={href} href={href} className={className}>
+              <Link key={href} href={href} data-tour={`nav-${href.slice(1)}`} className={className}>
                 <Icon className="size-4" strokeWidth={active ? 2.5 : 2} />
                 {label}
               </Link>

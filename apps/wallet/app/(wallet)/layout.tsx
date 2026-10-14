@@ -4,6 +4,7 @@ import { MobileNav } from '@/components/wallet/mobile-nav'
 import { LineImportBanner } from '@/components/wallet/line-import-banner'
 import { Toaster } from '@/components/ui/toaster'
 import { ConfirmHost } from '@/components/ui/confirm-host'
+import { OnboardingTour } from '@/components/wallet/onboarding-tour'
 
 export default function WalletLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +26,9 @@ export default function WalletLayout({ children }: { children: React.ReactNode }
 
         <Toaster />
         <ConfirmHost />
+
+        {/* 新手導覽（剛註冊的人第一次進首頁） */}
+        <OnboardingTour />
       </div>
     </TransactionsProvider>
   )
