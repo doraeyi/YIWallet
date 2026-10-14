@@ -516,6 +516,7 @@ export default function DashboardPage() {
       {/* ── Mobile: swipeable donut／卡片 ──────────────────── */}
       <div
         key={safeIndex}
+        data-tour="dash-view"
         className={cn(
           'relative flex justify-center px-8 py-6 lg:py-4 select-none',
           slideFrom === 'right' ? 'animate-slide-from-right' : slideFrom === 'left' ? 'animate-slide-from-left' : 'animate-pop',
@@ -798,7 +799,7 @@ export default function DashboardPage() {
       {currentView.kind === 'all' && <CreditOverview cards={cards} transactions={transactions} />}
 
       <div className="px-4 lg:px-6">
-        <div className="mb-3 flex items-center justify-between">
+        <div data-tour="dash-recent" className="mb-3 flex items-center justify-between">
           <span className="font-semibold">最近紀錄</span>
           <Link href={transactionsHref} className="text-xs font-medium text-brand-text hover:underline">
             查看全部

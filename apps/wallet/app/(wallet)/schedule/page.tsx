@@ -860,7 +860,7 @@ export default function SchedulePage() {
           />
 
           {/* Calendar */}
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div data-tour="sched-calendar" className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
             <div className="grid grid-cols-7 border-b">
               {WEEKDAYS.map((d, i) => (
                 <div key={d} className={cn(
@@ -955,7 +955,7 @@ export default function SchedulePage() {
 
           {/* Salary preview——別人分享給我的工作看不到薪資，那是對方的薪資不是我的 */}
           {isOwnActiveJob && (
-            <div className="mt-4 flex flex-col gap-3">
+            <div data-tour="sched-salary" className="mt-4 flex flex-col gap-3">
               <p className="text-sm font-semibold">本月薪資預估</p>
 
               {(() => {

@@ -543,6 +543,7 @@ export default function SettingsPage() {
           {/* 卡片管理 row */}
           <button
             onClick={() => setExpandedFeature(v => v === 'cards' ? null : 'cards')}
+            data-tour="set-cards"
             className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
           >
             <span className="text-sm font-medium">卡片管理</span>
@@ -669,6 +670,7 @@ export default function SettingsPage() {
           {/* 工作管理 row */}
           <button
             onClick={() => setExpandedFeature(v => v === 'jobs' ? null : 'jobs')}
+            data-tour="set-jobs"
             className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
           >
             <span className="text-sm font-medium">工作管理</span>
@@ -807,7 +809,7 @@ export default function SettingsPage() {
 
         {/* ── 自動記帳（設定一次就好的進階功能，放在常用的卡片／工作後面）── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+        <div data-tour="set-auto" className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
           {/* LINE Bot row */}
           <button
             onClick={() => setExpandedAccount(v => v === 'line' ? null : 'line')}
@@ -883,7 +885,7 @@ export default function SettingsPage() {
 
         {/* ── 班表同步 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">班表同步</p>
-        <CalendarFeedSettings />
+        <div data-tour="set-calendar"><CalendarFeedSettings /></div>
 
         {/* ── 管理後台（只有管理員帳號看得到入口，真正的權限判斷在後端）── */}
         {profile?.email === 'ch855118@gmail.com' && (

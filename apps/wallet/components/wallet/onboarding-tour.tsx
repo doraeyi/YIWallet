@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useCards } from '@/hooks/use-cards'
 import { cn } from '@/lib/utils'
 
 // 新手導覽：畫面變暗、把要介紹的按鈕圈起來，旁邊放說明，「下一步」時圈圈滑到下一個地方。
 // 要圈的元素在畫面上加 data-tour="xxx"（手機跟電腦版各有一份的，會挑目前看得到的那個）。
+// 步驟可以指定頁面（page），導覽會自己換頁、等那頁的元素出現了再圈；元件放在 layout，換頁不會重來。
 //
 // 什麼時候出現（只在首頁）：
 // - 帳號密碼註冊完會帶 ?welcome=1
@@ -18,18 +19,28 @@ import { cn } from '@/lib/utils'
 const DONE_KEY = 'yiwallet_tour_done'
 
 interface Step {
-  target?: string // data-tour 的值；沒有就是畫面正中間的說明卡
+  page: string    // 這一步在哪一頁，不在那頁就先換過去
+  target?: string // data-tour 的值；沒有（或那頁找不到）就是畫面正中間的說明卡
   title: string
   body: string
 }
 
 const STEPS: Step[] = [
-  { title: '歡迎使用易記帳', body: '花一分鐘帶你看幾個常用的地方，隨時可以按「略過」。' },
-  { target: 'add', title: '記一筆帳', body: '支出、收入都從這裡記：選分類、輸入金額、按 OK 就好。' },
-  { target: 'add-card', title: '加入你的卡片', body: '把信用卡、金融卡、悠遊卡加進來，記帳時選卡；信用卡設好結帳日，還會算出每期要繳多少。' },
-  { target: 'nav-schedule', title: '班表與薪水', body: '排班、或傳班表照片匯入，會照時數算出這個月的薪水。' },
-  { target: 'nav-settings', title: '讓它自動記帳', body: '到設定開啟自動記帳：用 Apple Pay、LINE Pay 付款後自動記一筆；綁定 LINE 也能用聊天記帳。' },
-  { title: '準備好了', body: '先試著記第一筆吧！想再看一次這段介紹，到「設定 → 關於」。' },
+  { page: '/dashboard', title: '歡迎使用易記帳', body: '花一分鐘帶你看記帳、班表、設定三個地方，隨時可以按「略過」。' },
+  // 首頁
+  { page: '/dashboard', target: 'add', title: '記一筆帳', body: '支出、收入都從這裡記：選分類、輸入金額、按 OK 就好。' },
+  { page: '/dashboard', target: 'dash-view', title: '看每個帳戶', body: '左右滑可以切換「全部」、現金和每一張卡，看各自花了多少、還剩多少。' },
+  { page: '/dashboard', target: 'add-card', title: '加入你的卡片', body: '把信用卡、金融卡、悠遊卡加進來，記帳時才能選卡。' },
+  { page: '/dashboard', target: 'dash-recent', title: '最近紀錄', body: '點任何一筆都能修改金額、分類、卡片，或刪掉；「查看全部」可以搜尋和篩選。' },
+  // 班表
+  { page: '/schedule', target: 'sched-calendar', title: '排班', body: '點月曆上的日期就能排早班、晚班，或自訂時間；也可以傳班表照片自動匯入。' },
+  { page: '/schedule', target: 'sched-salary', title: '薪水自動算', body: '照排的班和時薪算出這個月的薪水，國定假日會自動加倍，領到時一鍵加進收入。' },
+  // 設定
+  { page: '/settings', target: 'set-cards', title: '卡片管理', body: '新增、編輯卡片；信用卡設好結帳日和繳費日，會提醒你每期要繳多少。' },
+  { page: '/settings', target: 'set-jobs', title: '工作管理', body: '先在這裡新增工作、時薪和班別（例如早班 7:00–15:00），班表才能排。' },
+  { page: '/settings', target: 'set-auto', title: '自動記帳', body: '綁定 LINE 就能用聊天記帳；下面還能設定 Apple Pay、LINE Pay 付款後自動記一筆。' },
+  { page: '/settings', target: 'set-calendar', title: '班表同步到手機', body: '把班表加進手機的行事曆，或放成桌面小工具，不用打開 App 也看得到下一班。' },
+  { page: '/dashboard', title: '準備好了', body: '先試著記第一筆吧！想再看一次這段介紹，到「設定 → 關於」。' },
 ]
 
 const PAD = 8 // 圈圈比目標大一點
@@ -45,6 +56,7 @@ function isDone(): boolean {
 
 export function OnboardingTour() {
   const pathname = usePathname()
+  const router = useRouter()
   const { transactions, isLoaded } = useTransactions()
   const { cards, isLoaded: cardsLoaded } = useCards()
   const [step, setStep] = useState<number | null>(null)
@@ -71,23 +83,44 @@ export function OnboardingTour() {
 
   const current = step === null ? null : STEPS[step]
 
-  // 量目標的位置；捲動、轉向、視窗大小改變都重新量
+  // 這一步不在目前的頁面就先換頁
+  const onPage = !!current && pathname === current.page
+  useEffect(() => {
+    if (current && !onPage) router.push(current.page)
+  }, [current, onPage, router])
+
+  // 量目標的位置：剛換頁時元素可能還沒畫出來，每 100ms 找一次、最多 3 秒（找不到就說明卡置中）；
+  // 找到後捲到畫面中間，捲動、轉向、視窗大小改變都重新量
+  // 找了 3 秒還是沒有目標的步驟（例如還沒建工作，所以沒有薪資區塊），說明卡就改放中間
+  const [missing, setMissing] = useState<number | null>(null)
   useLayoutEffect(() => {
-    if (step === null || !current?.target) return
-    const el = findTarget(current.target)
-    if (!el) return // 這頁找不到（例如被收起來），說明卡就放中間
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    const measure = () => setMeasured({ step, rect: el.getBoundingClientRect() })
-    measure()
-    const timer = setTimeout(measure, 350) // 等平滑捲動停下來再量一次
+    if (step === null || !current?.target || !onPage) return
+    const target = current.target
+    let el: HTMLElement | null = null
+    let tries = 0
+    const measure = () => { if (el) setMeasured({ step, rect: el.getBoundingClientRect() }) }
+    const poll = setInterval(() => {
+      el = findTarget(target)
+      tries += 1
+      if (el || tries >= 30) {
+        clearInterval(poll)
+        if (!el) {
+          setMissing(step)
+          return
+        }
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        measure()
+        setTimeout(measure, 400) // 等平滑捲動停下來再量一次
+      }
+    }, 100)
     window.addEventListener('resize', measure)
     window.addEventListener('scroll', measure, true)
     return () => {
-      clearTimeout(timer)
+      clearInterval(poll)
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
     }
-  }, [step, current])
+  }, [step, current, onPage])
 
   const next = useCallback(() => {
     if (step === null) return
@@ -110,7 +143,9 @@ export function OnboardingTour() {
   }, [step, next, prev, finish])
 
   if (step === null || !current) return null
-  const rect = current.target && measured?.step === step ? measured.rect : null
+  const rect = current.target && onPage && measured?.step === step ? measured.rect : null
+  // 換頁中、或還在找這頁的目標：先只留暗幕，等找到再出現圈圈和說明卡，不要先在中間閃一下
+  const waiting = !onPage || (!!current.target && !rect && missing !== step)
 
   const isLast = step === STEPS.length - 1
   // 說明卡放在目標下面，下面空間不夠就放上面；沒有目標就置中
@@ -147,7 +182,7 @@ export function OnboardingTour() {
       )}
 
       {/* 說明卡 */}
-      <div
+      {!waiting && <div
         key={step}
         className="absolute animate-pop rounded-2xl bg-background p-4 shadow-xl ring-1 ring-foreground/10"
         style={cardStyle}
@@ -176,7 +211,7 @@ export function OnboardingTour() {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
