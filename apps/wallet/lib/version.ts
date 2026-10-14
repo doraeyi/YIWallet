@@ -2,6 +2,14 @@
 // APP_VERSION 自動取第一筆，不用另外改；使用者會看到「新版本 vX 可用」並按更新。
 export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
+    version: 'v1.13',
+    changes: [
+      'Android 也能自動記帳：用 MacroDroid 讀 LINE Pay 付款通知',
+      '自動記帳只需要一個網址，iPhone 兩個捷徑貼同一個就好',
+      '安裝捷徑的步驟更簡單',
+    ],
+  },
+  {
     version: 'v1.12',
     changes: [
       'LINE Pay 付款完成通知可以自動記帳（iOS 27 捷徑），金額、商店自動抓',

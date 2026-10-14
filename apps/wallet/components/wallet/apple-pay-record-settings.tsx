@@ -68,7 +68,7 @@ export function ApplePayRecordSettings() {
       >
         <div className="flex items-center gap-2.5">
           <ZapIcon className="size-4 text-brand-text" />
-          <span className="text-sm font-medium">Apple Pay／LINE Pay 自動記帳</span>
+          <span className="text-sm font-medium">付款自動記帳（iPhone／Android）</span>
         </div>
         <div className="flex items-center gap-2">
           {token !== undefined && (
@@ -88,8 +88,8 @@ export function ApplePayRecordSettings() {
           {!token ? (
             <>
               <p className="text-xs text-muted-foreground">
-                開啟後會產生專屬網址，搭配 iPhone「捷徑」的自動化：用 Apple Pay 付款（iOS 17 以上），
-                或收到 LINE Pay 付款完成通知（iOS 27 以上）時，自動記一筆支出，不用手動輸入。
+                開啟後會產生專屬網址，搭配 iPhone「捷徑」的自動化（Apple Pay 付款、iOS 27 的 LINE Pay 付款通知），
+                或 Android 的 MacroDroid，付款後自動記一筆支出，不用手動輸入。
               </p>
               <button
                 onClick={handleEnable}
@@ -135,6 +135,10 @@ export function ApplePayRecordSettings() {
                     </ol>
                   }
                 />
+              </div>
+
+              <div className="border-t pt-4">
+                <AndroidSetup recordUrl={recordUrl} />
               </div>
 
               <div className="flex gap-2 border-t pt-4">
@@ -217,6 +221,60 @@ function ShortcutSetup({ title, shortcutName, copied, onCopy, onInstall, automat
           {manual}
         </div>
       </details>
+    </div>
+  )
+}
+
+// MacroDroid 的 HTTP 請求內容：[notification_title]、[notification] 是 MacroDroid 的魔術文字，
+// 執行時會換成通知的標題和內文（通知裡有換行也沒關係，記帳網址那邊會處理）
+const MACRODROID_BODY = '{"title":"[notification_title]","text":"[notification]"}'
+
+// Android 沒有 iPhone 捷徑，改用 MacroDroid 讀 LINE Pay 的付款通知、送到同一個記帳網址
+function AndroidSetup({ recordUrl }: { recordUrl: string }) {
+  const [copied, setCopied] = useState<'url' | 'body' | null>(null)
+
+  async function copy(kind: 'url' | 'body') {
+    await navigator.clipboard.writeText(kind === 'url' ? recordUrl : MACRODROID_BODY)
+    setCopied(kind)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className="text-sm font-semibold">③ Android（LINE Pay 付款通知）</p>
+      <ol className="flex flex-col gap-2 text-xs">
+        {[
+          <>Play 商店安裝免費的 <b>MacroDroid</b>，打開後照指示允許「通知存取」</>,
+          <>新增巨集 → 觸發條件選「<b>通知</b>」→「<b>通知已收到</b>」（Notification Received）→ App 選 <b>LINE</b>，文字包含「<b>付款完成</b>」</>,
+          <>
+            動作選「<b>連線</b>」→「<b>HTTP 請求</b>」（HTTP Request）：方法 <b>POST</b>、網址貼上記帳網址，
+            內容類型 <b>application/json</b>，內容貼上下面的範本
+          </>,
+          <>到手機「設定 → 應用程式 → MacroDroid → 電池」改成「<b>不受限制</b>」，不然會被省電關掉、收不到通知</>,
+        ].map((step, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">{i + 1}</span>
+            <p className="flex-1 leading-relaxed text-muted-foreground">{step}</p>
+          </li>
+        ))}
+      </ol>
+      <div className="grid grid-cols-2 gap-2">
+        {([['url', '複製記帳網址'], ['body', '複製內容範本']] as const).map(([kind, label]) => (
+          <button
+            key={kind}
+            onClick={() => copy(kind)}
+            className="flex items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium hover:bg-muted/50"
+          >
+            {copied === kind ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+            {copied === kind ? '已複製！' : label}
+          </button>
+        ))}
+      </div>
+      <code className="block overflow-x-auto rounded-lg bg-muted/50 px-2.5 py-2 text-[11px] whitespace-nowrap">{MACRODROID_BODY}</code>
+      <p className="text-xs text-muted-foreground">
+        金額和商店從通知裡自動抓，跟 iPhone 一樣依時段分類、第一次會在 LINE 問你扣哪張卡。
+        MacroDroid 各版本的選項名稱可能略有不同，找意思相近的就可以。
+      </p>
     </div>
   )
 }
