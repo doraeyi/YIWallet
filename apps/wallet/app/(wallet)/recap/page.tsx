@@ -6,9 +6,7 @@ import { ChevronLeftIcon, Share2Icon } from 'lucide-react'
 import * as api from '@/lib/api'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useCards } from '@/hooks/use-cards'
-import { useWorkRate } from '@/hooks/use-work-rate'
 import { formatCurrency, shiftHours } from '@/lib/finance-utils'
-import { formatWorkTime } from '@/lib/salary'
 import { getCategoryById, type Job, type Shift } from '@/lib/types'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -19,7 +17,6 @@ import { CategoryBadge } from '@/components/wallet/category-icon'
 export default function RecapPage() {
   const { transactions, isLoaded } = useTransactions()
   const { cards } = useCards()
-  const rate = useWorkRate()
   const [work, setWork] = useState<{ jobs: Job[]; shifts: Shift[] } | null>(null)
 
   useEffect(() => {
@@ -140,8 +137,7 @@ export default function RecapPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="總共花了" value={formatCurrency(recap.spent)} tone="text-rose-500"
-              sub={rate ? formatWorkTime(recap.spent, rate)?.replace('上班', '等於上班') : undefined} />
+            <Stat label="總共花了" value={formatCurrency(recap.spent)} tone="text-rose-500" />
             <Stat label="總共收入" value={formatCurrency(recap.earned)} tone="text-emerald-600" />
           </div>
 

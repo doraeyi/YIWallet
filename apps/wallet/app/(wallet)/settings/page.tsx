@@ -1,6 +1,5 @@
 'use client'
 
-import { invalidateWorkRate } from '@/hooks/use-work-rate'
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
 import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -402,7 +401,6 @@ export default function SettingsPage() {
         const created = await api.createJob(payload)
         setJobs(prev => [...prev, created])
       }
-      invalidateWorkRate()
       setFormOpen(false)
     } finally {
       setSubmitting(false)
@@ -412,7 +410,6 @@ export default function SettingsPage() {
   async function handleDeleteJob(id: string) {
     if (!(await confirmDialog('確定刪除此工作？班表紀錄也會一併刪除。', { confirmText: '刪除', danger: true }))) return
     await api.deleteJob(id)
-    invalidateWorkRate()
     setJobs(prev => prev.filter(j => j.id !== id))
   }
 

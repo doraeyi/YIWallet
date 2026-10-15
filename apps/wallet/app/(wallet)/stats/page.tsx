@@ -15,7 +15,6 @@ import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { useTotalScope } from '@/hooks/use-total-scope'
 import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
 import { CategoryBadge } from '@/components/wallet/category-icon'
-import { WorkTimeCard } from '@/components/wallet/work-time-card'
 import { RecurringExpenses } from '@/components/wallet/recurring-expenses'
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -171,13 +170,6 @@ function StatsContent() {
             </p>
           </div>
         </div>
-
-        {/* 這段期間的花費 = 上班多久 */}
-        <WorkTimeCard
-          expense={expense}
-          categories={expenseCats}
-          periodLabel={period === 'week' ? '這週' : period === 'year' ? '今年' : `${month} 月`}
-        />
 
         {/* 往現金流、年度回顧 */}
         {!cardIdParam && !filterParam && (

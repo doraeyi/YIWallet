@@ -4,7 +4,6 @@ export const VERSION_HISTORY: { version: string; changes: string[] }[] = [
   {
     version: 'v1.17',
     changes: [
-      '記帳時顯示這筆等於上班多久，統計頁也會把花費換算成工作時間',
       '新增「現金流」：發薪日、卡費、固定支出排在一起，看得出還能自由花多少',
       '自動找出每月固定扣款（訂閱、電信…），扣款前一天提醒',
       '首頁顯示本月預算進度，用到 80%、超過預算時 LINE 提醒',

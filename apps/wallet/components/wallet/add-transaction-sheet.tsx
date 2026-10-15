@@ -19,9 +19,7 @@ import { CategoryBadge, CategoryGlyph } from './category-icon'
 import { CategoryEditorDialog } from './category-editor-dialog'
 import { PaymentIcon } from './payment-icon'
 import { useSpeech } from '@/hooks/use-speech'
-import { useWorkRate } from '@/hooks/use-work-rate'
 import { SplitDialog } from './split-dialog'
-import { formatWorkTime } from '@/lib/salary'
 import * as api from '@/lib/api'
 
 // ── 上次用的分類（收入、支出各記一個），新增時預選 ─────────────────────────────
@@ -293,9 +291,6 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   }, [open, handleKey])
 
   const evaluated = evaluateAmount(amount)
-  // 「這筆等於上班多久」：有設工作薪資才顯示，只算支出（轉帳不算）
-  const workRate = useWorkRate()
-  const workTime = type === 'expense' && category !== 'transfer' && workRate ? formatWorkTime(evaluated, workRate) : null
   const hasExpression = /[+−×÷]/.test(amount)
   const displayAmount = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(evaluated)
   const isValid = evaluated > 0 && !!category
@@ -427,7 +422,6 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           <div className="flex min-w-0 flex-col">
             {hasExpression && <span className="truncate text-xs tabular-nums text-muted-foreground">{amount}</span>}
             <span key={displayAmount} className={cn('text-3xl font-bold tabular-nums animate-pop', accent)}>${displayAmount}</span>
-            {workTime && <span className="animate-fade text-[11px] text-muted-foreground">≈ {workTime}</span>}
           </div>
           {speech.supported && (
             <button
