@@ -21,6 +21,7 @@ import { useCountUp } from '@/hooks/use-count-up'
 import { useTotalScope, CASH_KEY } from '@/hooks/use-total-scope'
 import { TotalScopeDialog } from '@/components/wallet/total-scope-dialog'
 import { CreditOverview } from '@/components/wallet/credit-overview'
+import { BudgetBar } from '@/components/wallet/budget-bar'
 import { CategoryBadge } from '@/components/wallet/category-icon'
 import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
 import { EmptyState } from '@/components/wallet/empty-state'
@@ -143,7 +144,7 @@ function DonutChart({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction, deleteTransaction, highlightId } = useTransactions()
+  const { transactions, isLoaded, year, month, prevMonth, nextMonth, refetch, updateTransaction, deleteTransaction, highlightId, budget } = useTransactions()
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { cards, removeCard, defaultCard, setDefaultCard, updateCard } = useCards()
   const { filter: scopeFilter, excluded: scopeExcluded, setExcluded: setScopeExcluded } = useTotalScope(cards)
@@ -512,6 +513,9 @@ export default function DashboardPage() {
           <span className="text-2xl font-bold tabular-nums text-emerald-600">{formatCurrency(animatedIncome)}</span>
         </Link>
       </div>
+
+      {/* 本月預算進度（只在「全部」看這個月時） */}
+      {currentView.kind === 'all' && isThisMonth && <BudgetBar budget={budget} spent={expense} />}
 
       {/* ── Mobile: swipeable donut／卡片 ──────────────────── */}
       <div

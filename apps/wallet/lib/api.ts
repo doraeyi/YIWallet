@@ -941,6 +941,7 @@ interface ApiMeProfile {
   can_use_barcode: boolean
   auto_accept_shared_shifts: boolean
   dashboard_order: string | null
+  monthly_budget: number | null
 }
 
 export async function fetchMe(): Promise<MeProfile> {
@@ -956,7 +957,98 @@ export async function fetchMe(): Promise<MeProfile> {
     canUseBarcode: d.can_use_barcode,
     autoAcceptSharedShifts: d.auto_accept_shared_shifts,
     dashboardOrder: d.dashboard_order,
+    monthlyBudget: d.monthly_budget ?? null,
   }
+}
+
+/** 每月預算存在伺服器（LINE 預算提醒、Siri「還能花多少」都要用）；0 = 取消預算 */
+export async function updateMonthlyBudget(value: number): Promise<void> {
+  const res = await fetch(`${API}/users/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ monthly_budget: value }),
+  })
+  if (!res.ok) throw new Error('Failed to update budget')
+}
+
+// ── 固定支出（後端從交易偵測：每月差不多同一天、同樣金額扣一次的）────────────────
+
+export interface RecurringExpense {
+  key: string
+  name: string
+  amount: number
+  day: number
+  next_date: string
+  category: string | null
+  card_id: string | null
+  months: number
+}
+
+export async function fetchRecurring(): Promise<RecurringExpense[]> {
+  const res = await fetch(`${API}/insights/recurring`)
+  if (!res.ok) throw new Error('Failed to fetch recurring expenses')
+  return res.json()
+}
+
+/** 「這不是固定支出」：之後不再列出、也不提醒 */
+export async function hideRecurring(key: string): Promise<void> {
+  const res = await fetch(`${API}/insights/recurring/hide`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  })
+  if (!res.ok) throw new Error('Failed to hide recurring expense')
+}
+
+// ── 朋友分帳 ──────────────────────────────────────────────────────────
+
+export interface Split {
+  id: string
+  direction: 'owed_to_me' | 'i_owe'
+  friend: { id: string; name: string; picture: string | null }
+  transaction_id: string | null
+  description: string
+  amount: number
+  created_at: string | null
+  settled_at: string | null
+}
+
+export async function fetchSplits(): Promise<Split[]> {
+  const res = await fetch(`${API}/splits`)
+  if (!res.ok) throw new Error('Failed to fetch splits')
+  return res.json()
+}
+
+export async function createSplits(data: {
+  transactionId?: string
+  description: string
+  shares: { friendId: string; amount: number }[]
+}): Promise<Split[]> {
+  const res = await fetch(`${API}/splits`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      transaction_id: data.transactionId ? Number(data.transactionId) : null,
+      description: data.description,
+      shares: data.shares.map(s => ({ friend_id: Number(s.friendId), amount: s.amount })),
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(typeof err.detail === 'string' ? err.detail : '分帳失敗')
+  }
+  return res.json()
+}
+
+export async function settleSplit(id: string): Promise<Split> {
+  const res = await fetch(`${API}/splits/${id}/settle`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to settle split')
+  return res.json()
+}
+
+export async function deleteSplit(id: string): Promise<void> {
+  const res = await fetch(`${API}/splits/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete split')
 }
 
 // ── 銀行通知截圖（LINE 轉傳的簡訊/App 通知截圖，待確認記帳）──────────────

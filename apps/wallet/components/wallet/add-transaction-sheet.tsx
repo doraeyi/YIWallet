@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
-import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, MicIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, MicIcon, PlusIcon, Trash2Icon, UsersIcon, XIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
@@ -19,6 +19,9 @@ import { CategoryBadge, CategoryGlyph } from './category-icon'
 import { CategoryEditorDialog } from './category-editor-dialog'
 import { PaymentIcon } from './payment-icon'
 import { useSpeech } from '@/hooks/use-speech'
+import { useWorkRate } from '@/hooks/use-work-rate'
+import { SplitDialog } from './split-dialog'
+import { formatWorkTime } from '@/lib/salary'
 import * as api from '@/lib/api'
 
 // ── 上次用的分類（收入、支出各記一個），新增時預選 ─────────────────────────────
@@ -119,6 +122,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   const [saving, setSaving] = useState(false)
   // 存好之後 OK 鍵先畫一個打勾，停一下才關面板——這是整個 App 最常做的動作，給它一個確實的完成感
   const [justSaved, setJustSaved] = useState(false)
+  const [splitOpen, setSplitOpen] = useState(false)
 
   // 語音記帳：說「午餐一百二 LINE Pay」，聽完把欄位填好讓使用者確認再按 OK。
   // 跟 Siri 同一套規則：聽不出分類就不選（請使用者選），沒說付款方式就不預選卡片
@@ -289,6 +293,9 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   }, [open, handleKey])
 
   const evaluated = evaluateAmount(amount)
+  // 「這筆等於上班多久」：有設工作薪資才顯示，只算支出（轉帳不算）
+  const workRate = useWorkRate()
+  const workTime = type === 'expense' && category !== 'transfer' && workRate ? formatWorkTime(evaluated, workRate) : null
   const hasExpression = /[+−×÷]/.test(amount)
   const displayAmount = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(evaluated)
   const isValid = evaluated > 0 && !!category
@@ -420,6 +427,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           <div className="flex min-w-0 flex-col">
             {hasExpression && <span className="truncate text-xs tabular-nums text-muted-foreground">{amount}</span>}
             <span key={displayAmount} className={cn('text-3xl font-bold tabular-nums animate-pop', accent)}>${displayAmount}</span>
+            {workTime && <span className="animate-fade text-[11px] text-muted-foreground">≈ {workTime}</span>}
           </div>
           {speech.supported && (
             <button
@@ -462,6 +470,14 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
                 onChange={e => setNote(e.target.value)}
                 className="w-32 shrink-0 rounded-full bg-muted px-3 py-1 text-xs outline-none placeholder:text-muted-foreground"
               />
+            )}
+            {initialData?.type === 'expense' && (
+              <button
+                onClick={() => setSplitOpen(true)}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand-soft-foreground"
+              >
+                <UsersIcon className="size-3.5" />跟好友分帳
+              </button>
             )}
             {initialData && (
               <input
@@ -585,14 +601,27 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
 
   const title = initialData ? '編輯紀錄' : '新增紀錄'
 
-  const editorDialog = editor && (
-    <CategoryEditorDialog
-      open
-      onOpenChange={o => { if (!o) setEditor(null) }}
-      type={type}
-      editing={editor.editing}
-      onSaved={c => { if (!editor.editing) setCategory(c.id) }}
-    />
+  const editorDialog = (
+    <>
+      {editor && (
+        <CategoryEditorDialog
+          open
+          onOpenChange={o => { if (!o) setEditor(null) }}
+          type={type}
+          editing={editor.editing}
+          onSaved={c => { if (!editor.editing) setCategory(c.id) }}
+        />
+      )}
+      {initialData && (
+        <SplitDialog
+          open={splitOpen}
+          onOpenChange={setSplitOpen}
+          transactionId={initialData.id}
+          description={initialData.description || initialData.note || getCategoryById(initialData.category)?.name || '一筆支出'}
+          total={initialData.amount}
+        />
+      )}
+    </>
   )
 
   if (isDesktop) {

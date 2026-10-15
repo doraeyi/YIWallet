@@ -2,7 +2,7 @@
 
 import { useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { XIcon } from 'lucide-react'
+import { CalendarClockIcon, BookOpenIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -15,6 +15,8 @@ import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { useTotalScope } from '@/hooks/use-total-scope'
 import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
 import { CategoryBadge } from '@/components/wallet/category-icon'
+import { WorkTimeCard } from '@/components/wallet/work-time-card'
+import { RecurringExpenses } from '@/components/wallet/recurring-expenses'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week',  label: '週' },
@@ -170,6 +172,33 @@ function StatsContent() {
           </div>
         </div>
 
+        {/* 這段期間的花費 = 上班多久 */}
+        <WorkTimeCard
+          expense={expense}
+          categories={expenseCats}
+          periodLabel={period === 'week' ? '這週' : period === 'year' ? '今年' : `${month} 月`}
+        />
+
+        {/* 往現金流、年度回顧 */}
+        {!cardIdParam && !filterParam && (
+          <div className="grid grid-cols-2 gap-3">
+            <Link href="/cashflow" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground"><CalendarClockIcon className="size-4" /></span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">現金流</span>
+                <span className="block truncate text-xs text-muted-foreground">發薪、卡費排一起看</span>
+              </span>
+            </Link>
+            <Link href="/recap" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground"><BookOpenIcon className="size-4" /></span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">年度回顧</span>
+                <span className="block truncate text-xs text-muted-foreground">這一年花在哪裡</span>
+              </span>
+            </Link>
+          </div>
+        )}
+
         {/* Cards overview */}
         {cardStats.length > 0 && (
           <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
@@ -256,6 +285,8 @@ function StatsContent() {
             label="總收入"
           />
         </div>
+
+        {!cardIdParam && !filterParam && <RecurringExpenses />}
 
         {/* Transaction list for this period */}
         <div className="flex flex-col gap-2">

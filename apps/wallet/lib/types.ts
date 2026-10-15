@@ -214,5 +214,6 @@ export interface MeProfile {
   canUseBarcode: boolean
   autoAcceptSharedShifts: boolean
   dashboardOrder: string | null
+  monthlyBudget: number | null
 }
 

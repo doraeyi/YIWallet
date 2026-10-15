@@ -5,7 +5,9 @@ import { setCustomCategories, type Transaction } from '@/lib/types'
 import * as api from '@/lib/api'
 import { useRefreshOnResume } from '@/hooks/use-refresh-on-resume'
 
-const BUDGET_KEY = 'yiwallet_budget'
+// 以前預算只存在這台手機的 localStorage；現在存伺服器（LINE 預算提醒、Siri 才用得到），
+// 第一次載入時如果伺服器還沒有、手機裡有，就搬上去
+const LEGACY_BUDGET_KEY = 'yiwallet_budget'
 
 interface TransactionsContextValue {
   transactions: Transaction[]
@@ -49,8 +51,17 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    const b = localStorage.getItem(BUDGET_KEY)
-    setBudgetState(b ? Number(b) : 0)
+    api.fetchMe().then(me => {
+      let legacy = 0
+      try { legacy = Number(localStorage.getItem(LEGACY_BUDGET_KEY)) || 0 } catch {}
+      if (me.monthlyBudget) {
+        setBudgetState(me.monthlyBudget)
+      } else if (legacy > 0) {
+        setBudgetState(legacy)
+        api.updateMonthlyBudget(legacy).catch(() => {})
+      }
+      try { localStorage.removeItem(LEGACY_BUDGET_KEY) } catch {}
+    }).catch(() => {})
   }, [])
 
   const refetch = useCallback(async () => {
@@ -110,7 +121,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
   const setBudget = useCallback((value: number) => {
     setBudgetState(value)
-    localStorage.setItem(BUDGET_KEY, String(value))
+    api.updateMonthlyBudget(value).catch(() => {})
   }, [])
 
   return (

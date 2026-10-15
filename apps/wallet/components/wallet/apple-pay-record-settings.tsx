@@ -177,6 +177,10 @@ export function ApplePayRecordSettings() {
                 <div className="border-t pt-4">
                   <SiriSetup voiceUrl={`${recordUrl}/voice`} />
                 </div>
+
+                <div className="border-t pt-4">
+                  <SummarySetup summaryUrl={`${recordUrl}/summary`} />
+                </div>
                 </>
               ) : (
                 <AndroidSetup recordUrl={recordUrl} />
@@ -395,6 +399,59 @@ function SiriSetup({ voiceUrl }: { voiceUrl: string }) {
             </ul>
           </li>
         </ol>
+      </details>
+    </div>
+  )
+}
+
+// 問 Siri「我這個月花多少」、桌面小工具顯示今天／本月花多少：都是 GET 記帳網址的 /summary，
+// 伺服器回一段純文字（見後端 insights.py），捷徑只要「取得 URL 內容 → 說出／顯示」兩個動作。
+function SummarySetup({ summaryUrl }: { summaryUrl: string }) {
+  const [copied, setCopied] = useState<'speech' | 'widget' | null>(null)
+  const widgetUrl = `${summaryUrl}?style=widget`
+
+  async function copy(kind: 'speech' | 'widget') {
+    await navigator.clipboard.writeText(kind === 'widget' ? widgetUrl : summaryUrl)
+    setCopied(kind)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className="text-sm font-semibold">④ 問 Siri 花多少、桌面小工具</p>
+      <p className="text-xs text-muted-foreground">
+        裝了上面的「我要記帳」就可以直接問：說「嘿 Siri，我要記帳」→「<b>這個月花多少</b>」或「<b>還能花多少</b>」，Siri 會念本月花費、花最多的分類、預算還剩多少。
+      </p>
+      <details className="group text-xs text-muted-foreground">
+        <summary className="cursor-pointer list-none font-medium text-brand-text">
+          想要一句話就問、或放在主畫面 <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        </summary>
+        <div className="mt-2 flex flex-col gap-3 rounded-xl bg-muted/40 p-3">
+          <div className="flex flex-col gap-1.5">
+            <p className="font-medium text-foreground">「嘿 Siri，我花多少」</p>
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>捷徑 App → ＋ 新捷徑，名稱取「<b>我花多少</b>」</li>
+              <li>加入「<b>取得 URL 內容</b>」，網址貼上下面複製的網址（方法維持 GET）</li>
+              <li>加入「<b>說出文字</b>」，內容選「URL 的內容」</li>
+            </ol>
+            <button onClick={() => copy('speech')} className="flex items-center justify-center gap-1.5 rounded-lg border bg-background py-2 font-medium hover:bg-muted/50">
+              {copied === 'speech' ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+              {copied === 'speech' ? '已複製！' : '複製查詢網址'}
+            </button>
+          </div>
+          <div className="flex flex-col gap-1.5 border-t pt-3">
+            <p className="font-medium text-foreground">主畫面小工具：一眼看今天、本月、預算剩多少</p>
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>新捷徑「<b>今天花多少</b>」：「取得 URL 內容」貼下面的網址 →「<b>顯示通知</b>」內容選「URL 的內容」</li>
+              <li>長按主畫面 → 編輯 → 加入小工具 →「<b>捷徑</b>」→ 選這個捷徑</li>
+              <li>點一下小工具，就會跳出「今天 $185｜本月 $12,340｜剩 $2,660」</li>
+            </ol>
+            <button onClick={() => copy('widget')} className="flex items-center justify-center gap-1.5 rounded-lg border bg-background py-2 font-medium hover:bg-muted/50">
+              {copied === 'widget' ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+              {copied === 'widget' ? '已複製！' : '複製小工具網址'}
+            </button>
+          </div>
+        </div>
       </details>
     </div>
   )

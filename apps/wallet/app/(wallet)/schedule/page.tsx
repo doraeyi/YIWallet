@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { UserPlusIcon, LockIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, CheckIcon, FlagIcon, StickyNoteIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCurrency, jobRate, shiftTypeLabel, shiftHours } from '@/lib/finance-utils'
+import { estimateJobPay } from '@/lib/salary'
 import * as api from '@/lib/api'
 import type { Job, Shift, ShiftPreset, Friendship, JobShare, FriendShift } from '@/lib/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -962,29 +963,17 @@ export default function SchedulePage() {
                 // 薪資一律只顯示目前切換器選中的那個工作，不受「全部」合併顯示影響——每份工作的薪資本來就該分開算
                 const job = activeJob
                 if (!job) return null
-                const monthPrefix = `${year}-${String(month).padStart(2, '0')}`
-                const jobShifts = shifts.filter(s => s.job_id === job.id && s.date.startsWith(monthPrefix))
-                const holidayShiftCount = jobShifts.filter(s => holidays.has(s.date.slice(0, 10))).length
                 const rate = jobRate(job)
-                // 國定假日出勤雙倍工資（勞基法）：時薪制當天薪資直接乘 2，月薪制則是全薪之外
-                // 再加發一天日薪（月薪 ÷ 30）作為假日出勤獎金
-                // 時薪制照每班實際時數算（以前固定當 8 小時，4 小時的短班也算成 8 小時）
-                const normalHours = jobShifts.filter(s => !holidays.has(s.date.slice(0, 10)))
-                  .reduce((sum, s) => sum + shiftHours(s.start_time, s.end_time), 0)
-                const holidayHours = jobShifts.filter(s => holidays.has(s.date.slice(0, 10)))
-                  .reduce((sum, s) => sum + shiftHours(s.start_time, s.end_time), 0)
-                const gross = job.pay_type === 'hourly'
-                  ? rate * normalHours + rate * 2 * holidayHours
-                  : rate + holidayShiftCount * (rate / 30)
-                const deduction = job.labor_insurance_fee + job.health_insurance_fee + job.welfare_fee
-                const net = gross - deduction
+                // 怎麼算見 lib/salary.ts（現金流的發薪預估也用同一套）
+                const { shiftCount, normalHours, holidayHours, holidayShiftCount, gross, deduction, net } =
+                  estimateJobPay(job, shifts, year, month, holidays)
                 return (
                   <div key={job.id} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                       <span className="text-xs text-muted-foreground">
                         {job.pay_type === 'hourly'
-                          ? `${jobShifts.length} 班 · ${+(normalHours + holidayHours).toFixed(1)} 小時`
-                          : `${jobShifts.length} 班`}
+                          ? `${shiftCount} 班 · ${+(normalHours + holidayHours).toFixed(1)} 小時`
+                          : `${shiftCount} 班`}
                         {holidayShiftCount > 0 && `・${holidayShiftCount} 天假日加成`}
                       </span>
                       <button

@@ -1,5 +1,6 @@
 'use client'
 
+import { invalidateWorkRate } from '@/hooks/use-work-rate'
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
 import { CheckIcon, PlusIcon, PencilIcon, Trash2Icon, XIcon, LogOutIcon, BotIcon, CopyIcon, ChevronDownIcon, ShieldCheckIcon, GripVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -84,6 +85,12 @@ export default function SettingsPage() {
   const { budget, setBudget, isLoaded: txLoaded, transactions } = useTransactions()
   const [input, setInput] = useState(budget > 0 ? String(budget) : '')
   const [saved, setSaved] = useState(false)
+  // 預算是從伺服器非同步載入的，載到時輸入框還空著就填進去
+  const [budgetSynced, setBudgetSynced] = useState(budget > 0)
+  if (!budgetSynced && budget > 0) {
+    setBudgetSynced(true)
+    if (!input) setInput(String(budget))
+  }
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [jobsLoaded, setJobsLoaded] = useState(false)
@@ -395,6 +402,7 @@ export default function SettingsPage() {
         const created = await api.createJob(payload)
         setJobs(prev => [...prev, created])
       }
+      invalidateWorkRate()
       setFormOpen(false)
     } finally {
       setSubmitting(false)
@@ -404,6 +412,7 @@ export default function SettingsPage() {
   async function handleDeleteJob(id: string) {
     if (!(await confirmDialog('確定刪除此工作？班表紀錄也會一併刪除。', { confirmText: '刪除', danger: true }))) return
     await api.deleteJob(id)
+    invalidateWorkRate()
     setJobs(prev => prev.filter(j => j.id !== id))
   }
 
@@ -639,7 +648,7 @@ export default function SettingsPage() {
             <div className="border-t px-4 py-4">
               <label className="mb-1 block text-sm font-medium">每月預算</label>
               <p className="mb-3 text-xs text-muted-foreground">
-                {budget > 0 ? `目前：${formatCurrency(budget)}` : '尚未設定每月預算'}
+                {budget > 0 ? `目前：${formatCurrency(budget)}` : '尚未設定每月預算'}・用到 80%、超過預算時會用 LINE 提醒你
               </p>
               <div className="flex gap-2">
                 <div className="relative flex-1">

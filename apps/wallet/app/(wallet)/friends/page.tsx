@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import * as api from '@/lib/api'
 import type { Friendship, Job, JobShare, FriendUser } from '@/lib/types'
 import { FriendJobsDialog } from '@/components/wallet/friend-jobs-dialog'
+import { SplitsPanel } from '@/components/wallet/splits-panel'
 
 // 好友清單上的 email 只露前幾個字，例如 lj98****@gmail.com
 function maskEmail(email: string) {
@@ -143,6 +144,8 @@ export default function FriendsPage() {
         {error && (
           <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-900/20">{error}</p>
         )}
+
+        <SplitsPanel />
 
         {/* 好友列表 */}
         {loading ? (
