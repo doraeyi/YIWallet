@@ -109,7 +109,7 @@ export default function FriendsPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-lg lg:pt-8">
+      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-3xl lg:pt-8">
         <h1 className="text-xl font-bold">好友</h1>
       </div>
 
@@ -121,7 +121,7 @@ export default function FriendsPage() {
         onChanged={loadJobsAndShares}
       />
 
-      <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:max-w-lg lg:px-6">
+      <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1">
         {/* 加好友 */}
         <div className="flex gap-2">
           <Input

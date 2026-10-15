@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, XIcon, ImageIcon, CheckIcon, RefreshCwIcon } from 'lucide-react'
+import { ChevronLeftIcon, XIcon, ImageIcon, CheckIcon, RefreshCwIcon, InboxIcon } from 'lucide-react'
+import { EmptyState } from '@/components/wallet/empty-state'
 import { cn } from '@/lib/utils'
 import { formatCurrency } from '@/lib/finance-utils'
 import { useCards } from '@/hooks/use-cards'
@@ -71,13 +72,15 @@ function BankScreenshotCard({
           {dismissing ? '處理中…' : '略過'}
         </button>
       </div>
+      {/* 電腦版：左邊截圖、右邊表單，邊看邊填不用上下捲 */}
+      <div className="lg:grid lg:grid-cols-2">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={api.bankScreenshotImageUrl(item.id)}
         alt="銀行通知截圖"
-        className="max-h-96 w-full object-contain bg-muted/20"
+        className="max-h-96 w-full bg-muted/20 object-contain lg:h-full lg:max-h-[480px] lg:border-r"
       />
-      <div className="flex flex-col gap-2.5 p-4">
+      <div className="flex flex-col gap-2.5 p-4 lg:justify-center lg:gap-3 lg:p-6">
         {recognized ? (
           <p className="text-xs text-emerald-600">
             ✓ 已自動辨識{item.matchedCardName ? `，卡片對到「${item.matchedCardName}」` : item.parsedLastFour ? `（卡末四碼 ${item.parsedLastFour} 沒有對到已登記的卡片）` : ''}
@@ -136,6 +139,7 @@ function BankScreenshotCard({
           <CheckIcon className="size-4" />
           {importing ? '匯入中…' : `匯入${canImport ? `　-${formatCurrency(amountValue)}` : ''}`}
         </button>
+      </div>
       </div>
     </div>
   )
@@ -214,14 +218,14 @@ export default function BankNotifyPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-lg lg:pt-8">
+      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-4xl lg:pt-8">
         <Link href="/dashboard" className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeftIcon className="size-5" />
         </Link>
         <h1 className="text-xl font-bold">待確認記帳</h1>
       </div>
 
-      <div className="px-4 lg:mx-auto lg:w-full lg:max-w-lg lg:px-6">
+      <div className="px-4 lg:mx-auto lg:w-full lg:max-w-4xl lg:px-1">
         <div className="flex gap-1.5">
           {([
             { key: 'bank' as const, label: '消費紀錄', count: bankItems.length },
@@ -250,7 +254,7 @@ export default function BankNotifyPage() {
       </div>
 
       {tab === 'bank' ? (
-        <div className="flex flex-col gap-3 px-4 py-4 pb-6 lg:mx-auto lg:w-full lg:max-w-lg lg:px-6">
+        <div className="flex flex-col gap-3 px-4 py-4 pb-6 lg:mx-auto lg:w-full lg:max-w-4xl lg:px-1">
           <p className="text-xs text-muted-foreground">
             從 LINE 傳截圖給 Bot 後會先出現在這裡，收到時後端就會自動辨識金額/卡片/商店名稱；辨識不出來的話手動填一下再匯入即可。
           </p>
@@ -258,9 +262,7 @@ export default function BankNotifyPage() {
           {bankLoading ? (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">載入中…</div>
           ) : bankItems.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
-              目前沒有待確認的銀行通知
-            </div>
+            <EmptyState icon={InboxIcon} title="目前沒有待確認的消費紀錄" hint="在 LINE 把付款截圖傳給易記帳 Bot，就會出現在這裡" />
           ) : (
             bankItems.map(item => (
               <BankScreenshotCard
@@ -278,7 +280,7 @@ export default function BankNotifyPage() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-3 px-4 py-4 pb-6 lg:mx-auto lg:w-full lg:max-w-lg lg:px-6">
+        <div className="flex flex-col gap-3 px-4 py-4 pb-6 lg:mx-auto lg:w-full lg:max-w-4xl lg:px-1">
           <p className="text-xs text-muted-foreground">
             從 LINE 傳班表照片給 Bot 後會先出現在這裡，點下去可以辨識、校正表格，確認沒問題就能匯入。
           </p>
@@ -286,12 +288,10 @@ export default function BankNotifyPage() {
           {rosterLoading ? (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">載入中…</div>
           ) : rosterItems.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
-              目前沒有待確認的班表照片
-            </div>
+            <EmptyState icon={ImageIcon} title="目前沒有待確認的班表照片" hint="在 LINE 把班表照片傳給易記帳 Bot，就會出現在這裡" />
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 lg:grid-cols-5">
                 {rosterItems.map(item => (
                   <Link
                     key={item.id}

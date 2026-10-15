@@ -83,7 +83,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 次要文字：比 shadcn 預設（0.556）再深一點，淺灰底上的小字才讀得清楚 */
+  --muted-foreground: oklch(0.5 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);

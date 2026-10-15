@@ -102,7 +102,7 @@ export function CreditOverview({ cards, transactions }: { cards: Card[]; transac
   if (overviews.length === 0) return null
 
   return (
-    <div className="px-4 pb-4 lg:px-6">
+    <div className="px-4 pb-4 lg:px-0 lg:pb-6">
       <div className="mb-3 flex items-center justify-between">
         <span className="font-semibold">信用卡</span>
         <Link href="/statements" className="text-xs font-medium text-brand-text hover:underline">帳單明細</Link>

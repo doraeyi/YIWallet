@@ -16,6 +16,7 @@ import { useTotalScope } from '@/hooks/use-total-scope'
 import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
 import { CategoryBadge } from '@/components/wallet/category-icon'
 import { RecurringExpenses } from '@/components/wallet/recurring-expenses'
+import { OtherCategoryBanner } from '@/components/wallet/other-category-cleanup'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week',  label: '週' },
@@ -63,6 +64,8 @@ function StatsContent() {
   const chartData   = useMemo(() => buildChartData(cardFiltered, period, referenceDate), [cardFiltered, period, referenceDate])
   // 點「總收入」或「總支出」只看那一種的明細，再點一次恢復全部
   const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | null>(null)
+  // 趨勢圖預設只看支出：一筆薪水的長條會把每天的小額支出壓到幾乎看不見
+  const [trendType, setTrendType] = useState<'expense' | 'income' | 'both'>('expense')
   const listed      = useMemo(() => (typeFilter ? filtered.filter(t => t.type === typeFilter) : filtered), [filtered, typeFilter])
   const groups      = useMemo(() => groupByDate(listed), [listed])
   const toggleType  = (t: 'income' | 'expense') => setTypeFilter(prev => (prev === t ? null : t))
@@ -105,7 +108,7 @@ function StatsContent() {
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:px-1 lg:pt-8">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold">收支分析</h1>
           {(cardIdParam || filterParam) && (
@@ -143,7 +146,7 @@ function StatsContent() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 px-4 lg:px-6">
+      <div className="flex flex-col gap-4 px-4 lg:px-1">
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3">
           {([
@@ -221,7 +224,7 @@ function StatsContent() {
                           style={{ width: `${expenseRatio * 100}%`, backgroundColor: row.color }}
                         />
                       </div>
-                      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                      <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
                         <span>支出 {formatCurrency(row.expense)}</span>
                         <span>收入 {formatCurrency(row.income)}</span>
                       </div>
@@ -235,8 +238,26 @@ function StatsContent() {
 
         {/* Bar chart — full width */}
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
-          <p className="mb-4 text-sm font-semibold">收支趨勢</p>
-          <ResponsiveContainer width="100%" height={200}>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">收支趨勢</p>
+            <div role="tablist" className="flex rounded-full bg-muted p-0.5 text-xs font-medium">
+              {([['expense', '支出'], ['income', '收入'], ['both', '一起看']] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  role="tab"
+                  aria-selected={trendType === v}
+                  onClick={() => setTrendType(v)}
+                  className={cn(
+                    'rounded-full px-3 py-1 transition-colors',
+                    trendType === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} barGap={4} barCategoryGap="35%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.4} />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -251,12 +272,14 @@ function StatsContent() {
                 ]}
                 contentStyle={{ borderRadius: 10, fontSize: 12 }}
               />
-              <Legend formatter={v => v === 'income' ? '收入' : '支出'} iconType="circle" iconSize={8} />
-              <Bar dataKey="income"  fill="#10B981" radius={[4,4,0,0]} />
-              <Bar dataKey="expense" fill="#EF4444" radius={[4,4,0,0]} />
+              {trendType === 'both' && <Legend formatter={v => v === 'income' ? '收入' : '支出'} iconType="circle" iconSize={8} />}
+              {trendType !== 'expense' && <Bar dataKey="income" fill="#10B981" radius={[4,4,0,0]} />}
+              {trendType !== 'income' && <Bar dataKey="expense" fill="#F43F5E" radius={[4,4,0,0]} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
+
+        {!cardIdParam && !filterParam && <OtherCategoryBanner />}
 
         {/* Pie charts — side by side on desktop */}
         <div className="grid gap-4 lg:grid-cols-2">
@@ -309,7 +332,7 @@ function StatsContent() {
                     <span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                     <div className="flex gap-2 text-xs">
                       {dayIncome  > 0 && <span className="text-emerald-600">+{formatCurrency(dayIncome)}</span>}
-                      {dayExpense > 0 && <span className="text-rose-500">-{formatCurrency(dayExpense)}</span>}
+                      {dayExpense > 0 && <span className="text-muted-foreground">-{formatCurrency(dayExpense)}</span>}
                     </div>
                   </div>
                   {items.map((tx, idx) => {
@@ -322,7 +345,7 @@ function StatsContent() {
                           <p className="truncate text-sm font-medium">{title}</p>
                           {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
                         </div>
-                        <p className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
+                        <p className={cn('shrink-0 text-sm font-semibold tabular-nums', tx.type === 'income' ? 'text-emerald-600' : 'text-foreground')}>
                           {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                         </p>
                       </div>
@@ -383,7 +406,7 @@ function CategorySection({
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-[9px] text-muted-foreground">{label}</p>
+            <p className="text-[10px] text-muted-foreground">{label}</p>
             <p className="text-xs font-bold leading-tight" style={{ color: totalColor }}>
               {formatCurrency(total)}
             </p>

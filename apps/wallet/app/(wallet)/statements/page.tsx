@@ -82,7 +82,7 @@ export default function StatementsPage() {
   const allSelected = items.filter(i => !i.duplicate).every(i => i.selected)
 
   return (
-    <div className="flex flex-col gap-6 p-4 lg:mx-auto lg:max-w-2xl lg:p-6">
+    <div className="flex flex-col gap-6 p-4 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1 lg:py-8">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">載具發票匯入</h1>

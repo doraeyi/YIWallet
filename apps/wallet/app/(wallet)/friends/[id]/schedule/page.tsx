@@ -119,7 +119,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:pt-8">
+      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:px-1 lg:pt-8">
         <Link href="/friends" className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeftIcon className="size-5" />
         </Link>
@@ -155,7 +155,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
           </p>
         </div>
       ) : (
-        <div className="px-4 lg:px-6">
+        <div className="px-4 lg:px-1">
           <div className="mb-3 flex justify-center">
             <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
           </div>

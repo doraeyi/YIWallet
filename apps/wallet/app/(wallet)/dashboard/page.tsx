@@ -26,6 +26,8 @@ import { CategoryBadge } from '@/components/wallet/category-icon'
 import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
 import { EmptyState } from '@/components/wallet/empty-state'
 
+const RECENT_LIMIT = 8
+
 type ViewItem =
   | { kind: 'all' }
   | { kind: 'cash' }
@@ -280,7 +282,18 @@ export default function DashboardPage() {
     ? currentView.card.type === 'credit' ? creditPeriodSpend
     : currentView.card.balance ?? balance
     : balance
-  const recentGroups = groupByDate(filtered)
+  // 首頁只看最近幾筆，要看整個月按「查看全部」；被截掉一半的那天，當天合計還是算整天的
+  const recentGroups = (() => {
+    let left = RECENT_LIMIT
+    const groups: { date: string; items: Transaction[]; shown: Transaction[] }[] = []
+    for (const g of groupByDate(filtered)) {
+      if (left <= 0) break
+      groups.push({ ...g, shown: g.items.slice(0, left) })
+      left -= g.items.length
+    }
+    return groups
+  })()
+  const hiddenCount = filtered.length - recentGroups.reduce((n, g) => n + g.shown.length, 0)
   // 「查看全部」帶上目前看的卡片／現金和月份，收支明細打開就是同一個範圍
   const transactionsHref = `/transactions?m=${month}${
     currentView.kind === 'card' ? `&pay=${currentView.card.id}` : currentView.kind === 'cash' ? '&pay=cash' : ''
@@ -427,9 +440,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-x-6 lg:pt-8">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:col-span-2 lg:px-1 lg:pt-0 lg:pb-5">
         <div className="flex flex-col">
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             {createElement(GreetingIcon, { className: 'size-3.5', 'aria-hidden': true })}
@@ -437,20 +450,21 @@ export default function DashboardPage() {
           </span>
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
-        <div className="flex items-center gap-3 text-muted-foreground">
+        <div className="flex items-center gap-3 text-muted-foreground lg:gap-2 lg:[&>a]:flex lg:[&>a]:size-10 lg:[&>a]:items-center lg:[&>a]:justify-center lg:[&>a]:rounded-full lg:[&>a]:bg-white lg:[&>a]:shadow-sm lg:[&>a]:transition-colors lg:[&>a:hover]:bg-muted dark:lg:[&>a]:bg-card">
           <Link href="/bank-notify" aria-label={pendingNotifyCount > 0 ? `待處理通知 ${pendingNotifyCount} 則` : '通知'} className="relative hover:text-foreground">
             <BellIcon className="size-5" />
             {pendingNotifyCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-4 text-white">
+              <span className="absolute -right-1.5 -top-1.5 lg:right-0 lg:top-0 flex min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-4 text-white">
                 {pendingNotifyCount > 99 ? '99+' : pendingNotifyCount}
               </span>
             )}
           </Link>
-          <Link href="/statements" aria-label="信用卡帳單" className="hover:text-foreground">
+          {/* 對帳、條碼在電腦版左邊選單已經有了，右上角只留手機版用 */}
+          <Link href="/statements" aria-label="信用卡帳單" className="hover:text-foreground lg:!hidden">
             <ReceiptTextIcon className="size-5" />
           </Link>
           {canUseBarcode && (
-            <a href={`${process.env.NEXT_PUBLIC_SOP_APP_URL}/barcode`} aria-label="條碼查詢" className="hover:text-foreground">
+            <a href={`${process.env.NEXT_PUBLIC_SOP_APP_URL}/barcode`} aria-label="條碼查詢" className="hover:text-foreground lg:!hidden">
               <BarcodeIcon className="size-5" />
             </a>
           )}
@@ -462,8 +476,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── 桌機左欄：帳戶總覽（切換帳戶、收支、圓環／卡片），捲動時固定在畫面上 ── */}
+      <section data-tour="dash-overview" className="flex flex-col lg:sticky lg:top-6 lg:rounded-3xl lg:bg-white lg:pt-5 lg:pb-3 lg:shadow-sm lg:dark:bg-card">
       {/* ── Desktop: tab selector ──────────────────────────── */}
-      <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto px-6 pb-4 scrollbar-none">
+      <div className="hidden lg:flex flex-wrap items-center gap-1.5 px-5 pb-5">
         {viewItems.map((item, i) => (
           <button
             key={i}
@@ -471,7 +487,7 @@ export default function DashboardPage() {
             className={cn(
               'flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors shrink-0',
               i === safeIndex
-                ? 'text-white shadow-sm'
+                ? cn('shadow-sm', item.kind === 'all' ? 'text-brand-foreground' : 'text-white')
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}
             style={i === safeIndex ? { backgroundColor: viewColor(item) } : undefined}
@@ -638,7 +654,7 @@ export default function DashboardPage() {
               defaultCard?.id === currentView.card.id ? null : currentView.card.id
             )}
             className={cn(
-              'flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] transition-colors',
+              'flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] transition-colors',
               defaultCard?.id === currentView.card.id
                 ? 'bg-brand-soft text-brand-text'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
@@ -798,11 +814,15 @@ export default function DashboardPage() {
         </div>
       )}
 
+      </section>
+
+      {/* ── 桌機右欄：信用卡、最近紀錄 ─────────────────────── */}
+      <section className="flex min-w-0 flex-col">
       {/* ── Recent records ─────────────────────────────────── */}
       {/* 全部：信用卡依銀行合併的本期消費、待繳金額 */}
       {currentView.kind === 'all' && <CreditOverview cards={cards} transactions={transactions} />}
 
-      <div className="px-4 lg:px-6">
+      <div className="px-4 lg:px-0">
         <div data-tour="dash-recent" className="mb-3 flex items-center justify-between">
           <span className="font-semibold">最近紀錄</span>
           <Link href={transactionsHref} className="text-xs font-medium text-brand-text hover:underline">
@@ -813,22 +833,22 @@ export default function DashboardPage() {
         {recentGroups.length === 0 ? (
           <EmptyState icon={NotebookPenIcon} title="這個月還沒有紀錄" hint="按下面的 ＋ 記下第一筆" />
         ) : (
-          <div key={`${safeIndex}-${year}-${month}`} className="stagger overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:grid lg:grid-cols-2 lg:items-start">
-            {recentGroups.map(({ date, items }, groupIdx) => {
+          <div key={`${safeIndex}-${year}-${month}`} className="stagger overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+            {recentGroups.map(({ date, items, shown }, groupIdx) => {
               const dateLabel = formatDate(date)
               const dayExpense = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
               const dayIncome = items.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
               const dayNet = dayIncome - dayExpense
 
               return (
-                <div key={date} className={cn(groupIdx > 0 && 'border-t lg:border-t-0')}>
+                <div key={date} className={cn(groupIdx > 0 && 'border-t')}>
                   <div className="flex items-center justify-between bg-muted/20 px-4 py-2">
                     <span className="text-xs font-medium text-muted-foreground">{dateLabel}</span>
-                    <span className={cn('text-xs font-semibold', dayNet >= 0 ? 'text-emerald-600' : 'text-rose-500')}>
+                    <span className={cn('text-xs font-semibold tabular-nums', dayNet >= 0 ? 'text-emerald-600' : 'text-muted-foreground')}>
                       {dayNet >= 0 ? '+' : ''}{formatCurrency(dayNet)}
                     </span>
                   </div>
-                  {items.map((tx, idx) => {
+                  {shown.map((tx, idx) => {
                     const cat = getCategoryById(tx.category)
                     const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                     return (
@@ -844,7 +864,7 @@ export default function DashboardPage() {
                             <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
                           )}
                         </div>
-                        <span className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
+                        <span className={cn('shrink-0 text-sm font-semibold tabular-nums', tx.type === 'income' ? 'text-emerald-600' : 'text-foreground')}>
                           {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                         </span>
                       </button>
@@ -853,9 +873,20 @@ export default function DashboardPage() {
                 </div>
               )
             })}
+            {hiddenCount > 0 && (
+              <Link
+                href={transactionsHref}
+                className="flex items-center justify-center gap-1 border-t py-3 text-sm font-medium text-brand-text transition-colors hover:bg-muted/30"
+              >
+                這個月還有 {hiddenCount} 筆，查看全部
+                <ChevronRightIcon className="size-4" />
+              </Link>
+            )}
           </div>
         )}
       </div>
+
+      </section>
 
       <div className="h-6" />
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeftIcon, ImageIcon, RefreshCwIcon, Trash2Icon, XIcon, UsersIcon, CalendarPlusIcon, LockIcon } from 'lucide-react'
+import { ChevronLeftIcon, ImageIcon, RefreshCwIcon, Trash2Icon, XIcon, UsersIcon, CalendarPlusIcon, LockIcon, MessageCircleIcon } from 'lucide-react'
 import * as api from '@/lib/api'
 import type { Job, Friendship } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -226,14 +226,14 @@ export default function RosterImportPage() {
   if (mode === 'review') {
     return (
       <div className="flex flex-col">
-        <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:pt-8">
+        <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:px-1 lg:pt-8">
           <button onClick={() => setMode('list')} className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
             <ChevronLeftIcon className="size-5" />
           </button>
           <h1 className="text-xl font-bold">校正班表</h1>
         </div>
 
-        <div className="flex flex-col gap-4 px-4 pb-24 lg:px-6">
+        <div className="flex flex-col gap-4 px-4 pb-24 lg:px-1">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">匯入到哪個工作</label>
             <select
@@ -361,7 +361,7 @@ export default function RosterImportPage() {
           )}
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:bg-card lg:left-64">
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:bg-card lg:left-60">
           <button
             onClick={handleConfirm}
             disabled={saving}
@@ -376,17 +376,45 @@ export default function RosterImportPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:pt-8">
+      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1 lg:pt-8">
         <Link href="/schedule" className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeftIcon className="size-5" />
         </Link>
         <h1 className="text-xl font-bold">班表匯入</h1>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-6 lg:px-6">
-        <p className="text-xs text-muted-foreground">
-          在 LINE 傳文字「班表」給 Bot，10 分鐘內把排班表照片傳過去就會出現在下面的待處理清單；也可以直接從相簿選照片。辨識完一律會先進到校正畫面，確認沒問題再送出。
-        </p>
+      <div className="flex flex-col gap-5 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1">
+        {/* 兩種匯入方式並排：LINE 轉傳（步驟說明）／直接選照片 */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+            <div className="mb-3 flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10">
+                <MessageCircleIcon className="size-[18px]" />
+              </span>
+              <p className="text-sm font-semibold">用 LINE 傳給 Bot</p>
+            </div>
+            <ol className="flex flex-col gap-2 text-sm text-muted-foreground">
+              {['傳文字「班表」給易記帳 Bot', '10 分鐘內把排班表照片傳過去', '回到這裡，按下面的「辨識校正」'].map((step, i) => (
+                <li key={step} className="flex gap-2.5">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">{i + 1}</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={recognizing}
+            className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-muted-foreground/30 p-5 text-center transition-colors hover:border-brand hover:bg-brand-soft/50 disabled:opacity-50"
+          >
+            <span className="flex size-11 items-center justify-center rounded-2xl bg-brand-soft text-brand-soft-foreground">
+              <ImageIcon className="size-5" />
+            </span>
+            <span className="text-sm font-semibold">從相簿選擇照片</span>
+            <span className="text-xs text-muted-foreground">直接上傳拍好的班表</span>
+          </button>
+        </div>
+        <p className="-mt-2 text-xs text-muted-foreground">不管哪一種，辨識完都會先進到校正畫面，確認沒問題才會送出。</p>
 
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -399,7 +427,7 @@ export default function RosterImportPage() {
           {pendingLoading ? (
             <p className="py-3 text-center text-sm text-muted-foreground">載入中…</p>
           ) : pending.length === 0 ? (
-            <p className="py-3 text-center text-sm text-muted-foreground">目前沒有待處理的照片</p>
+            <p className="rounded-2xl bg-white py-6 text-center text-sm text-muted-foreground shadow-sm dark:bg-card">目前沒有從 LINE 傳來的照片</p>
           ) : (
             <div className="flex flex-col gap-2">
               {pending.map(item => (
@@ -427,14 +455,6 @@ export default function RosterImportPage() {
           )}
         </div>
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={recognizing}
-          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-muted-foreground/30 py-6 text-sm font-medium text-muted-foreground transition-colors hover:border-brand hover:bg-brand-soft/50 disabled:opacity-50"
-        >
-          <ImageIcon className="size-5" />
-          從相簿選擇照片
-        </button>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePickFile} />
 
         {recognizing && (

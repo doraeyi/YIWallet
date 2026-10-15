@@ -4,10 +4,14 @@ import { useCallback, useSyncExternalStore } from 'react'
 import * as api from '@/lib/api'
 import { getCustomCategories, setCustomCategories, subscribeCustomCategories, type Category } from '@/lib/types'
 
+// 伺服器端（還沒有 localStorage／API 資料）回傳的空清單要固定同一個陣列，
+// 每次 new 一個 [] 會讓 React 以為資料一直在變，報「getServerSnapshot should be cached」
+const EMPTY: Category[] = []
+
 // 自訂分類的清單＋新增／修改／刪除。資料本身登記在 lib/types.ts（getCategoryById 也查得到），
 // 這個 hook 讓元件在分類有變動時重新 render。
 export function useCustomCategories() {
-  const categories = useSyncExternalStore(subscribeCustomCategories, getCustomCategories, () => [])
+  const categories = useSyncExternalStore(subscribeCustomCategories, getCustomCategories, () => EMPTY)
 
   const create = useCallback(async (data: api.CategoryInput): Promise<Category> => {
     const created = await api.createCategory(data)

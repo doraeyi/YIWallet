@@ -372,9 +372,11 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
         )}
       </div>
 
+      {/* 電腦版：左邊分類、右邊金額和計算機，整個視窗不用捲動；手機版上下排 */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* ── 分類格子（可捲動）── */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div key={type} className="stagger grid grid-cols-4 gap-x-2 gap-y-4 px-4 py-5">
+        <div key={type} className="stagger grid grid-cols-4 gap-x-2 gap-y-4 px-4 py-5 lg:grid-cols-5 lg:px-6 lg:py-6">
           <button onClick={() => setEditor({})} aria-label="新增分類" className="group flex flex-col items-center gap-1.5">
             <span className="flex size-14 items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/30 text-muted-foreground transition-colors group-hover:border-brand group-hover:text-brand-text">
               <PlusIcon className="size-6" />
@@ -413,7 +415,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
       </div>
 
       {/* ── 下半部：金額、備註、付款方式、日期、計算機 ── */}
-      <div className="shrink-0 rounded-t-3xl border-t bg-background shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.15)]">
+      <div className="shrink-0 rounded-t-3xl border-t bg-background shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.15)] lg:flex lg:w-[400px] lg:flex-col lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:border-l lg:pt-2 lg:shadow-none">
         {/* 金額 + 備註 */}
         <div className="flex items-center gap-3 px-4 pt-3">
           {category ? <CategoryBadge id={category} className="size-11" /> : (
@@ -500,7 +502,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
 
         {/* 付款方式 */}
         {cards.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-4 pt-2.5 scrollbar-none">
+          <div className="flex gap-2 overflow-x-auto px-4 pt-2.5 scrollbar-none lg:flex-wrap lg:overflow-visible">
             <button
               onClick={() => { setCardId(undefined); setIsExplicitCash(true) }}
               className={cn(
@@ -527,7 +529,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
         )}
 
         {/* 計算機區：日期列 + 圓形按鍵 */}
-        <div className="mt-3 bg-brand-soft px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="mt-3 bg-brand-soft px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] lg:mt-auto lg:pt-4">
           <div className="mb-3 flex items-center rounded-full bg-background shadow-sm ring-1 ring-foreground/10">
             <button onClick={() => setDate(format(addDays(dateObj, -1), 'yyyy-MM-dd'))} aria-label="前一天" className="flex size-10 items-center justify-center rounded-full hover:bg-muted">
               <ChevronLeftIcon className="size-5" />
@@ -590,6 +592,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           </div>
         </div>
       </div>
+      </div>
     </div>
   )
 
@@ -621,7 +624,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent showCloseButton={false} onOpenAutoFocus={focusPanel} className="h-[min(820px,92dvh)] gap-0 overflow-hidden p-0 sm:max-w-md">
+        <DialogContent showCloseButton={false} onOpenAutoFocus={focusPanel} className="h-[min(680px,92dvh)] gap-0 overflow-hidden p-0 sm:max-w-[min(960px,calc(100vw-4rem))]">
           <DialogTitle className="sr-only">{title}</DialogTitle>
           {inner}
         </DialogContent>

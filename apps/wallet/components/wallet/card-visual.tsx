@@ -97,7 +97,7 @@ export function CardVisual({
               <span className="text-2xl font-bold">{formatCurrency(balanceValue)}</span>
             </div>
           )}
-          <p className="pb-2 text-center text-[10px] text-white/50">輕觸卡片翻回正面</p>
+          <p className="pb-2 text-center text-[11px] text-white/70">輕觸卡片翻回正面</p>
         </div>
       </div>
     </div>

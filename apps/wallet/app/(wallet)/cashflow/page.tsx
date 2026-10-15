@@ -42,7 +42,7 @@ export default function CashflowPage() {
   let running = 0
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:mx-auto lg:max-w-2xl lg:p-6">
+    <div className="flex flex-col gap-4 p-4 lg:mx-auto lg:w-full lg:max-w-5xl lg:px-1 lg:py-8">
       <div>
         <Link href="/stats" className="mb-2 inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground">
           <ChevronLeftIcon className="size-3.5" />收支分析
@@ -61,7 +61,9 @@ export default function CashflowPage() {
           className="rounded-2xl bg-white py-12 shadow-sm dark:bg-card"
         />
       ) : (
-        <>
+        // 電腦版：左邊總覽和提醒（固定在畫面上），右邊照日期排的進出
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-6">
+          <div className="flex flex-col gap-4 lg:sticky lg:top-6">
           <div className="animate-rise rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
             <p className="text-xs text-muted-foreground">扣掉卡費跟固定支出，還能自由花</p>
             <p className={cn('mt-1 text-3xl font-bold tabular-nums', net >= 0 ? 'text-foreground' : 'text-rose-500')}>
@@ -86,6 +88,7 @@ export default function CashflowPage() {
               <p>{w.text}</p>
             </div>
           ))}
+          </div>
 
           <div className="stagger flex flex-col gap-2">
             {groups.map(({ date, items }) => (
@@ -113,7 +116,7 @@ export default function CashflowPage() {
                         <p className={cn('text-sm font-semibold tabular-nums', e.amount >= 0 ? 'text-emerald-600' : 'text-rose-500')}>
                           {e.amount >= 0 ? '+' : '-'}{formatCurrency(Math.abs(e.amount))}
                         </p>
-                        <p className={cn('text-[10px] tabular-nums', running < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
+                        <p className={cn('text-[11px] tabular-nums', running < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
                           累計 {formatCurrency(running)}
                         </p>
                       </div>
@@ -123,7 +126,7 @@ export default function CashflowPage() {
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
       <div className="h-6" />
     </div>

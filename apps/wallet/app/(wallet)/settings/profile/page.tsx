@@ -186,7 +186,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-10 pb-4 lg:pt-8">
+      <div className="flex items-center gap-3 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-1 lg:pt-8">
         <button
           onClick={() => router.back()}
           className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
@@ -196,7 +196,7 @@ export default function ProfilePage() {
         <h1 className="text-lg font-bold">個人資料</h1>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-8 lg:max-w-lg lg:px-6">
+      <div className="flex flex-col gap-4 px-4 pb-8 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-1">
 
         {/* 頭像 */}
         <div className="flex flex-col items-center py-4 gap-3">

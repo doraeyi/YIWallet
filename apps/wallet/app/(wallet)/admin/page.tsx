@@ -118,7 +118,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-2xl lg:pt-8">
+      <div className="flex items-center gap-2 px-4 pt-10 pb-4 lg:mx-auto lg:w-full lg:max-w-3xl lg:pt-8">
         <Link href="/settings" className="flex size-8 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeftIcon className="size-5" />
         </Link>
@@ -128,7 +128,7 @@ export default function AdminPage() {
         </h1>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:max-w-2xl lg:px-6">
+      <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1">
         {!loading && (
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-white px-4 py-3.5 shadow-sm dark:bg-card">

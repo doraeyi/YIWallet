@@ -1,5 +1,6 @@
 'use client'
 
+import { merchantKey } from '@/lib/guess-category'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeftIcon, Share2Icon } from 'lucide-react'
@@ -46,7 +47,8 @@ export default function RecapPage() {
 
     const byShop = new Map<string, { count: number; total: number }>()
     for (const t of expenses) {
-      const name = t.description?.trim()
+      // 分店、不同寫法算同一家（統一超商-八里、7-Eleven 都是 7-ELEVEN）
+      const name = t.description?.trim() ? merchantKey(t.description) : ''
       if (!name) continue
       const cur = byShop.get(name) ?? { count: 0, total: 0 }
       byShop.set(name, { count: cur.count + 1, total: cur.total + t.amount })
@@ -96,7 +98,7 @@ export default function RecapPage() {
   const monthMax = Math.max(...recap.byMonth, 1)
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:mx-auto lg:max-w-2xl lg:p-6">
+    <div className="flex flex-col gap-4 p-4 lg:mx-auto lg:w-full lg:max-w-5xl lg:px-1 lg:py-8">
       <div>
         <Link href="/stats" className="mb-2 inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground">
           <ChevronLeftIcon className="size-3.5" />收支分析
@@ -128,7 +130,7 @@ export default function RecapPage() {
       {recap.count === 0 ? (
         <div className="rounded-2xl bg-white p-10 text-center text-sm text-muted-foreground shadow-sm dark:bg-card">{year} 年還沒有記帳紀錄</div>
       ) : (
-        <div key={year} className="stagger flex flex-col gap-3">
+        <div key={year} className="stagger flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
           {/* 開場 */}
           <div className="rounded-3xl bg-brand p-6 text-brand-foreground">
             <p className="text-sm opacity-80">{year} 年，你記了</p>
@@ -136,7 +138,7 @@ export default function RecapPage() {
             <p className="mt-2 text-sm opacity-80">一年裡有 {recap.days} 天打開來記帳</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4">
             <Stat label="總共花了" value={formatCurrency(recap.spent)} tone="text-rose-500" />
             <Stat label="總共收入" value={formatCurrency(recap.earned)} tone="text-emerald-600" />
           </div>
@@ -151,7 +153,7 @@ export default function RecapPage() {
                     <span className="flex-1 text-sm font-medium">{getCategoryById(cat)?.name ?? cat}</span>
                     <span className="text-right">
                       <span className="block text-sm font-semibold tabular-nums">{formatCurrency(amount)}</span>
-                      <span className="block text-[11px] text-muted-foreground">{Math.round((amount / recap.spent) * 100)}%</span>
+                      <span className="block text-xs text-muted-foreground">{Math.round((amount / recap.spent) * 100)}%</span>
                     </span>
                   </div>
                 ))}
@@ -168,16 +170,19 @@ export default function RecapPage() {
             </Card>
           )}
 
-          <Card title="每個月花多少">
-            <div className="flex h-28 items-end gap-1">
+          <Card title="每個月花多少" className="lg:col-span-2">
+            <div className="flex h-28 items-end gap-1 lg:h-40 lg:gap-2">
               {recap.byMonth.map((v, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                  <div
-                    className={cn('w-full rounded-t-md', i === recap.maxMonth && v > 0 ? 'bg-brand' : 'bg-muted')}
-                    style={{ height: `${Math.max((v / monthMax) * 100, v > 0 ? 4 : 0)}%` }}
-                    title={`${i + 1} 月 ${formatCurrency(v)}`}
-                  />
-                  <span className="text-[9px] text-muted-foreground">{i + 1}</span>
+                // 長條外面多包一層撐滿剩下的高度，百分比高度才有東西可以算（以前直接放在 flex 欄裡，高度一直是 0）
+                <div key={i} className="flex h-full flex-1 flex-col items-center gap-1">
+                  <div className="flex w-full flex-1 items-end">
+                    <div
+                      className={cn('w-full rounded-t-md', i === recap.maxMonth && v > 0 ? 'bg-brand' : 'bg-muted')}
+                      style={{ height: `${Math.max((v / monthMax) * 100, v > 0 ? 4 : 2)}%` }}
+                      title={`${i + 1} 月 ${formatCurrency(v)}`}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground lg:text-xs">{i + 1}</span>
                 </div>
               ))}
             </div>
@@ -188,7 +193,7 @@ export default function RecapPage() {
             )}
           </Card>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:col-span-2 lg:grid-cols-4 lg:gap-4">
             {recap.biggest && (
               <Stat label="最大的一筆" value={formatCurrency(recap.biggest.amount)}
                 sub={recap.biggest.description || recap.biggest.note || getCategoryById(recap.biggest.category)?.name} />
@@ -204,9 +209,9 @@ export default function RecapPage() {
   )
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+    <div className={cn('rounded-2xl bg-white p-5 shadow-sm dark:bg-card', className)}>
       <p className="mb-3 text-xs font-medium text-muted-foreground">{title}</p>
       {children}
     </div>
@@ -215,10 +220,10 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+    <div className="flex flex-col justify-center rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={cn('mt-1 truncate text-xl font-bold tabular-nums', tone)}>{value}</p>
-      {sub && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{sub}</p>}
+      {sub && <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>}
     </div>
   )
 }

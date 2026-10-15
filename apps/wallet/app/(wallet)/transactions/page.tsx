@@ -15,6 +15,7 @@ import { PageSkeleton } from '@/components/wallet/page-skeleton'
 import { confirmDialog } from '@/lib/confirm'
 import { CategoryBadge } from '@/components/wallet/category-icon'
 import { EmptyState } from '@/components/wallet/empty-state'
+import { OtherCategoryBanner } from '@/components/wallet/other-category-cleanup'
 
 // 網址可以帶 ?m=月份&pay=cash|卡片id（首頁「查看全部」會帶），打開就是那個範圍
 export default function TransactionsPage() {
@@ -96,7 +97,7 @@ function TransactionsContent() {
 
       <div className="flex flex-col">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-10 pb-4 lg:pt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-10 pb-4 lg:px-1 lg:pt-8">
           <div className="flex items-center gap-2">
             <Link href="/dashboard" aria-label="回首頁" className="-ml-2 flex size-8 items-center justify-center rounded-full hover:bg-muted">
               <ChevronLeftIcon className="size-5" />
@@ -117,7 +118,7 @@ function TransactionsContent() {
         </div>
 
         {/* Search */}
-        <div className="relative mx-4 mb-4 lg:mx-6 lg:max-w-sm">
+        <div className="relative mx-4 mb-4 lg:mx-1 lg:max-w-sm">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             placeholder="搜尋商家、備註或分類"
@@ -129,7 +130,7 @@ function TransactionsContent() {
 
         {/* 付款方式篩選 */}
         {cards.length > 0 && (
-          <div className="mx-4 mb-3 flex gap-1.5 overflow-x-auto scrollbar-none lg:mx-6">
+          <div className="mx-4 mb-3 flex gap-1.5 overflow-x-auto scrollbar-none lg:mx-1">
             {[{ id: 'all', name: '全部' }, { id: 'cash', name: '現金' }, ...cards.map(c => ({ id: c.id, name: c.name }))].map(o => (
               <button
                 key={o.id}
@@ -148,15 +149,17 @@ function TransactionsContent() {
 
         {/* 篩選後的合計 */}
         {isFiltering && filtered.length > 0 && (
-          <p className="mx-4 mb-3 text-xs text-muted-foreground lg:mx-6">
+          <p className="mx-4 mb-3 text-xs text-muted-foreground lg:mx-1">
             符合 {filtered.length} 筆
             {sumByType(filtered, 'expense') > 0 && <>・支出 <span className="font-semibold text-rose-500">{formatCurrency(sumByType(filtered, 'expense'))}</span></>}
             {sumByType(filtered, 'income') > 0 && <>・收入 <span className="font-semibold text-emerald-600">{formatCurrency(sumByType(filtered, 'income'))}</span></>}
           </p>
         )}
 
+        {!isFiltering && <OtherCategoryBanner className="mx-4 mb-3 w-auto lg:mx-1" />}
+
         {/* List */}
-        <div className="flex flex-col gap-3 px-4 lg:px-6">
+        <div className="flex flex-col gap-3 px-4 lg:px-1">
           {groups.length === 0 ? (
             <EmptyState
               icon={isFiltering ? SearchXIcon : NotebookPenIcon}
@@ -174,23 +177,24 @@ function TransactionsContent() {
                       <span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                       <div className="flex gap-2 text-xs">
                         {dayIncome  > 0 && <span className="text-emerald-600">+{formatCurrency(dayIncome)}</span>}
-                        {dayExpense > 0 && <span className="text-rose-500">-{formatCurrency(dayExpense)}</span>}
+                        {dayExpense > 0 && <span className="text-muted-foreground">-{formatCurrency(dayExpense)}</span>}
                       </div>
                     </div>
                     {items.map((tx, idx) => {
                       const cat = getCategoryById(tx.category)
                       const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                       return (
-                        <div key={tx.id} className={cn('flex items-center gap-3 px-4 py-3', idx > 0 && 'border-t', tx.id === highlightId && 'animate-flash')}>
+                        <div key={tx.id} className={cn('group flex items-center gap-3 px-4 py-3 transition-colors lg:hover:bg-muted/30', idx > 0 && 'border-t', tx.id === highlightId && 'animate-flash')}>
                           <CategoryBadge id={tx.category} />
                           <button onClick={() => setEditTx(tx)} className="min-w-0 flex-1 text-left">
                             <p className="truncate text-sm font-medium">{title}</p>
                             {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
                           </button>
-                          <p className={cn('shrink-0 text-sm font-semibold', tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500')}>
+                          <p className={cn('shrink-0 text-sm font-semibold tabular-nums', tx.type === 'income' ? 'text-emerald-600' : 'text-foreground')}>
                             {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                           </p>
-                          <div className="flex shrink-0 gap-1">
+                          {/* 電腦版滑鼠移到這列才出現，整頁不會滿滿都是小圖示；手機沒有 hover 照常顯示 */}
+                          <div className="flex shrink-0 gap-1 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
                             <button onClick={() => setEditTx(tx)} aria-label={`編輯「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
                               <PencilIcon className="size-3.5" />
                             </button>

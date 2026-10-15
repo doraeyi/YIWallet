@@ -426,11 +426,13 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="px-5 pt-10 pb-6 lg:mx-auto lg:w-full lg:max-w-lg lg:pt-8">
-        <h1 className="text-xl font-bold">設定</h1>
+      <div className="px-5 pt-10 pb-6 lg:mx-auto lg:w-full lg:max-w-5xl lg:px-1 lg:pt-8">
+        <h1 className="text-xl font-bold lg:text-2xl">設定</h1>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 lg:mx-auto lg:max-w-lg lg:px-6">
+      {/* 桌機：左欄個人資料／外觀／帳號（固定在畫面上），右欄各項功能設定 */}
+      <div className="flex flex-col gap-4 px-4 lg:mx-auto lg:grid lg:w-full lg:max-w-5xl lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:px-1">
+      <div className="flex flex-col gap-4 lg:sticky lg:top-6">
 
         {/* 個人資料 */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
@@ -541,7 +543,9 @@ export default function SettingsPage() {
           )}
 
         </div>
+      </div>
 
+      <div className="flex flex-col gap-4">
         {/* ── 功能 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">功能</p>
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
@@ -962,6 +966,7 @@ export default function SettingsPage() {
             登出
           </button>
         </div>
+      </div>
       </div>
 
       <DeleteAccountDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen} />

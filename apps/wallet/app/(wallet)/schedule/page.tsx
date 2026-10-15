@@ -774,7 +774,7 @@ export default function SchedulePage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:pt-8">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:px-1 lg:pt-8 lg:pb-5">
         <div className="flex items-center gap-2">
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
@@ -808,7 +808,7 @@ export default function SchedulePage() {
       {loading ? (
         <PageSkeleton variant="calendar" />
       ) : (
-        <div className="px-4 lg:px-6" onTouchStart={handleJobTouchStart} onTouchEnd={handleJobTouchEnd}>
+        <div className="px-4 lg:px-0" onTouchStart={handleJobTouchStart} onTouchEnd={handleJobTouchEnd}>
           {/* 目前選中工作的公司名稱 + 同事頭像堆疊，取代原本擠在薪資卡片裡的公司名稱；
               點頭像堆疊可以打開視窗看有誰、新增或移除同事 */}
           {activeJob && (
@@ -860,12 +860,15 @@ export default function SchedulePage() {
             canGrantManage={isOwnActiveJob}
           />
 
+          {/* 桌機寬螢幕：月曆在左、薪資在右 */}
+          <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-6">
+          <div className="min-w-0">
           {/* Calendar */}
-          <div data-tour="sched-calendar" className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div data-tour="sched-calendar" className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:rounded-3xl">
             <div className="grid grid-cols-7 border-b">
               {WEEKDAYS.map((d, i) => (
                 <div key={d} className={cn(
-                  'py-2 text-center text-xs font-semibold',
+                  'py-2 text-center text-xs font-semibold lg:py-3',
                   i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-muted-foreground'
                 )}>
                   {d}
@@ -874,7 +877,7 @@ export default function SchedulePage() {
             </div>
             <div className="grid grid-cols-7">
               {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                <div key={`e${i}`} className="min-h-16 border-b border-r p-1" />
+                <div key={`e${i}`} className="min-h-16 border-b border-r bg-muted/20 p-1 lg:min-h-24" />
               ))}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -887,7 +890,7 @@ export default function SchedulePage() {
                   <div
                     key={day}
                     onClick={() => setSelectedDate(dateStr)}
-                    className="min-h-16 cursor-pointer border-b border-r p-1 transition-colors hover:bg-muted/30"
+                    className="min-h-16 cursor-pointer border-b border-r p-1 transition-colors hover:bg-muted/30 lg:min-h-24 lg:p-1.5 [&:nth-child(7n)]:border-r-0"
                   >
                     <span className="flex items-center gap-0.5">
                     <span className={cn(
@@ -904,7 +907,7 @@ export default function SchedulePage() {
                       {dayShifts.map(s => (
                         <span
                           key={s.id}
-                          className="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none text-white"
+                          className="truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none text-white lg:rounded-md lg:px-1.5 lg:py-1 lg:text-[11px]"
                           style={{ backgroundColor: s.job_color ?? '#9CA3AF' }}
                         >
                           {shiftTypeLabel(s.shift_type) ?? s.start_time.slice(0, 5)}
@@ -954,9 +957,11 @@ export default function SchedulePage() {
             <p className="pt-1 text-center text-[11px] text-muted-foreground lg:hidden">左右滑動月曆切換工作</p>
           </>)}
 
+          </div>
+
           {/* Salary preview——別人分享給我的工作看不到薪資，那是對方的薪資不是我的 */}
           {isOwnActiveJob && (
-            <div data-tour="sched-salary" className="mt-4 flex flex-col gap-3">
+            <div data-tour="sched-salary" className="mt-4 flex flex-col gap-3 xl:sticky xl:top-6 xl:mt-0">
               <p className="text-sm font-semibold">本月薪資預估</p>
 
               {(() => {
@@ -968,7 +973,7 @@ export default function SchedulePage() {
                 const { shiftCount, normalHours, holidayHours, holidayShiftCount, gross, deduction, net } =
                   estimateJobPay(job, shifts, year, month, holidays)
                 return (
-                  <div key={job.id} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+                  <div key={job.id} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:rounded-3xl">
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                       <span className="text-xs text-muted-foreground">
                         {job.pay_type === 'hourly'
@@ -1058,6 +1063,7 @@ export default function SchedulePage() {
               })()}
             </div>
           )}
+          </div>
 
           <div className="h-6" />
         </div>
