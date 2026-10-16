@@ -5,6 +5,7 @@ import "./globals.css";
 import { ServiceWorkerRegistration } from "./sw-register"
 import { UpdateBanner } from "@/components/wallet/update-banner";
 import { SplashScreen } from "@/components/splash-screen";
+import { SITE } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,10 +26,23 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "易記帳",
-  description: "簡單好用的個人記帳 App",
-  applicationName: "易記帳",
-  icons: { icon: '/icons/logo.png', apple: '/icons/logo.png' },
+  metadataBase: new URL(SITE.url),
+  // 各頁自己的標題會套成「功能介紹｜易記帳 YiWallet」
+  title: { default: `${SITE.fullName}｜${SITE.tagline.replace('。', '')}`, template: `%s｜${SITE.fullName}` },
+  description: SITE.description,
+  applicationName: SITE.name,
+  keywords: ['記帳', '記帳App', '自動記帳', 'Apple Pay 記帳', 'LINE Pay 記帳', '信用卡管理', '預算', '班表', '薪水計算', '易記帳', 'YiWallet'],
+  // favicon.ico、opengraph-image.png 放在 app/ 底下，Next 會自動加上對應的標籤
+  icons: { icon: [{ url: '/icons/logo.png', type: 'image/png' }], apple: '/icons/logo.png' },
+  openGraph: {
+    type: 'website',
+    locale: 'zh_TW',
+    siteName: SITE.fullName,
+    title: `${SITE.fullName}｜${SITE.tagline.replace('。', '')}`,
+    description: SITE.description,
+    url: SITE.url,
+  },
+  twitter: { card: 'summary_large_image' },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

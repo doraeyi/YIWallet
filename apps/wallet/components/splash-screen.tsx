@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import styles from './splash-screen.module.css'
+import { PUBLIC_PATHS } from '@/lib/site'
 
 // 開場動畫：每次開啟 App（同一個分頁工作階段）只播一次；點一下可以跳過。
 // 動畫細節（時間軸、keyframes）都在 splash-screen.module.css。
@@ -15,6 +16,8 @@ type Phase = 'idle' | 'show' | 'exit' | 'done'
 
 function shouldPlay(): boolean {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false
+  // 介紹網站不播開場動畫，第一眼就看到內容
+  if (PUBLIC_PATHS.includes(window.location.pathname)) return false
   try {
     if (sessionStorage.getItem(SESSION_KEY) === '1') return false
     sessionStorage.setItem(SESSION_KEY, '1')

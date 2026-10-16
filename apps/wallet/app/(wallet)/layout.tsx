@@ -5,6 +5,10 @@ import { LineImportBanner } from '@/components/wallet/line-import-banner'
 import { Toaster } from '@/components/ui/toaster'
 import { ConfirmHost } from '@/components/ui/confirm-host'
 import { OnboardingTour } from '@/components/wallet/onboarding-tour'
+import type { Metadata } from 'next'
+
+// App 裡面的頁面要登入才看得到，不讓搜尋引擎收錄
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 
 export default function WalletLayout({ children }: { children: React.ReactNode }) {
   return (
