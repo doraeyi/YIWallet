@@ -226,6 +226,16 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     const savedNote = category === 'transfer'
       ? (transferTo ? (note ? `${transferTo}|${note}` : transferTo) : note)
       : note
+    // 在有餘額的卡上記「期初餘額」「上月結餘」這類收入，餘額會被重複加一次——建卡時填的餘額
+    // 已經算進去了。新增時先問一下（曾經有人建卡填 53，又記了兩筆 +53，餘額多了 106）
+    const card = cards.find(c => c.id === cardId)
+    if (!initialData && type === 'income' && card?.balance != null && /期初|結餘|餘額|原本|原有|剩下/.test(savedNote)) {
+      const ok = await confirmDialog(
+        `「${card.name}」目前餘額 $${card.balance.toLocaleString()}，建卡時填的餘額已經算進去了。這筆收入會再加 $${parsed.toLocaleString()} 到餘額上，確定要記嗎？`,
+        { confirmText: '確定要記' },
+      )
+      if (!ok) return
+    }
     setSaving(true)
     try {
       await onSubmit({
