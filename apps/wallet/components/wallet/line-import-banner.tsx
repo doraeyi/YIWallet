@@ -60,7 +60,7 @@ export function LineImportBanner() {
   return (
     <div className={cn(
       'fixed bottom-20 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2',
-      'rounded-2xl bg-white shadow-lg border px-4 py-3',
+      'rounded-2xl bg-card shadow-lg border px-4 py-3',
       'flex items-center gap-3 lg:bottom-6 dark:bg-card',
       'animate-in slide-in-from-bottom-4 duration-300',
     )}>

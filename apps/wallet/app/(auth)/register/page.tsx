@@ -12,12 +12,12 @@ export default function RegisterPage() {
     <div className="flex min-h-dvh items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <Image src="/icons/logo.png" alt="" width={56} height={56} priority unoptimized className="size-14 rounded-2xl bg-white shadow-lg ring-1 ring-black/5" />
+          <Image src="/icons/logo.png" alt="" width={56} height={56} priority unoptimized className="size-14 rounded-2xl bg-card shadow-lg ring-1 ring-black/5" />
           <h1 className="text-2xl font-bold">易記帳</h1>
           <p className="text-sm text-muted-foreground">建立新帳號</p>
         </div>
 
-        <form action={action} className="rounded-2xl bg-white p-6 shadow-sm dark:bg-card">
+        <form action={action} className="rounded-2xl bg-card p-6 shadow-sm dark:bg-card">
           <div className="flex flex-col gap-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium">Email</label>

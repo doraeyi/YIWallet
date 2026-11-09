@@ -108,10 +108,10 @@ export function Sidebar() {
     <>
       <AddTransactionSheet open={open} onOpenChange={setOpen} onSubmit={addTransaction} />
 
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-white lg:flex dark:bg-card">
+      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-card lg:flex dark:bg-card">
         {/* Logo */}
         <Link href="/dashboard" className="flex h-16 items-center gap-2.5 px-5">
-          <Image src="/icons/logo.png" alt="" width={36} height={36} priority unoptimized className="size-9 rounded-xl bg-white shadow-sm ring-1 ring-black/5" />
+          <Image src="/icons/logo.png" alt="" width={36} height={36} priority unoptimized className="size-9 rounded-xl bg-card shadow-sm ring-1 ring-black/5" />
           <span className="text-[17px] font-bold tracking-wide">易記帳</span>
         </Link>
 

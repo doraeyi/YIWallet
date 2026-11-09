@@ -109,7 +109,7 @@ export function CreditOverview({ cards, transactions }: { cards: Card[]; transac
       </div>
       <div className="stagger flex flex-col gap-2">
         {overviews.map(o => (
-          <div key={o.bank} className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+          <div key={o.bank} className="rounded-2xl bg-card p-4 shadow-sm dark:bg-card">
             <div className="flex items-baseline justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{o.bank}</p>

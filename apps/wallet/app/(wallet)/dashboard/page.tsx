@@ -25,6 +25,7 @@ import { BudgetBar } from '@/components/wallet/budget-bar'
 import { CategoryBadge } from '@/components/wallet/category-icon'
 import { PaymentIcon, type PaymentKind } from '@/components/wallet/payment-icon'
 import { EmptyState } from '@/components/wallet/empty-state'
+import { TodayHero } from '@/components/wallet/today-hero'
 
 const RECENT_LIMIT = 8
 
@@ -58,7 +59,7 @@ function cardLastFour(card: Card): string | undefined {
 
 function viewColor(item: ViewItem): string {
   if (item.kind === 'card') return item.card.color
-  if (item.kind === 'cash') return '#10B981'
+  if (item.kind === 'cash') return '#5E8A62'
   return 'var(--brand)'
 }
 
@@ -112,7 +113,7 @@ function DonutChart({
             cy={cy}
             r={r}
             fill="none"
-            stroke={overspent ? '#F43F5E' : ringColor}
+            stroke={overspent ? '#B5483A' : ringColor}
             strokeWidth={28}
             strokeDasharray={`${filled} ${circumference}`}
             strokeDashoffset={0}
@@ -442,15 +443,16 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-x-6 lg:pt-8">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-4 lg:col-span-2 lg:px-1 lg:pt-0 lg:pb-5">
-        <div className="flex flex-col">
+      <div className="flex items-center justify-end px-5 pt-4 pb-3 lg:col-span-2 lg:justify-between lg:px-1 lg:pt-0 lg:pb-5">
+        {/* 手機版的問候、月份移到下面（今天的答案優先），電腦版維持原樣 */}
+        <div className="hidden flex-col lg:flex">
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             {createElement(GreetingIcon, { className: 'size-3.5', 'aria-hidden': true })}
             {greeting}
           </span>
           <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
         </div>
-        <div className="flex items-center gap-3 text-muted-foreground lg:gap-2 lg:[&>a]:flex lg:[&>a]:size-10 lg:[&>a]:items-center lg:[&>a]:justify-center lg:[&>a]:rounded-full lg:[&>a]:bg-white lg:[&>a]:shadow-sm lg:[&>a]:transition-colors lg:[&>a:hover]:bg-muted dark:lg:[&>a]:bg-card">
+        <div className="flex items-center gap-3 text-muted-foreground lg:gap-2 lg:[&>a]:flex lg:[&>a]:size-10 lg:[&>a]:items-center lg:[&>a]:justify-center lg:[&>a]:rounded-full lg:[&>a]:bg-card lg:[&>a]:shadow-sm lg:[&>a]:transition-colors lg:[&>a:hover]:bg-muted dark:lg:[&>a]:bg-card">
           <Link href="/bank-notify" aria-label={pendingNotifyCount > 0 ? `待處理通知 ${pendingNotifyCount} 則` : '通知'} className="relative hover:text-foreground">
             <BellIcon className="size-5" />
             {pendingNotifyCount > 0 && (
@@ -476,8 +478,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── 桌機左欄：帳戶總覽（切換帳戶、收支、圓環／卡片），捲動時固定在畫面上 ── */}
-      <section data-tour="dash-overview" className="flex flex-col lg:sticky lg:top-6 lg:rounded-3xl lg:bg-white lg:pt-5 lg:pb-3 lg:shadow-sm lg:dark:bg-card">
+      {/* ── 今天：先給答案（今天花了多少、錢包現金），再給「記一筆」 ── */}
+      <div className="order-[1] lg:order-none lg:col-span-2">
+        <TodayHero />
+      </div>
+
+      {/* ── 桌機左欄：帳戶總覽（切換帳戶、收支、圓環／卡片），捲動時固定在畫面上 ──
+          手機版排在最近紀錄之後：月總覽是「想看才看」的東西 */}
+      <section data-tour="dash-overview" className="order-[3] flex flex-col pt-2 lg:order-none lg:sticky lg:top-6 lg:rounded-3xl lg:bg-card lg:pt-5 lg:pb-3 lg:shadow-sm lg:dark:bg-card">
+      <div className="px-5 pb-3 lg:hidden">
+        <p className="mb-1 text-xs font-medium text-muted-foreground">月總覽</p>
+        <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
+      </div>
       {/* ── Desktop: tab selector ──────────────────────────── */}
       <div className="hidden lg:flex flex-wrap items-center gap-1.5 px-5 pb-5">
         {viewItems.map((item, i) => (
@@ -817,14 +829,19 @@ export default function DashboardPage() {
       </section>
 
       {/* ── 桌機右欄：信用卡、最近紀錄 ─────────────────────── */}
-      <section className="flex min-w-0 flex-col">
+      <section className="order-[2] flex min-w-0 flex-col lg:order-none">
       {/* ── Recent records ─────────────────────────────────── */}
       {/* 全部：信用卡依銀行合併的本期消費、待繳金額 */}
-      {currentView.kind === 'all' && <CreditOverview cards={cards} transactions={transactions} />}
+      {currentView.kind === 'all' && (
+        <div className="order-[2] lg:order-none"><CreditOverview cards={cards} transactions={transactions} /></div>
+      )}
 
-      <div className="px-4 lg:px-0">
+      <div className="order-[1] px-4 lg:order-none lg:px-0">
         <div data-tour="dash-recent" className="mb-3 flex items-center justify-between">
-          <span className="font-semibold">最近紀錄</span>
+          <span className="font-semibold">
+            最近紀錄
+            {currentView.kind !== 'all' && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{viewLabel(currentView)}</span>}
+          </span>
           <Link href={transactionsHref} className="text-xs font-medium text-brand-text hover:underline">
             查看全部
           </Link>
@@ -833,7 +850,7 @@ export default function DashboardPage() {
         {recentGroups.length === 0 ? (
           <EmptyState icon={NotebookPenIcon} title="這個月還沒有紀錄" hint="按下面的 ＋ 記下第一筆" />
         ) : (
-          <div key={`${safeIndex}-${year}-${month}`} className="stagger overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div key={`${safeIndex}-${year}-${month}`} className="stagger overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
             {recentGroups.map(({ date, items, shown }, groupIdx) => {
               const dateLabel = formatDate(date)
               const dayExpense = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
@@ -888,7 +905,7 @@ export default function DashboardPage() {
 
       </section>
 
-      <div className="h-6" />
+      <div className="order-[4] h-6 lg:order-none" />
 
       {/* ── Sheets ─────────────────────────────────────────── */}
       <AddCardSheet open={addCardOpen} onOpenChange={setAddCardOpen} onCreated={setJustCreatedCard} />

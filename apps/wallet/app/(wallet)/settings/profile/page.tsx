@@ -219,7 +219,7 @@ export default function ProfilePage() {
             )}
             {/* 相機覆蓋層 */}
             <div className={cn(
-              'absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full bg-white shadow-md border border-muted dark:bg-card',
+              'absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full bg-card shadow-md border border-muted dark:bg-card',
               avatarUploading && 'opacity-60'
             )}>
               {avatarUploading
@@ -241,7 +241,7 @@ export default function ProfilePage() {
 
         {/* 名稱設定 */}
         <p className="px-1 text-xs font-medium text-muted-foreground">基本資料</p>
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
           <div className="border-b px-4 py-3">
             <p className="text-sm font-semibold">顯示名稱</p>
           </div>
@@ -267,7 +267,7 @@ export default function ProfilePage() {
         {hasPassword !== false && (
           <>
             <p className="px-1 text-xs font-medium text-muted-foreground">安全性</p>
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
               <div className="border-b px-4 py-3">
                 <p className="text-sm font-semibold">修改密碼</p>
               </div>
@@ -347,7 +347,7 @@ export default function ProfilePage() {
         {googleLinked && hasPassword === false && (
           <>
             <p className="px-1 text-xs font-medium text-muted-foreground">安全性</p>
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
               <div className="px-4 py-4">
                 <p className="text-sm font-medium">你使用 Google 帳號登入</p>
                 <p className="mt-1 text-xs text-muted-foreground">帳號安全性由 Google 管理，無需另外設定密碼。</p>
@@ -360,7 +360,7 @@ export default function ProfilePage() {
         {googleLinked && googleProfile && (
           <>
             <p className="px-1 text-xs font-medium text-muted-foreground">Google 帳號</p>
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
               <div className="flex items-center gap-3 px-4 py-4">
                 {googleProfile.picture ? (
                   <img

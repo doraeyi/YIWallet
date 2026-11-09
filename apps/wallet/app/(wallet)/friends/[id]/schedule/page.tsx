@@ -89,7 +89,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
 
   const dialogContent = selectedDate && (
     <div className="flex flex-col max-h-[80vh] overflow-y-auto">
-      <div className="border-b px-4 py-3 sticky top-0 bg-white dark:bg-card z-10">
+      <div className="border-b px-4 py-3 sticky top-0 bg-card dark:bg-card z-10">
         <p className="text-center text-base font-semibold">
           {parseInt(selectedDate.slice(5, 7))}/{parseInt(selectedDate.slice(8, 10))}・{friendName}
         </p>
@@ -160,7 +160,7 @@ export default function FriendSchedulePage({ params }: { params: Promise<{ id: s
             <MonthNav year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
           </div>
 
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
             <div className="grid grid-cols-7 border-b">
               {WEEKDAYS.map((d, i) => (
                 <div key={d} className={cn(

@@ -153,7 +153,7 @@ export default function FriendsPage() {
         ) : friendships.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">還沒有好友，輸入 email 邀請看看</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
             {friendships.map((f, i) => {
               const letter = f.friend.displayName.charAt(0).toUpperCase() || '?'
               const isAccepted = f.status === 'accepted'

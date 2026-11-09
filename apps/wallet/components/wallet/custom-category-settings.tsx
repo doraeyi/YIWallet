@@ -16,7 +16,7 @@ export function CustomCategorySettings() {
   const visible = categories.filter(c => !c.hidden)
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
       <button onClick={() => setExpanded(v => !v)} className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40">
         <div className="flex items-center gap-2.5">
           <ShapesIcon className="size-4 text-brand-text" />

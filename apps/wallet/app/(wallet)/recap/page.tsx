@@ -118,7 +118,7 @@ export default function RecapPage() {
                 key={y}
                 onClick={() => setPicked(y)}
                 className={cn('rounded-full px-3.5 py-1 text-sm font-medium transition-colors',
-                  y === year ? 'bg-foreground text-background' : 'bg-white text-muted-foreground shadow-sm hover:bg-muted dark:bg-card')}
+                  y === year ? 'bg-foreground text-background' : 'bg-card text-muted-foreground shadow-sm hover:bg-muted dark:bg-card')}
               >
                 {y}
               </button>
@@ -128,7 +128,7 @@ export default function RecapPage() {
       </div>
 
       {recap.count === 0 ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-sm text-muted-foreground shadow-sm dark:bg-card">{year} 年還沒有記帳紀錄</div>
+        <div className="rounded-2xl bg-card p-10 text-center text-sm text-muted-foreground shadow-sm dark:bg-card">{year} 年還沒有記帳紀錄</div>
       ) : (
         <div key={year} className="stagger flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
           {/* 開場 */}
@@ -211,7 +211,7 @@ export default function RecapPage() {
 
 function Card({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-2xl bg-white p-5 shadow-sm dark:bg-card', className)}>
+    <div className={cn('rounded-2xl bg-card p-5 shadow-sm dark:bg-card', className)}>
       <p className="mb-3 text-xs font-medium text-muted-foreground">{title}</p>
       {children}
     </div>
@@ -220,7 +220,7 @@ function Card({ title, children, className }: { title: string; children: React.R
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
   return (
-    <div className="flex flex-col justify-center rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+    <div className="flex flex-col justify-center rounded-2xl bg-card p-4 shadow-sm dark:bg-card">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={cn('mt-1 truncate text-xl font-bold tabular-nums', tone)}>{value}</p>
       {sub && <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>}

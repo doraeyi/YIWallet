@@ -62,10 +62,6 @@ function findTarget(name: string): HTMLElement | null {
   return [...all].find(el => el.offsetParent !== null && el.getClientRects().length > 0) ?? null
 }
 
-function isDone(): boolean {
-  try { return localStorage.getItem(DONE_KEY) === '1' } catch { return false }
-}
-
 export function OnboardingTour() {
   const pathname = usePathname()
   const router = useRouter()
@@ -81,9 +77,8 @@ export function OnboardingTour() {
   useEffect(() => {
     if (pathname !== '/dashboard' || step !== null || !isLoaded || !cardsLoaded || isDesktop === undefined) return
     const params = new URLSearchParams(window.location.search)
-    const forced = params.has('tour') || params.has('welcome')
-    const brandNew = transactions.length === 0 && cards.length === 0
-    if (!forced && (isDone() || !brandNew)) return
+    // 新帳號改走 FirstSetup（兩個問題），這份完整導覽只在「設定 → 再看一次使用教學」（?tour=1）才出現
+    if (!params.has('tour')) return
     const timer = setTimeout(() => setStep(0), 600)
     return () => clearTimeout(timer)
   }, [pathname, step, isLoaded, cardsLoaded, isDesktop, transactions.length, cards.length])

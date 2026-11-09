@@ -5,6 +5,7 @@ import { LineImportBanner } from '@/components/wallet/line-import-banner'
 import { Toaster } from '@/components/ui/toaster'
 import { ConfirmHost } from '@/components/ui/confirm-host'
 import { OnboardingTour } from '@/components/wallet/onboarding-tour'
+import { FirstSetup } from '@/components/wallet/first-setup'
 import type { Metadata } from 'next'
 
 // App 裡面的頁面要登入才看得到，不讓搜尋引擎收錄
@@ -34,7 +35,8 @@ export default function WalletLayout({ children }: { children: React.ReactNode }
         <Toaster />
         <ConfirmHost />
 
-        {/* 新手導覽（剛註冊的人第一次進首頁） */}
+        {/* 新手設定（剛註冊的人第一次進首頁，問兩個問題）；完整導覽只在手動重看時出現 */}
+        <FirstSetup />
         <OnboardingTour />
       </div>
     </TransactionsProvider>

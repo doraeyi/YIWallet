@@ -122,6 +122,8 @@ export default function SettingsPage() {
   const [expandedAccount, setExpandedAccount] = useState<'google' | 'line' | null>(null)
   const [expandedFeature, setExpandedFeature] = useState<'cards' | 'budget' | 'jobs' | 'push' | null>(null)
   const [showChangelog, setShowChangelog] = useState(false)
+  // 自動記帳、班表同步這類設定一次就好的進階功能預設收起來，需要的人才展開
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
 
   function handleExportCsv() {
@@ -435,43 +437,33 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-4 lg:sticky lg:top-6">
 
         {/* 個人資料 */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
-          {/* 漸層 header */}
-          <div className="relative h-20 bg-gradient-to-br from-brand to-brand/70">
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-              {profile?.picture ? (
-                <img
-                  src={profile.picture}
-                  alt={displayName}
-                  referrerPolicy="no-referrer"
-                  className="size-20 rounded-full object-cover ring-4 ring-white dark:ring-card"
-                />
-              ) : (
-                <div className="flex size-20 items-center justify-center rounded-full bg-white ring-4 ring-white dark:ring-card shadow-sm">
-                  <span className="text-3xl font-bold text-brand">{avatarLetter}</span>
-                </div>
-              )}
+        <Link
+          href="/settings/profile"
+          aria-label="編輯個人資料"
+          className="flex items-center gap-4 overflow-hidden rounded-2xl bg-card px-4 py-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card"
+        >
+          {profile?.picture ? (
+            <img
+              src={profile.picture}
+              alt={displayName}
+              referrerPolicy="no-referrer"
+              className="size-14 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand-soft">
+              <span className="font-display text-2xl font-medium text-brand-text">{avatarLetter}</span>
             </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold">{displayName}</p>
+            {profile?.email && <p className="truncate text-xs text-muted-foreground">{profile.email}</p>}
           </div>
-          {/* 名字 & email */}
-          <div className="flex flex-col items-center pt-14 pb-5 gap-1">
-            <p className="text-base font-semibold">{displayName}</p>
-            {profile?.email && (
-              <p className="text-xs text-muted-foreground">{profile.email}</p>
-            )}
-          </div>
-          <Link
-            href="/settings/profile"
-            className="flex w-full items-center justify-between border-t px-4 py-3.5 text-sm text-muted-foreground hover:bg-muted/40"
-          >
-            <span>編輯個人資料</span>
-            <span className="text-base leading-none">›</span>
-          </Link>
-        </div>
+          <span className="text-base leading-none text-muted-foreground">›</span>
+        </Link>
 
         {/* ── 外觀 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">外觀</p>
-        <div className="overflow-hidden rounded-2xl bg-white p-3 shadow-sm dark:bg-card">
+        <div className="overflow-hidden rounded-2xl bg-card p-3 shadow-sm dark:bg-card">
           <div className="flex gap-2">
             {THEME_OPTIONS.map(opt => (
               <button
@@ -491,7 +483,7 @@ export default function SettingsPage() {
 
         {/* ── 帳號 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">帳號</p>
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
 
           {/* Google 帳號 row */}
           <button
@@ -534,7 +526,7 @@ export default function SettingsPage() {
               ) : (
                 <a
                   href="/api/auth/google/link-redirect"
-                  className="flex items-center justify-center rounded-xl bg-white border py-2.5 text-sm font-medium transition-colors hover:bg-muted/50 dark:bg-card dark:hover:bg-muted/20"
+                  className="flex items-center justify-center rounded-xl bg-card border py-2.5 text-sm font-medium transition-colors hover:bg-muted/50 dark:bg-card dark:hover:bg-muted/20"
                 >
                   綁定 Google 帳號
                 </a>
@@ -548,7 +540,7 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-4">
         {/* ── 功能 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">功能</p>
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
 
           {/* 卡片管理 row */}
           <button
@@ -817,9 +809,22 @@ export default function SettingsPage() {
         {/* ── 自訂分類 ── */}
         <CustomCategorySettings />
 
-        {/* ── 自動記帳（設定一次就好的進階功能，放在常用的卡片／工作後面）── */}
+        {/* ── 進階（設定一次就好：自動記帳、班表同步），預設收起來 ── */}
+        <button
+          onClick={() => setShowAdvanced(v => !v)}
+          aria-expanded={showAdvanced}
+          className="flex items-center justify-between rounded-2xl bg-card px-4 py-3.5 text-left shadow-sm hover:bg-muted/40 dark:bg-card"
+        >
+          <span className="flex flex-col">
+            <span className="text-sm font-medium">自動記帳與班表同步</span>
+            <span className="text-xs text-muted-foreground">LINE、Apple Pay 付款後自動記一筆，班表加進手機行事曆</span>
+          </span>
+          <ChevronDownIcon className={cn('size-4 shrink-0 text-muted-foreground transition-transform', showAdvanced && 'rotate-180')} />
+        </button>
+
+        {showAdvanced && <>
         <p className="px-1 text-xs font-medium text-muted-foreground">自動記帳</p>
-        <div data-tour="set-auto" className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+        <div data-tour="set-auto" className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
           {/* LINE Bot row */}
           <button
             onClick={() => setExpandedAccount(v => v === 'line' ? null : 'line')}
@@ -896,12 +901,13 @@ export default function SettingsPage() {
         {/* ── 班表同步 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">班表同步</p>
         <div data-tour="set-calendar"><CalendarFeedSettings /></div>
+        </>}
 
         {/* ── 管理後台（只有管理員帳號看得到入口，真正的權限判斷在後端）── */}
         {profile?.email === 'ch855118@gmail.com' && (
           <Link
             href="/admin"
-            className="flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm hover:bg-muted/40 dark:bg-card"
+            className="flex items-center justify-between rounded-2xl bg-card px-4 py-3.5 shadow-sm hover:bg-muted/40 dark:bg-card"
           >
             <span className="flex items-center gap-2 text-sm font-medium">
               <ShieldCheckIcon className="size-4 text-brand-text" />
@@ -913,7 +919,7 @@ export default function SettingsPage() {
 
         {/* ── 關於 ── */}
         <p className="px-1 text-xs font-medium text-muted-foreground">關於</p>
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
           <button
             onClick={() => setShowChangelog(v => !v)}
             className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-muted/40"
@@ -960,7 +966,7 @@ export default function SettingsPage() {
         <div className="lg:hidden">
           <button
             onClick={async () => { if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await logout() }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-medium text-rose-500 shadow-sm dark:bg-card"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card py-4 text-sm font-medium text-rose-500 shadow-sm dark:bg-card"
           >
             <LogOutIcon className="size-4" />
             登出
@@ -974,7 +980,7 @@ export default function SettingsPage() {
       {/* Job form overlay */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 lg:items-center">
-          <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-xl lg:rounded-2xl dark:bg-card">
+          <div className="w-full max-w-sm rounded-t-2xl bg-card p-5 shadow-xl lg:rounded-2xl dark:bg-card">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-base font-semibold">{editingId ? '編輯工作' : '新增工作'}</p>
               <button onClick={() => setFormOpen(false)} className="text-muted-foreground hover:text-foreground">

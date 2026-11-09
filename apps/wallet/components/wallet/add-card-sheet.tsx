@@ -6,7 +6,10 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useCards } from '@/hooks/use-cards'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
-import { lookupBank } from '@/lib/bank-codes'
+import { BANK_CODES, lookupBank } from '@/lib/bank-codes'
+
+// 最多人用的銀行放在最前面，點一下就帶入代碼
+const COMMON_BANK_CODES = ['822', '013', '812', '808', '012', '807', '700', '007', '008', '017', '803', '009']
 import { cn } from '@/lib/utils'
 import * as api from '@/lib/api'
 import type { Card } from '@/lib/types'
@@ -138,12 +141,28 @@ export function AddCardSheet({ open, onOpenChange, onCreated }: AddCardSheetProp
       {/* Bank code — 金融卡/信用卡 only */}
       {!isEasycard && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">銀行代碼</label>
+          <label className="text-xs font-medium text-muted-foreground">銀行</label>
+          {/* 常用銀行點一下就好，不用記代碼；不在這裡的銀行再輸入三碼代碼 */}
+          <div className="flex flex-wrap gap-1.5">
+            {COMMON_BANK_CODES.map(code => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => { setBankCode(code); setErrors(p => ({ ...p, bankCode: undefined })) }}
+                className={cn(
+                  'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                  bankCode === code ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                )}
+              >
+                {BANK_CODES[code]}
+              </button>
+            ))}
+          </div>
           <div className="relative">
             <input
               value={bankCode}
               onChange={e => { handleBankCodeChange(e.target.value); setErrors(p => ({ ...p, bankCode: undefined })) }}
-              placeholder="例：822"
+              placeholder="其他銀行輸入三碼代碼，例：822"
               inputMode="numeric"
               maxLength={3}
               className={cn(

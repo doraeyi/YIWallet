@@ -60,7 +60,7 @@ function BankScreenshotCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
       <div className="flex items-center justify-between border-b px-4 py-2.5">
         <span className="text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</span>
         <button
@@ -236,7 +236,7 @@ export default function BankNotifyPage() {
               onClick={() => setTab(t.key)}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                tab === t.key ? 'bg-foreground text-background' : 'bg-white text-muted-foreground shadow-sm dark:bg-card hover:bg-muted'
+                tab === t.key ? 'bg-foreground text-background' : 'bg-card text-muted-foreground shadow-sm dark:bg-card hover:bg-muted'
               )}
             >
               {t.label}

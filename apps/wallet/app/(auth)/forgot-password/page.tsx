@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         {!sentTo ? (
-          <form action={sendAction} className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm dark:bg-card">
+          <form action={sendAction} className="flex flex-col gap-4 rounded-2xl bg-card p-6 shadow-sm dark:bg-card">
             <div>
               <label htmlFor="email" className={LABEL}>電子郵件</label>
               <input id="email" name="email" type="email" required autoComplete="email" placeholder="輸入 Email" className={INPUT} />
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
             </button>
           </form>
         ) : (
-          <form action={resetAction} className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm dark:bg-card">
+          <form action={resetAction} className="flex flex-col gap-4 rounded-2xl bg-card p-6 shadow-sm dark:bg-card">
             <input type="hidden" name="email" value={sentTo} />
             <div>
               <label htmlFor="code" className={LABEL}>驗證碼</label>

@@ -47,7 +47,7 @@ export function UpdateBanner() {
 
   return (
     <div className="fixed bottom-24 left-4 right-4 z-50 animate-rise lg:bottom-6 lg:left-auto lg:right-6 lg:w-80">
-      <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-card">
+      <div className="overflow-hidden rounded-2xl bg-card shadow-xl ring-1 ring-black/5 dark:bg-card">
         <div className="flex items-center gap-2 bg-brand px-4 py-2.5 text-brand-foreground">
           <ArrowDownToLineIcon className="size-4" />
           <span className="text-sm font-bold">

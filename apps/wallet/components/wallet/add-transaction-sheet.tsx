@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useCards } from '@/hooks/use-cards'
 import { useTransactions } from '@/hooks/use-transactions'
-import { getCategoryById, pickableCategories, type Category, type Transaction, type TransactionType } from '@/lib/types'
+import { getCategoryById, pickableCategories, type Card, type Category, type Transaction, type TransactionType } from '@/lib/types'
 import { useCustomCategories } from '@/hooks/use-custom-categories'
 import { todayString } from '@/lib/finance-utils'
 import { cn } from '@/lib/utils'
@@ -39,6 +39,44 @@ function rememberCategory(type: TransactionType, category: string) {
     const saved = JSON.parse(localStorage.getItem(LAST_CATEGORY_KEY) ?? '{}')
     localStorage.setItem(LAST_CATEGORY_KEY, JSON.stringify({ ...saved, [type]: category }))
   } catch {}
+}
+
+// 上次用的付款方式：現金或某張卡。記一筆現金不該每次都要多點一下，所以以上次為準；
+// 從來沒記過的人，有設「常用卡」就用常用卡，沒有就先給現金（最常手動記的就是現金）
+const LAST_PAY_KEY = 'yiwallet_last_pay'
+const CASH_PAY = 'cash'
+
+function lastPay(): string | null {
+  try { return localStorage.getItem(LAST_PAY_KEY) } catch { return null }
+}
+
+function rememberPay(cardId: string | undefined) {
+  try { localStorage.setItem(LAST_PAY_KEY, cardId ?? CASH_PAY) } catch {}
+}
+
+function resolvePay(cards: Card[], defaultCard: Card | null): Card | undefined {
+  const saved = lastPay()
+  if (saved === CASH_PAY) return undefined
+  const hit = cards.find(c => c.id === saved)
+  if (hit) return hit
+  return saved ? undefined : defaultCard ?? undefined // 上次那張卡已刪掉就當現金
+}
+
+// 依現在幾點猜是哪一餐：早上早餐、中午午餐、傍晚晚餐
+const MEALS = ['breakfast', 'lunch', 'dinner']
+function guessMeal(): string {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 10) return 'breakfast'
+  if (h >= 11 && h < 14) return 'lunch'
+  if (h >= 17 && h < 21) return 'dinner'
+  return ''
+}
+
+// 上次記的是餐別（或沒有紀錄）就依時間猜這一餐；上次是交通、日用品這類就維持上次的
+function smartCategory(type: TransactionType): string {
+  const last = lastCategory(type)
+  if (type !== 'expense') return last
+  return !last || MEALS.includes(last) ? (guessMeal() || last) : last
 }
 
 // ── 計算機 ─────────────────────────────────────────────────────────────────────
@@ -84,16 +122,18 @@ interface AddTransactionSheetProps {
   onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>, isCash: boolean) => Promise<unknown> | void
   initialData?: Transaction
   onDelete?: () => Promise<void>
+  /** 連續補記：記完一筆不關面板、日期和付款方式留著，繼續記下一筆；按「完成」才關 */
+  batch?: boolean
 }
 
-export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData, onDelete }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData, onDelete, batch = false }: AddTransactionSheetProps) {
   const isDesktop = useIsDesktop()
   const { cards, defaultCard } = useCards()
   const { transactions } = useTransactions()
 
   const [type, setType] = useState<TransactionType>(initialData?.type ?? 'expense')
   const [category, setCategory] = useState(() =>
-    initialData ? initialData.category : (typeof window !== 'undefined' ? lastCategory('expense') : ''))
+    initialData ? initialData.category : (typeof window !== 'undefined' ? smartCategory('expense') : ''))
   const [amount, setAmount] = useState(initialData ? String(initialData.amount) : '')
   // 轉帳的備註存成「對象|備註」
   const [note, setNote] = useState(() => {
@@ -114,9 +154,11 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   // 商家／品名：Apple Pay、電子發票、LINE 記帳帶進來的，編輯時才顯示讓人改
   const [description, setDescription] = useState(
     initialData?.description && initialData.description !== initialData.note ? initialData.description : '')
-  const [cardId, setCardId] = useState<string | undefined>(
-    initialData ? initialData.cardId : (defaultCard?.id ?? cards[0]?.id))
-  const [isExplicitCash, setIsExplicitCash] = useState(!!initialData?.isCash && !initialData.cardId)
+  // 新增時先當現金，卡片載入後再依「上次用的付款方式」換成那張卡
+  const [cardId, setCardId] = useState<string | undefined>(initialData?.cardId)
+  const [isExplicitCash, setIsExplicitCash] = useState(initialData ? !!initialData.isCash && !initialData.cardId : true)
+  const payTouched = useRef(false)
+  const [savedCount, setSavedCount] = useState(0)
   const [saving, setSaving] = useState(false)
   // 存好之後 OK 鍵先畫一個打勾，停一下才關面板——這是整個 App 最常做的動作，給它一個確實的完成感
   const [justSaved, setJustSaved] = useState(false)
@@ -139,6 +181,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
       setAmount(String(r.amount))
       setNote(r.note)
       setDate(r.date)
+      payTouched.current = true
       if (r.card_id) { setCardId(r.card_id); setIsExplicitCash(false) }
       else if (r.is_cash) { setCardId(undefined); setIsExplicitCash(true) }
       else { setCardId(undefined); setIsExplicitCash(false) }
@@ -195,13 +238,22 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n]) => n)
   }, [transactions, category])
 
-  // 卡片載入完成後，新增模式還沒選卡就帶入常用卡
+  // 卡片載入完成後，新增模式還沒自己選過付款方式，就帶入上次用的
   useEffect(() => {
-    if (!initialData && cardId === undefined && !isExplicitCash) {
-      const preferred = defaultCard?.id ?? cards[0]?.id
-      if (preferred) setCardId(preferred)
-    }
+    if (initialData || payTouched.current || cards.length === 0) return
+    const pick = resolvePay(cards, defaultCard)
+    setCardId(pick?.id)
+    setIsExplicitCash(!pick)
   }, [defaultCard?.id, cards.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 連續補記關掉面板後，下次打開從今天、零筆開始
+  useEffect(() => {
+    if (open || !batch) return
+    /* eslint-disable react-hooks/set-state-in-effect -- 面板關上時把連續補記的狀態歸零 */
+    setSavedCount(0)
+    setDate(todayString())
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [open, batch])
 
   // 換到不是金融卡時，轉帳分類不能用了
   useEffect(() => {
@@ -214,7 +266,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   function handleTypeChange(t: TransactionType) {
     if (t === type) return
     setType(t)
-    setCategory(initialData ? '' : lastCategory(t))
+    setCategory(initialData ? '' : smartCategory(t))
     setTransferTo('')
   }
 
@@ -252,13 +304,23 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     await new Promise(resolve => setTimeout(resolve, 450))
     setJustSaved(false)
     if (initialData) toast('已更新')
-    else rememberCategory(type, category)
+    else { rememberCategory(type, category); rememberPay(cardId) }
+    if (batch && !initialData) {
+      // 連續補記：日期、付款方式留著，金額和備註清掉，面板不關
+      setSavedCount(n => n + 1)
+      setAmount(''); setNote(''); setTransferTo(''); setType('expense')
+      setCategory(smartCategory('expense'))
+      return
+    }
     setAmount(''); setNote(''); setTransferTo(''); setDate(todayString()); setType('expense')
-    setCategory(initialData ? '' : lastCategory('expense'))
-    setIsExplicitCash(false)
-    setCardId(defaultCard?.id ?? cards[0]?.id)
+    setCategory(initialData ? '' : smartCategory('expense'))
+    if (!initialData) {
+      const pick = resolvePay(cards, defaultCard)
+      setCardId(pick?.id)
+      setIsExplicitCash(!pick)
+    }
     onOpenChange(false)
-  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, onSubmit, onOpenChange, defaultCard?.id, saving, initialData, description, cards])
+  }, [amount, category, type, note, transferTo, date, cardId, isExplicitCash, onSubmit, onOpenChange, defaultCard, saving, initialData, description, cards, batch])
 
   const handleKey = useCallback((key: string) => {
     if (key === 'OK') { handleSave(); return }
@@ -340,15 +402,21 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   const dateObj = parseISO(date)
   const today = todayString()
   const dayPrefix = date === today ? '今日' : date === format(addDays(new Date(), -1), 'yyyy-MM-dd') ? '昨日' : ''
-  const accent = type === 'expense' ? 'text-rose-500' : 'text-emerald-600'
+  const accent = type === 'expense' ? 'text-foreground' : 'text-emerald-600'
 
   const inner = (
     <div ref={panelRef} tabIndex={-1} className="flex h-full flex-col outline-none">
       {/* ── 標題列：返回／支出收入切換／刪除 ── */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5">
-        <button onClick={requestClose} aria-label="關閉" className="flex size-9 items-center justify-center rounded-full hover:bg-muted">
-          <XIcon className="size-5" />
-        </button>
+        {batch && !initialData ? (
+          <button onClick={requestClose} className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background">
+            完成{savedCount > 0 && <span key={savedCount} className="ml-1.5 inline-block animate-pop font-normal opacity-80">已記 {savedCount} 筆</span>}
+          </button>
+        ) : (
+          <button onClick={requestClose} aria-label="關閉" className="flex size-9 items-center justify-center rounded-full hover:bg-muted">
+            <XIcon className="size-5" />
+          </button>
+        )}
         <div role="tablist" className="relative grid w-44 grid-cols-2 rounded-full bg-muted p-1">
           {/* 滑動的選中底色 */}
           <span
@@ -433,7 +501,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           )}
           <div className="flex min-w-0 flex-col">
             {hasExpression && <span className="truncate text-xs tabular-nums text-muted-foreground">{amount}</span>}
-            <span key={displayAmount} className={cn('text-3xl font-bold tabular-nums animate-pop', accent)}>${displayAmount}</span>
+            <span key={displayAmount} className={cn('font-display text-4xl font-medium tabular-nums animate-pop', accent)}>${displayAmount}</span>
           </div>
           {speech.supported && (
             <button
@@ -514,7 +582,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
         {cards.length > 0 && (
           <div className="flex gap-2 overflow-x-auto px-4 pt-2.5 scrollbar-none lg:flex-wrap lg:overflow-visible">
             <button
-              onClick={() => { setCardId(undefined); setIsExplicitCash(true) }}
+              onClick={() => { payTouched.current = true; setCardId(undefined); setIsExplicitCash(true) }}
               className={cn(
                 'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 !cardId && isExplicitCash ? 'border-emerald-500 bg-emerald-500 text-white' : 'text-muted-foreground hover:bg-muted',
@@ -525,7 +593,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
             {cards.map(card => (
               <button
                 key={card.id}
-                onClick={() => { setCardId(card.id); setIsExplicitCash(false) }}
+                onClick={() => { payTouched.current = true; setCardId(card.id); setIsExplicitCash(false) }}
                 className={cn(
                   'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                   cardId === card.id ? 'text-white' : 'text-muted-foreground hover:bg-muted',

@@ -58,13 +58,13 @@ export default function CashflowPage() {
           icon={CalendarClockIcon}
           title="接下來沒有排到的進出"
           hint="到設定新增工作（填發薪日）、在信用卡填繳費日，這裡就會排出發薪跟卡費"
-          className="rounded-2xl bg-white py-12 shadow-sm dark:bg-card"
+          className="rounded-2xl bg-card py-12 shadow-sm dark:bg-card"
         />
       ) : (
         // 電腦版：左邊總覽和提醒（固定在畫面上），右邊照日期排的進出
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-6">
           <div className="flex flex-col gap-4 lg:sticky lg:top-6">
-          <div className="animate-rise rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+          <div className="animate-rise rounded-2xl bg-card p-5 shadow-sm dark:bg-card">
             <p className="text-xs text-muted-foreground">扣掉卡費跟固定支出，還能自由花</p>
             <p className={cn('mt-1 text-3xl font-bold tabular-nums', net >= 0 ? 'text-foreground' : 'text-rose-500')}>
               {formatCurrency(net)}
@@ -92,7 +92,7 @@ export default function CashflowPage() {
 
           <div className="stagger flex flex-col gap-2">
             {groups.map(({ date, items }) => (
-              <div key={date.getTime()} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+              <div key={date.getTime()} className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
                 <div className="flex items-center justify-between border-b px-4 py-2 text-xs">
                   <span className="font-medium">{format(date, 'M/d EEEE', { locale: zhTW })}</span>
                   <span className={cn('text-muted-foreground', daysFromToday(date) < 0 && 'font-medium text-rose-500')}>{whenLabel(date)}</span>

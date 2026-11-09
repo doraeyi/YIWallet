@@ -497,7 +497,7 @@ export default function SchedulePage() {
     if (activeJob && !isOwnActiveJob && !showAllJobs) {
       return (
         <div className="flex flex-col max-h-[80vh] overflow-y-auto">
-          <div className="border-b px-4 py-3 sticky top-0 bg-white dark:bg-card z-10">
+          <div className="border-b px-4 py-3 sticky top-0 bg-card dark:bg-card z-10">
             <p className="text-center text-base font-semibold">
               {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日・{activeJob.name}
             </p>
@@ -572,7 +572,7 @@ export default function SchedulePage() {
     const dateAdvances = transactions.filter(t => t.note.endsWith(`領現 ${selectedDate}`))
     return (
       <div className="flex flex-col max-h-[80vh] overflow-y-auto">
-        <div className="border-b px-4 py-3 sticky top-0 bg-white dark:bg-card z-10">
+        <div className="border-b px-4 py-3 sticky top-0 bg-card dark:bg-card z-10">
           <p className="text-center text-base font-semibold">
             {year}年{parseInt(selectedDate.slice(5, 7))}月{parseInt(selectedDate.slice(8, 10))}日
           </p>
@@ -645,16 +645,16 @@ export default function SchedulePage() {
                   {customFor === job.id ? (
                     <div className="mt-2 flex flex-col gap-2 rounded-xl bg-muted/50 p-3">
                       <div className="flex items-center gap-2 text-sm">
-                        <input type="time" value={customStart} onChange={e => setCustomStart(e.target.value)} className="flex-1 rounded-lg border bg-white px-2 py-1.5 dark:bg-card" />
+                        <input type="time" value={customStart} onChange={e => setCustomStart(e.target.value)} className="flex-1 rounded-lg border bg-card px-2 py-1.5 dark:bg-card" />
                         <span>–</span>
-                        <input type="time" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="flex-1 rounded-lg border bg-white px-2 py-1.5 dark:bg-card" />
+                        <input type="time" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="flex-1 rounded-lg border bg-card px-2 py-1.5 dark:bg-card" />
                       </div>
                       <input
                         value={customNote}
                         onChange={e => setCustomNote(e.target.value)}
                         placeholder="備註（選填，例如：代班、支援別店）"
                         maxLength={100}
-                        className="rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-card"
+                        className="rounded-lg border bg-card px-2 py-1.5 text-sm dark:bg-card"
                       />
                       <div className="flex gap-2">
                         <button onClick={() => setCustomFor(null)} className="flex-1 rounded-lg border py-1.5 text-xs font-medium">取消</button>
@@ -746,7 +746,7 @@ export default function SchedulePage() {
               <p className="mb-2 text-xs font-semibold text-violet-700 dark:text-violet-400">好友幫你排的班</p>
               <div className="flex flex-wrap gap-1.5">
                 {(matchedShiftsByDate[selectedDate] ?? []).map(s => (
-                  <span key={s.id} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium shadow-sm dark:bg-card">
+                  <span key={s.id} className="rounded-full bg-card px-2.5 py-1 text-xs font-medium shadow-sm dark:bg-card">
                     {shiftTypeLabel(s.shiftType) ?? (s.startTime ? s.startTime.slice(0, 5) : '')}
                     {s.startTime && s.endTime && ` ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}`}
                   </span>
@@ -864,7 +864,7 @@ export default function SchedulePage() {
           <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-6">
           <div className="min-w-0">
           {/* Calendar */}
-          <div data-tour="sched-calendar" className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:rounded-3xl">
+          <div data-tour="sched-calendar" className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card lg:rounded-3xl">
             <div className="grid grid-cols-7 border-b">
               {WEEKDAYS.map((d, i) => (
                 <div key={d} className={cn(
@@ -973,7 +973,7 @@ export default function SchedulePage() {
                 const { shiftCount, normalHours, holidayHours, holidayShiftCount, gross, deduction, net } =
                   estimateJobPay(job, shifts, year, month, holidays)
                 return (
-                  <div key={job.id} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card lg:rounded-3xl">
+                  <div key={job.id} className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card lg:rounded-3xl">
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                       <span className="text-xs text-muted-foreground">
                         {job.pay_type === 'hourly'

@@ -10,7 +10,7 @@ export function EmptyState({ icon, title, hint, className }: {
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2 rounded-2xl bg-white py-12 text-center shadow-sm dark:bg-card', className)}>
+    <div className={cn('flex flex-col items-center justify-center gap-2 rounded-2xl bg-card py-12 text-center shadow-sm dark:bg-card', className)}>
       <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         {createElement(icon, { className: 'size-6', strokeWidth: 1.8 })}
       </span>

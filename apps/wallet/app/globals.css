@@ -24,6 +24,8 @@
      變數失效，英數字整站退回 Times 這類襯線體 */
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* 大數字專用的襯線體（今天花了多少、金額），其餘文字不用 */
+  --font-display: var(--font-newsreader), "Noto Serif TC", "PingFang TC", "Songti TC", Georgia, serif;
   --font-heading: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -54,6 +56,19 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* 支出紅、收入綠：全站都寫死用 rose／emerald，這裡統一換成跟暖紙底搭的磚紅和橄欖綠，
+     不然預設的粉紅、螢光綠會跟陶土紅打架 */
+  --color-rose-50: oklch(0.97 0.015 30);
+  --color-rose-100: oklch(0.94 0.03 30);
+  --color-rose-400: oklch(0.68 0.14 28);
+  --color-rose-500: oklch(0.58 0.16 28);
+  --color-rose-600: oklch(0.52 0.16 28);
+  --color-rose-700: oklch(0.45 0.14 28);
+  --color-emerald-50: oklch(0.97 0.02 150);
+  --color-emerald-100: oklch(0.94 0.04 150);
+  --color-emerald-500: oklch(0.58 0.1 155);
+  --color-emerald-600: oklch(0.5 0.1 155);
+  --color-emerald-700: oklch(0.43 0.09 155);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -64,32 +79,33 @@
 }
 
 :root {
-  /* ── 品牌色（琥珀金）── */
-  --brand: oklch(0.828 0.189 84.429);            /* 按鈕、選中狀態的底色 */
-  --brand-hover: oklch(0.769 0.188 70.08);       /* 按鈕 hover */
-  --brand-foreground: oklch(0.279 0.077 45.635); /* 品牌色底上的字（深咖啡，比白字好讀） */
-  --brand-text: oklch(0.666 0.179 58.318);       /* 白底上的品牌色文字、連結 */
-  --brand-soft: oklch(0.987 0.022 95.277);       /* 淡底：標籤、提示區塊 */
-  --brand-soft-foreground: oklch(0.555 0.163 48.998);
+  /* ── 品牌色（陶土紅）：整個 App 唯一的強調色，其餘都是暖紙色的中性色 ── */
+  --brand: oklch(0.57 0.15 40);                  /* 按鈕、選中狀態的底色 */
+  --brand-hover: oklch(0.52 0.15 40);            /* 按鈕 hover */
+  --brand-foreground: oklch(0.98 0.012 85);      /* 品牌色底上的字（奶油白） */
+  --brand-text: oklch(0.5 0.15 40);              /* 紙色底上的品牌色文字、連結 */
+  --brand-soft: oklch(0.95 0.03 62);             /* 淡底：標籤、提示區塊 */
+  --brand-soft-foreground: oklch(0.44 0.12 40);
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  /* 暖紙底：背景是奶油白、卡片比背景再亮一點，文字是帶褐的深墨色，不用純黑純白 */
+  --background: oklch(0.975 0.012 85);
+  --foreground: oklch(0.25 0.025 50);
+  --card: oklch(0.992 0.007 85);
+  --card-foreground: oklch(0.25 0.025 50);
+  --popover: oklch(0.992 0.007 85);
+  --popover-foreground: oklch(0.25 0.025 50);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  /* 次要文字：比 shadcn 預設（0.556）再深一點，淺灰底上的小字才讀得清楚 */
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.95 0.014 82);
+  --secondary-foreground: oklch(0.25 0.025 50);
+  --muted: oklch(0.95 0.014 82);
+  /* 次要文字：帶褐的中灰，奶油底上的小字也讀得清楚（約 5:1） */
+  --muted-foreground: oklch(0.5 0.03 60);
+  --accent: oklch(0.95 0.014 82);
+  --accent-foreground: oklch(0.25 0.025 50);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.9 0.018 80);
+  --input: oklch(0.9 0.018 80);
   --ring: var(--brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -97,55 +113,56 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar: oklch(0.985 0.009 85);
+  --sidebar-foreground: oklch(0.25 0.025 50);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.95 0.014 82);
+  --sidebar-accent-foreground: oklch(0.25 0.025 50);
+  --sidebar-border: oklch(0.9 0.018 80);
+  --sidebar-ring: oklch(0.708 0.03 60);
 }
 
 .dark {
-  --brand: oklch(0.828 0.189 84.429);
-  --brand-hover: oklch(0.879 0.169 91.605);
-  --brand-foreground: oklch(0.279 0.077 45.635);
-  --brand-text: oklch(0.828 0.189 84.429);
-  --brand-soft: oklch(0.828 0.189 84.429 / 12%);
-  --brand-soft-foreground: oklch(0.879 0.169 91.605);
+  --brand: oklch(0.7 0.14 45);
+  --brand-hover: oklch(0.75 0.14 48);
+  --brand-foreground: oklch(0.2 0.03 45);
+  --brand-text: oklch(0.78 0.12 52);
+  --brand-soft: oklch(0.7 0.14 45 / 14%);
+  --brand-soft-foreground: oklch(0.84 0.09 55);
 
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  /* 深色也帶一點褐，不是純灰黑：晚上補記時眼睛比較舒服 */
+  --background: oklch(0.19 0.012 55);
+  --foreground: oklch(0.95 0.015 80);
+  --card: oklch(0.23 0.014 55);
+  --card-foreground: oklch(0.95 0.015 80);
+  --popover: oklch(0.23 0.014 55);
+  --popover-foreground: oklch(0.95 0.015 80);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.28 0.014 55);
+  --secondary-foreground: oklch(0.95 0.015 80);
+  --muted: oklch(0.28 0.014 55);
+  --muted-foreground: oklch(0.72 0.025 70);
+  --accent: oklch(0.28 0.014 55);
+  --accent-foreground: oklch(0.95 0.015 80);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(0.95 0.02 80 / 12%);
+  --input: oklch(0.95 0.02 80 / 16%);
   --ring: var(--brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.23 0.014 55);
+  --sidebar-foreground: oklch(0.95 0.015 80);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-accent: oklch(0.28 0.014 55);
+  --sidebar-accent-foreground: oklch(0.95 0.015 80);
+  --sidebar-border: oklch(0.95 0.02 80 / 12%);
+  --sidebar-ring: oklch(0.556 0.03 60);
 }
 
 @layer base {

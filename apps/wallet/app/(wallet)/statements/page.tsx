@@ -150,7 +150,7 @@ export default function StatementsPage() {
             </button>
           </div>
 
-          <div className="flex flex-col divide-y overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="flex flex-col divide-y overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
             {items.map(item => (
               <div
                 key={item.invoiceNo}

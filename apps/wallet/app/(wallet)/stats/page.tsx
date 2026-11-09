@@ -24,7 +24,7 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'year',  label: '年' },
 ]
 
-const FALLBACK_COLORS = ['#EF4444','#3B82F6','#8B5CF6','#F59E0B','#10B981','#EC4899','#14B8A6','#6B7280']
+const FALLBACK_COLORS = ['#B5483A','#C98A3A','#5E8A62','#6F7FA6','#9A6B8F','#4F8C8F','#B07A52','#8A7F72']
 
 
 function StatsContent() {
@@ -74,7 +74,7 @@ function StatsContent() {
     const cashTxs = filtered.filter(tx => !tx.cardId)
     const rows = [
       {
-        id: 'cash', name: '現金', kind: 'cash' as PaymentKind, color: '#10B981',
+        id: 'cash', name: '現金', kind: 'cash' as PaymentKind, color: '#5E8A62',
         expense: sumByType(cashTxs, 'expense'),
         income:  sumByType(cashTxs, 'income'),
       },
@@ -93,12 +93,12 @@ function StatsContent() {
   const expensePieData = expenseCats.map(d => ({
     name:  getCategoryById(d.category)?.name ?? d.category,
     value: d.amount,
-    color: getCategoryById(d.category)?.color,
+    color: getCategoryById(d.category)?.text,
   }))
   const incomePieData = incomeCats.map(d => ({
     name:  getCategoryById(d.category)?.name ?? d.category,
     value: d.amount,
-    color: getCategoryById(d.category)?.color,
+    color: getCategoryById(d.category)?.text,
   }))
 
   if (!isLoaded) {
@@ -131,7 +131,7 @@ function StatsContent() {
                 'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
                 period === p.value
                   ? 'bg-foreground text-background'
-                  : 'bg-white text-muted-foreground shadow-sm dark:bg-card hover:bg-muted'
+                  : 'bg-card text-muted-foreground shadow-sm dark:bg-card hover:bg-muted'
               )}
             >
               {p.label}
@@ -158,17 +158,17 @@ function StatsContent() {
               onClick={() => toggleType(item.type)}
               aria-pressed={typeFilter === item.type}
               className={cn(
-                'rounded-2xl bg-white p-4 text-left shadow-sm transition-all duration-200 dark:bg-card',
+                'rounded-2xl bg-card p-4 text-left shadow-sm transition-all duration-200 dark:bg-card',
                 typeFilter === item.type ? `ring-2 ${item.ring}` : typeFilter && 'opacity-50',
               )}
             >
               <p className="text-xs text-muted-foreground">{item.label}</p>
-              <p className={cn('mt-1 text-lg font-bold', item.color)}>{formatCurrency(item.value)}</p>
+              <p className={cn('mt-1 font-display text-xl font-medium tabular-nums', item.color)}>{formatCurrency(item.value)}</p>
             </button>
           ))}
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+          <div className="rounded-2xl bg-card p-4 shadow-sm dark:bg-card">
             <p className="text-xs text-muted-foreground">結餘</p>
-            <p className={cn('mt-1 text-lg font-bold', balance >= 0 ? 'text-foreground' : 'text-rose-500')}>
+            <p className={cn('mt-1 font-display text-xl font-medium tabular-nums', balance >= 0 ? 'text-foreground' : 'text-rose-500')}>
               {formatCurrency(balance)}
             </p>
           </div>
@@ -177,14 +177,14 @@ function StatsContent() {
         {/* 往現金流、年度回顧 */}
         {!cardIdParam && !filterParam && (
           <div className="grid grid-cols-2 gap-3">
-            <Link href="/cashflow" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card">
+            <Link href="/cashflow" className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground"><CalendarClockIcon className="size-4" /></span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">現金流</span>
                 <span className="block truncate text-xs text-muted-foreground">發薪、卡費排一起看</span>
               </span>
             </Link>
-            <Link href="/recap" className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card">
+            <Link href="/recap" className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/40 dark:bg-card">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground"><BookOpenIcon className="size-4" /></span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">年度回顧</span>
@@ -196,7 +196,7 @@ function StatsContent() {
 
         {/* Cards overview */}
         {cardStats.length > 0 && (
-          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+          <div className="rounded-2xl bg-card p-5 shadow-sm dark:bg-card">
             <p className="mb-3 text-sm font-semibold">各帳戶收支</p>
             <div className="flex flex-col gap-2">
               {cardStats.map(row => {
@@ -237,7 +237,7 @@ function StatsContent() {
         )}
 
         {/* Bar chart — full width */}
-        <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+        <div className="rounded-2xl bg-card p-5 shadow-sm dark:bg-card">
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className="text-sm font-semibold">收支趨勢</p>
             <div role="tablist" className="flex rounded-full bg-muted p-0.5 text-xs font-medium">
@@ -273,8 +273,8 @@ function StatsContent() {
                 contentStyle={{ borderRadius: 10, fontSize: 12 }}
               />
               {trendType === 'both' && <Legend formatter={v => v === 'income' ? '收入' : '支出'} iconType="circle" iconSize={8} />}
-              {trendType !== 'expense' && <Bar dataKey="income" fill="#10B981" radius={[4,4,0,0]} />}
-              {trendType !== 'income' && <Bar dataKey="expense" fill="#F43F5E" radius={[4,4,0,0]} />}
+              {trendType !== 'expense' && <Bar dataKey="income" fill="#5E8A62" radius={[4,4,0,0]} />}
+              {trendType !== 'income' && <Bar dataKey="expense" fill="#B5483A" radius={[4,4,0,0]} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -288,7 +288,7 @@ function StatsContent() {
             total={expense}
             pieData={expensePieData}
             categories={expenseCats}
-            totalColor="#EF4444"
+            totalColor="#B5483A"
             label="總支出"
           />
           <CategorySection
@@ -296,7 +296,7 @@ function StatsContent() {
             total={income}
             pieData={incomePieData}
             categories={incomeCats}
-            totalColor="#10B981"
+            totalColor="#5E8A62"
             label="總收入"
           />
         </div>
@@ -316,7 +316,7 @@ function StatsContent() {
             )}
           </div>
           {groups.length === 0 ? (
-            <div className="flex items-center justify-center rounded-2xl bg-white py-10 shadow-sm dark:bg-card">
+            <div className="flex items-center justify-center rounded-2xl bg-card py-10 shadow-sm dark:bg-card">
               <p className="text-sm text-muted-foreground">
                 {typeFilter ? `這段期間沒有${typeFilter === 'income' ? '收入' : '支出'}` : '這段期間還沒有紀錄'}
               </p>
@@ -327,7 +327,7 @@ function StatsContent() {
               const dayIncome  = items.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0)
               const dayExpense = items.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0)
               return (
-                <div key={date} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+                <div key={date} className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
                   <div className="flex items-center justify-between border-b px-4 py-2">
                     <span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                     <div className="flex gap-2 text-xs">
@@ -379,14 +379,14 @@ function CategorySection({
 }) {
   if (pieData.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-2xl bg-white p-8 shadow-sm dark:bg-card">
+      <div className="flex items-center justify-center rounded-2xl bg-card p-8 shadow-sm dark:bg-card">
         <p className="text-sm text-muted-foreground">{title}：暫無資料</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+    <div className="rounded-2xl bg-card p-5 shadow-sm dark:bg-card">
       <p className="mb-4 text-sm font-semibold">{title}</p>
       <div className="flex items-center gap-4">
         {/* Donut */}

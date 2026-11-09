@@ -253,11 +253,11 @@ export default function RosterImportPage() {
             )}
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border bg-white dark:bg-card">
+          <div className="overflow-x-auto rounded-2xl border bg-card dark:bg-card">
             <table className="border-collapse text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="sticky left-0 z-10 min-w-24 bg-white px-2 py-2 text-left text-xs font-medium text-muted-foreground dark:bg-card">姓名</th>
+                  <th className="sticky left-0 z-10 min-w-24 bg-card px-2 py-2 text-left text-xs font-medium text-muted-foreground dark:bg-card">姓名</th>
                   {dates.map((date, i) => (
                     <th key={i} className="min-w-28 px-1.5 py-2 text-xs font-medium text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -279,7 +279,7 @@ export default function RosterImportPage() {
               <tbody>
                 {rows.map((row, r) => (
                   <tr key={r} className="border-b last:border-0">
-                    <td className="sticky left-0 z-10 bg-white px-2 py-1.5 dark:bg-card">
+                    <td className="sticky left-0 z-10 bg-card px-2 py-1.5 dark:bg-card">
                       <div className="flex flex-col gap-1">
                         <input
                           value={row.employeeName}
@@ -361,7 +361,7 @@ export default function RosterImportPage() {
           )}
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:bg-card lg:left-60">
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:bg-card lg:left-60">
           <button
             onClick={handleConfirm}
             disabled={saving}
@@ -386,7 +386,7 @@ export default function RosterImportPage() {
       <div className="flex flex-col gap-5 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1">
         {/* 兩種匯入方式並排：LINE 轉傳（步驟說明）／直接選照片 */}
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+          <div className="rounded-2xl bg-card p-5 shadow-sm dark:bg-card">
             <div className="mb-3 flex items-center gap-2.5">
               <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10">
                 <MessageCircleIcon className="size-[18px]" />
@@ -427,11 +427,11 @@ export default function RosterImportPage() {
           {pendingLoading ? (
             <p className="py-3 text-center text-sm text-muted-foreground">載入中…</p>
           ) : pending.length === 0 ? (
-            <p className="rounded-2xl bg-white py-6 text-center text-sm text-muted-foreground shadow-sm dark:bg-card">目前沒有從 LINE 傳來的照片</p>
+            <p className="rounded-2xl bg-card py-6 text-center text-sm text-muted-foreground shadow-sm dark:bg-card">目前沒有從 LINE 傳來的照片</p>
           ) : (
             <div className="flex flex-col gap-2">
               {pending.map(item => (
-                <div key={item.id} className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-card">
+                <div key={item.id} className="flex items-center justify-between rounded-2xl bg-card px-4 py-3 shadow-sm dark:bg-card">
                   <span className="text-sm">{formatDateTime(item.created_at)}</span>
                   <div className="flex items-center gap-2">
                     <button

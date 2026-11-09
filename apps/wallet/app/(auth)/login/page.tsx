@@ -67,7 +67,7 @@ export default function LoginPage() {
           <p className="text-sm text-muted-foreground">登入你的帳號</p>
         </div>
 
-        <form action={action} className="rounded-2xl bg-white p-6 shadow-sm dark:bg-card">
+        <form action={action} className="rounded-2xl bg-card p-6 shadow-sm dark:bg-card">
           <div className="flex flex-col gap-4">
             <Suspense>
               <ReturnToFields />
@@ -112,7 +112,7 @@ export default function LoginPage() {
         </form>
 
         {/* Google 登入 */}
-        <div className="mt-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-card">
+        <div className="mt-3 rounded-2xl bg-card p-4 shadow-sm dark:bg-card">
           <div className="relative flex items-center mb-3">
             <div className="grow border-t" />
             <span className="mx-3 text-xs text-muted-foreground">或</span>

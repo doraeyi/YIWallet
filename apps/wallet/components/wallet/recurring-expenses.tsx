@@ -32,7 +32,7 @@ export function RecurringExpenses() {
   const monthly = items.reduce((s, i) => s + i.amount, 0)
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-card">
+    <div className="rounded-2xl bg-card p-5 shadow-sm dark:bg-card">
       <div className="mb-1 flex items-baseline justify-between">
         <p className="flex items-center gap-1.5 text-sm font-semibold"><RepeatIcon className="size-4 text-brand-text" />固定支出</p>
         <p className="text-sm font-bold tabular-nums">{formatCurrency(monthly)}<span className="text-xs font-normal text-muted-foreground"> / 月</span></p>

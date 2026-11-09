@@ -124,7 +124,7 @@ function TransactionsContent() {
             placeholder="搜尋商家、備註或分類"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-xl bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring dark:bg-card"
+            className="w-full rounded-xl bg-card py-2.5 pl-9 pr-4 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring dark:bg-card"
           />
         </div>
 
@@ -138,7 +138,7 @@ function TransactionsContent() {
                 aria-pressed={payFilter === o.id}
                 className={cn(
                   'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                  payFilter === o.id ? 'bg-foreground text-background' : 'bg-white text-muted-foreground shadow-sm dark:bg-card',
+                  payFilter === o.id ? 'bg-foreground text-background' : 'bg-card text-muted-foreground shadow-sm dark:bg-card',
                 )}
               >
                 {o.name}
@@ -172,7 +172,7 @@ function TransactionsContent() {
                 const dayIncome  = items.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0)
                 const dayExpense = items.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0)
                 return (
-                  <div key={date} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+                  <div key={date} className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
                     <div className="flex items-center justify-between border-b px-4 py-2">
                       <span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                       <div className="flex gap-2 text-xs">
@@ -184,7 +184,7 @@ function TransactionsContent() {
                       const cat = getCategoryById(tx.category)
                       const { title, subtitle } = transactionLabels(tx, cat?.name ?? tx.category, paymentLabel(tx, cards))
                       return (
-                        <div key={tx.id} className={cn('group flex items-center gap-3 px-4 py-3 transition-colors lg:hover:bg-muted/30', idx > 0 && 'border-t', tx.id === highlightId && 'animate-flash')}>
+                        <div key={tx.id} onClick={() => setEditTx(tx)} className={cn('group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors active:bg-muted/40 lg:hover:bg-muted/30', idx > 0 && 'border-t', tx.id === highlightId && 'animate-flash')}>
                           <CategoryBadge id={tx.category} />
                           <button onClick={() => setEditTx(tx)} className="min-w-0 flex-1 text-left">
                             <p className="truncate text-sm font-medium">{title}</p>
@@ -193,12 +193,13 @@ function TransactionsContent() {
                           <p className={cn('shrink-0 text-sm font-semibold tabular-nums', tx.type === 'income' ? 'text-emerald-600' : 'text-foreground')}>
                             {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                           </p>
-                          {/* 電腦版滑鼠移到這列才出現，整頁不會滿滿都是小圖示；手機沒有 hover 照常顯示 */}
-                          <div className="flex shrink-0 gap-1 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
-                            <button onClick={() => setEditTx(tx)} aria-label={`編輯「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+                          {/* 手機整列都能點，點開編輯（裡面有刪除），列表上不放小圖示；
+                              電腦版滑鼠移到這列才出現編輯、刪除 */}
+                          <div className="hidden shrink-0 gap-1 transition-opacity lg:flex lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+                            <button onClick={e => { e.stopPropagation(); setEditTx(tx) }} aria-label={`編輯「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
                               <PencilIcon className="size-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(tx, title)} aria-label={`刪除「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-100 hover:text-rose-500">
+                            <button onClick={e => { e.stopPropagation(); handleDelete(tx, title) }} aria-label={`刪除「${title}」`} className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-rose-100 hover:text-rose-500">
                               <Trash2Icon className="size-3.5" />
                             </button>
                           </div>

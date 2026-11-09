@@ -91,14 +91,14 @@ export function SplitsPanel() {
         </p>
       </div>
       {open.length > 0 && (
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">{open.map(row)}</div>
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">{open.map(row)}</div>
       )}
       {settled.length > 0 && (
         <>
           <button onClick={() => setShowSettled(v => !v)} className="self-start px-1 text-xs font-medium text-brand-text">
             {showSettled ? '收起已結清的' : `已結清 ${settled.length} 筆`}
           </button>
-          {showSettled && <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">{settled.map(row)}</div>}
+          {showSettled && <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">{settled.map(row)}</div>}
         </>
       )}
     </div>

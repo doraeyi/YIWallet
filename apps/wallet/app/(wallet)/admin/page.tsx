@@ -131,14 +131,14 @@ export default function AdminPage() {
       <div className="flex flex-col gap-4 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-1">
         {!loading && (
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-white px-4 py-3.5 shadow-sm dark:bg-card">
+            <div className="rounded-2xl bg-card px-4 py-3.5 shadow-sm dark:bg-card">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <UsersIcon className="size-3.5" />
                 <span className="text-xs">總使用者</span>
               </div>
               <p className="mt-1 text-2xl font-bold">{users.length}</p>
             </div>
-            <div className="rounded-2xl bg-white px-4 py-3.5 shadow-sm dark:bg-card">
+            <div className="rounded-2xl bg-card px-4 py-3.5 shadow-sm dark:bg-card">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <ScanLineIcon className="size-3.5" />
                 <span className="text-xs">OCR 已開通</span>
@@ -152,7 +152,7 @@ export default function AdminPage() {
         )}
 
         {lineQuota && (
-          <div className="rounded-2xl bg-white px-4 py-3.5 shadow-sm dark:bg-card">
+          <div className="rounded-2xl bg-card px-4 py-3.5 shadow-sm dark:bg-card">
             <div className="flex items-center gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-400/15">
                 <MessageCircleIcon className="size-4.5" />
@@ -178,7 +178,7 @@ export default function AdminPage() {
         )}
 
         {!loading && users.length > 0 && (
-          <div className="rounded-2xl bg-white px-4 py-3.5 shadow-sm dark:bg-card">
+          <div className="rounded-2xl bg-card px-4 py-3.5 shadow-sm dark:bg-card">
             <p className="text-sm font-medium">近 6 個月新增使用者</p>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={monthlySignups(users, 6)} barCategoryGap="30%">
@@ -204,7 +204,7 @@ export default function AdminPage() {
         {loading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">載入中…</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-card">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm dark:bg-card">
             {users.map((u, i) => (
               <div key={u.id} className={cn('flex items-center gap-3 px-4 py-3.5', i > 0 && 'border-t')}>
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-400/15">
