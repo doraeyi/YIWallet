@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { ConfirmHost } from '@/components/ui/confirm-host'
 import { OnboardingTour } from '@/components/wallet/onboarding-tour'
 import { FirstSetup } from '@/components/wallet/first-setup'
+import { OfflineBanner } from '@/components/wallet/offline-banner'
 import type { Metadata } from 'next'
 
 // App 裡面的頁面要登入才看得到，不讓搜尋引擎收錄
@@ -21,6 +22,7 @@ export default function WalletLayout({ children }: { children: React.ReactNode }
         {/* Page content */}
         {/* 桌機版內容限制最大寬度置中，超寬螢幕不會把列表拉成一長條 */}
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto pb-24 lg:pb-10">
+          <OfflineBanner />
           <div className="flex w-full flex-1 flex-col lg:mx-auto lg:max-w-6xl lg:px-4 xl:px-8">
             {children}
           </div>

@@ -2,6 +2,15 @@ import type { Category, Transaction, Card, Friendship, FriendUser, JobShare, Fri
 
 const API = '/api/backend'
 
+// 帶狀態碼的錯誤：離線佇列要靠它分辨「連不上」和「伺服器拒收」
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
 // ── Transactions ──────────────────────────────────────────────────
 
 interface ApiTransaction {
@@ -41,16 +50,24 @@ export async function fetchTransactionsByMonth(year: number, month: number): Pro
   return data.map(normalizeTransaction)
 }
 
-export async function fetchAllTransactions(): Promise<Transaction[]> {
-  const res = await fetch(`${API}/transactions`)
+// fresh：跳過 service worker 留的離線備份，一定要拿伺服器現在的資料
+export async function fetchAllTransactions(options?: { fresh?: boolean }): Promise<Transaction[]> {
+  const res = await fetch(`${API}/transactions`, options?.fresh ? { cache: 'no-store' } : undefined)
   if (!res.ok) throw new Error('Failed to fetch transactions')
   const data: ApiTransaction[] = await res.json()
   return data.map(normalizeTransaction)
 }
 
-export async function createTransaction(data: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
+export async function createTransaction(
+  data: Omit<Transaction, 'id' | 'createdAt'>,
+  options?: { timeoutMs?: number },
+): Promise<Transaction> {
+  // 訊號很差時 fetch 會一直等，設上限才能改存手機，不會卡在轉圈
+  const controller = new AbortController()
+  const timer = options?.timeoutMs ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined
   const res = await fetch(`${API}/transactions`, {
     method: 'POST',
+    signal: controller.signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       transaction_type: data.type,
@@ -61,10 +78,10 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
       card_id: data.cardId ?? null,
       is_cash: !data.cardId && !!data.isCash,
     }),
-  })
+  }).finally(() => clearTimeout(timer))
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Failed to create transaction (${res.status}): ${err}`)
+    throw new ApiError(res.status, `Failed to create transaction (${res.status}): ${err}`)
   }
   return normalizeTransaction(await res.json())
 }

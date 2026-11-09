@@ -170,8 +170,9 @@ export function transactionLabels(
 ): { title: string; subtitle: string } {
   const desc = tx.description?.trim() ?? ''
   const note = tx.note?.trim() ?? ''
-  if (!desc) return { title: categoryName, subtitle: [note, paymentName].filter(Boolean).join(' · ') }
-  return { title: desc, subtitle: [categoryName, note !== desc ? note : '', paymentName].filter(Boolean).join(' · ') }
+  const syncing = tx.pending ? '待同步' : ''
+  if (!desc) return { title: categoryName, subtitle: [note, paymentName, syncing].filter(Boolean).join(' · ') }
+  return { title: desc, subtitle: [categoryName, note !== desc ? note : '', paymentName, syncing].filter(Boolean).join(' · ') }
 }
 
 // 列表上顯示用哪張卡付的；沒卡又明確選了現金就寫現金，兩者都不是就不寫（還沒指定）

@@ -99,6 +99,26 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // 帳務資料：有網路就拿最新的並留一份，沒網路（或後端掛了）才用留的，離線打開還看得到帳和卡片。
+  // cache: 'no-store' 是離線補送前的比對，一定要伺服器現在的資料，不能回舊的
+  const OFFLINE_API = ['/api/backend/transactions', '/api/backend/cards', '/api/backend/users/me', '/api/backend/categories']
+  if (OFFLINE_API.includes(url.pathname)) {
+    if (event.request.cache === 'no-store') return
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        try {
+          const response = await fetch(event.request)
+          if (response.ok) cache.put(event.request, response.clone())
+          if (response.status < 500) return response
+          return (await cache.match(event.request)) ?? response
+        } catch {
+          return (await cache.match(event.request)) ?? Response.error()
+        }
+      })
+    )
+    return
+  }
+
   // 登入／註冊／忘記密碼一律直接向伺服器拿最新的頁面：這幾頁的送出按鈕是 Server Action，
   // 快取裡的舊版頁面在新版部署後會找不到對應的動作，按了沒反應（Google 登入鈕也會卡住）
   const AUTH_PAGES = ['/login', '/register', '/forgot-password']
@@ -119,7 +139,8 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) cache.put(event.request, response.clone())
           return response
         } catch {
-          return (await caches.match('/offline')) ?? Response.error()
+          // 桌面捷徑的 ?add=1 沒單獨快取過，離線時用同一頁
+          return (await cache.match(event.request, { ignoreSearch: true })) ?? (await caches.match('/offline')) ?? Response.error()
         }
       })
     )

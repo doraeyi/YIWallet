@@ -40,6 +40,7 @@ export function FirstSetup() {
     if (pathname !== '/dashboard' || open || !isLoaded || !cardsLoaded) return
     const params = new URLSearchParams(window.location.search)
     if (params.has('tour')) return // 手動重看教學時交給 OnboardingTour
+    if (!navigator.onLine) return // 沒網路抓不到資料，不代表是新帳號
     const brandNew = transactions.length === 0 && cards.length === 0
     if (isDone() || !(params.has('welcome') || brandNew)) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 要等首頁資料載入、確認是全新帳號才開，只能在 effect 裡決定

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { logout } from '@/app/actions/auth'
+import { signOut } from '@/lib/sign-out'
 import { toast } from '@/lib/toast'
 
 const CONFIRM_TEXT = '刪除帳號'
@@ -28,7 +28,7 @@ export function DeleteAccountDialog({ open, onOpenChange }: { open: boolean; onO
       setDeleting(false)
       return
     }
-    await logout()
+    await signOut()
   }
 
   return (

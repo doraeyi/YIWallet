@@ -10,7 +10,7 @@ import { formatCurrency, jobRate } from '@/lib/finance-utils'
 import * as api from '@/lib/api'
 import type { Job } from '@/lib/types'
 import { cn, dayOfMonth } from '@/lib/utils'
-import { logout } from '@/app/actions/auth'
+import { signOut } from '@/lib/sign-out'
 import { useSearchParams } from 'next/navigation'
 import { useCards } from '@/hooks/use-cards'
 import { EditCardSheet } from '@/components/wallet/edit-card-sheet'
@@ -965,7 +965,7 @@ export default function SettingsPage() {
         {/* Logout — visible on mobile only (desktop uses sidebar) */}
         <div className="lg:hidden">
           <button
-            onClick={async () => { if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await logout() }}
+            onClick={async () => { if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await signOut() }}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card py-4 text-sm font-medium text-rose-500 shadow-sm dark:bg-card"
           >
             <LogOutIcon className="size-4" />

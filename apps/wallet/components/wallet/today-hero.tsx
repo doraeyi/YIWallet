@@ -9,7 +9,9 @@ import { useCountUp } from '@/hooks/use-count-up'
 import { filterByMonth, formatCurrency, sumByType, todayString } from '@/lib/finance-utils'
 import { AddTransactionSheet } from './add-transaction-sheet'
 import { CashCountSheet, cashOnHand } from './cash-count-sheet'
+import { QuickEntries } from './quick-entries'
 import { toast } from '@/lib/toast'
+import { cn } from '@/lib/utils'
 
 const NUDGE_KEY = 'yiwallet_nudge_dismissed'
 const NUDGE_HOUR = 18
@@ -63,7 +65,8 @@ export function TodayHero() {
       <div className="mt-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">今天花了</p>
-          <p className="font-display text-[64px] font-medium leading-none tracking-tight tabular-nums">
+          {/* 五位數以上字縮小，才不會撞到右邊的錢包現金 */}
+          <p className={cn('font-display font-medium leading-none tracking-tight tabular-nums', spentToday >= 10000 ? 'text-5xl' : 'text-[64px]')}>
             {formatCurrency(animatedToday)}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -97,6 +100,8 @@ export function TodayHero() {
       >
         <PlusIcon className="size-5" strokeWidth={2.5} />記一筆
       </button>
+
+      <QuickEntries />
 
       {showNudge && (
         <div className="mt-3 flex items-center gap-3 rounded-2xl border bg-card py-2.5 pr-2 pl-4 animate-rise">

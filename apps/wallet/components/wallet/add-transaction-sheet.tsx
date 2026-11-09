@@ -12,6 +12,8 @@ import { useTransactions } from '@/hooks/use-transactions'
 import { getCategoryById, pickableCategories, type Card, type Category, type Transaction, type TransactionType } from '@/lib/types'
 import { useCustomCategories } from '@/hooks/use-custom-categories'
 import { todayString } from '@/lib/finance-utils'
+import { MEALS, guessMeal, learnedCategory } from '@/lib/quick-entry'
+import { isOffline } from '@/lib/offline-queue'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
@@ -60,16 +62,6 @@ function resolvePay(cards: Card[], defaultCard: Card | null): Card | undefined {
   const hit = cards.find(c => c.id === saved)
   if (hit) return hit
   return saved ? undefined : defaultCard ?? undefined // 上次那張卡已刪掉就當現金
-}
-
-// 依現在幾點猜是哪一餐：早上早餐、中午午餐、傍晚晚餐
-const MEALS = ['breakfast', 'lunch', 'dinner']
-function guessMeal(): string {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 10) return 'breakfast'
-  if (h >= 11 && h < 14) return 'lunch'
-  if (h >= 17 && h < 21) return 'dinner'
-  return ''
 }
 
 // 上次記的是餐別（或沒有紀錄）就依時間猜這一餐；上次是交通、日用品這類就維持上次的
@@ -168,6 +160,20 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
   // 跟 Siri 同一套規則：聽不出分類就不選（請使用者選），沒說付款方式就不預選卡片
   const speech = useSpeech()
   const [parsingVoice, setParsingVoice] = useState(false)
+  // 手動點過分類之後，打備註就不再幫忙改分類
+  const categoryTouched = useRef(false)
+  // 把解析結果填進欄位；解析不出分類就看這個備註以前記在哪，回傳最後用的分類
+  function fillParsed(r: api.VoiceParseResult) {
+    const parsedCategory = r.category ?? learnedCategory(transactions, r.note, r.type)
+    categoryTouched.current = !!parsedCategory
+    setType(r.type)
+    setCategory(parsedCategory)
+    setAmount(String(r.amount))
+    setNote(r.note)
+    // 沒說日期時解析結果是今天；補記昨天的中途不能被蓋回今天
+    if (r.date !== todayString()) setDate(r.date)
+    return parsedCategory
+  }
   async function applyVoice(text: string) {
     setParsingVoice(true)
     try {
@@ -176,23 +182,57 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
         toast('沒聽到金額，再說一次，例如「午餐 120 現金」', 'error')
         return
       }
-      setType(r.type)
-      setCategory(r.category ?? '')
-      setAmount(String(r.amount))
-      setNote(r.note)
-      setDate(r.date)
+      const parsedCategory = fillParsed(r)
       payTouched.current = true
       if (r.card_id) { setCardId(r.card_id); setIsExplicitCash(false) }
       else if (r.is_cash) { setCardId(undefined); setIsExplicitCash(true) }
       else { setCardId(undefined); setIsExplicitCash(false) }
-      const missing = [!r.category && '分類', !r.card_id && !r.is_cash && cards.length > 0 && '付款方式'].filter(Boolean)
+      const missing = [!parsedCategory && '分類', !r.card_id && !r.is_cash && cards.length > 0 && '付款方式'].filter(Boolean)
       toast(missing.length ? `聽好了，再選一下${missing.join('和')}` : '聽好了，確認沒問題就按 OK')
     } catch {
-      toast('語音辨識失敗，請再試一次', 'error')
+      toast(isOffline() ? '沒有網路，先用下面的鍵盤輸入金額' : '語音辨識失敗，請再試一次', 'error')
     } finally {
       setParsingVoice(false)
     }
   }
+
+  // 一句話輸入：打「午餐 120」跟語音走同一套解析。跟語音不同的是沒打付款方式就維持目前選的，
+  // 打字的人多半就是照上次的付款方式
+  const [sentence, setSentence] = useState('')
+  const [parsingSentence, setParsingSentence] = useState(false)
+  async function applySentence(e: React.FormEvent) {
+    e.preventDefault()
+    const text = sentence.trim()
+    if (!text || parsingSentence) return
+    setParsingSentence(true)
+    try {
+      const r = await api.parseVoice(text)
+      if (r.amount == null) {
+        toast('沒看到金額，例如「午餐 120」', 'error')
+        return
+      }
+      const parsedCategory = fillParsed(r)
+      if (r.card_id) { payTouched.current = true; setCardId(r.card_id); setIsExplicitCash(false) }
+      else if (r.is_cash) { payTouched.current = true; setCardId(undefined); setIsExplicitCash(true) }
+      setSentence('')
+      // 收起鍵盤，下面的 OK 鍵才看得到
+      ;(document.activeElement as HTMLElement | null)?.blur()
+      if (!parsedCategory) toast('再選一下分類')
+    } catch {
+      toast(isOffline() ? '沒有網路，先用下面的鍵盤輸入金額' : '解析失敗，請再試一次', 'error')
+    } finally {
+      setParsingSentence(false)
+    }
+  }
+
+  // 打過的備註自動帶回當時的分類（打「全家」就選日用品）
+  function handleNoteChange(value: string) {
+    setNote(value)
+    if (initialData || categoryTouched.current) return
+    const learned = learnedCategory(transactions, value, type)
+    if (learned) setCategory(learned)
+  }
+
   function toggleVoice() {
     if (speech.listening) speech.stop()
     else speech.start(applyVoice, err => { if (err !== 'aborted' && err !== 'no-speech') toast('沒辦法使用麥克風，請確認有允許麥克風權限', 'error') })
@@ -246,14 +286,21 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     setIsExplicitCash(!pick)
   }, [defaultCard?.id, cards.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 連續補記關掉面板後，下次打開從今天、零筆開始
+  // 面板一直掛在頁面上，所以每次打開都要重來：不然上次沒存的金額會留著，
+  // PWA 隔天回到前景時日期也還是昨天，直接記會記錯天
   useEffect(() => {
-    if (open || !batch) return
-    /* eslint-disable react-hooks/set-state-in-effect -- 面板關上時把連續補記的狀態歸零 */
-    setSavedCount(0)
-    setDate(todayString())
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [open, batch])
+    if (!open || initialData) return
+    /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- 只在打開的那一刻歸零 */
+    setAmount(''); setNote(''); setTransferTo(''); setSentence('')
+    setDate(todayString()); setType('expense'); setSavedCount(0)
+    setCategory(smartCategory('expense'))
+    categoryTouched.current = false
+    payTouched.current = false
+    const pick = resolvePay(cards, defaultCard)
+    setCardId(pick?.id)
+    setIsExplicitCash(!pick)
+  }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // 換到不是金融卡時，轉帳分類不能用了
   useEffect(() => {
@@ -268,11 +315,13 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     setType(t)
     setCategory(initialData ? '' : smartCategory(t))
     setTransferTo('')
+    categoryTouched.current = false
   }
 
   const handleSave = useCallback(async () => {
     const parsed = evaluateAmount(amount)
-    if (!amount || isNaN(parsed) || parsed <= 0 || !category || saving) return
+    if (!amount || isNaN(parsed) || parsed <= 0 || saving) return
+    if (!category) { toast('再選一下分類', 'error'); return }
     // 沒有任何卡片的人一律是現金；有卡片的人要明確點「現金」才算，不然就是還沒指定
     const isCash = !cardId && (cards.length === 0 || isExplicitCash)
     const savedNote = category === 'transfer'
@@ -305,6 +354,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
     setJustSaved(false)
     if (initialData) toast('已更新')
     else { rememberCategory(type, category); rememberPay(cardId) }
+    categoryTouched.current = false
     if (batch && !initialData) {
       // 連續補記：日期、付款方式留著，金額和備註清掉，面板不關
       setSavedCount(n => n + 1)
@@ -450,6 +500,25 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
         )}
       </div>
 
+      {/* 一句話輸入：新增時才有 */}
+      {!initialData && (
+        <form onSubmit={applySentence} className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
+          <input
+            aria-label="打一句話記帳"
+            placeholder="打一句話，例如「午餐 120 現金」"
+            value={sentence}
+            onChange={e => setSentence(e.target.value)}
+            enterKeyHint="done"
+            className="h-10 min-w-0 flex-1 rounded-full bg-muted px-4 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+          />
+          {sentence.trim() && (
+            <button type="submit" disabled={parsingSentence} className="h-10 shrink-0 animate-fade rounded-full bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-60">
+              {parsingSentence ? '整理中…' : '填入'}
+            </button>
+          )}
+        </form>
+      )}
+
       {/* 電腦版：左邊分類、右邊金額和計算機，整個視窗不用捲動；手機版上下排 */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* ── 分類格子（可捲動）── */}
@@ -466,7 +535,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
             return (
               <button
                 key={cat.id}
-                onClick={() => setCategory(prev => (prev === cat.id ? '' : cat.id))}
+                onClick={() => { categoryTouched.current = true; setCategory(prev => (prev === cat.id ? '' : cat.id)) }}
                 onPointerDown={() => startLongPress(cat)}
                 onPointerUp={cancelLongPress}
                 onPointerLeave={cancelLongPress}
@@ -522,7 +591,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
           <input
             placeholder={category === 'transfer' ? '轉給誰（選填）' : '輸入備註'}
             value={category === 'transfer' ? transferTo : note}
-            onChange={e => (category === 'transfer' ? setTransferTo(e.target.value) : setNote(e.target.value))}
+            onChange={e => (category === 'transfer' ? setTransferTo(e.target.value) : handleNoteChange(e.target.value))}
             className="w-28 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-36"
           />
         </div>
@@ -545,7 +614,7 @@ export function AddTransactionSheet({ open, onOpenChange, onSubmit, initialData,
                 className="w-32 shrink-0 rounded-full bg-muted px-3 py-1 text-xs outline-none placeholder:text-muted-foreground"
               />
             )}
-            {initialData?.type === 'expense' && (
+            {initialData?.type === 'expense' && !initialData.pending && (
               <button
                 onClick={() => setSplitOpen(true)}
                 className="flex shrink-0 items-center gap-1 rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand-soft-foreground"

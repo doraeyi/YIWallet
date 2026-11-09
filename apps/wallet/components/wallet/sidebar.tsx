@@ -12,6 +12,7 @@ import { AddTransactionSheet } from './add-transaction-sheet'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useMe } from '@/hooks/use-me'
 import { logout } from '@/app/actions/auth'
+import { signOut } from '@/lib/sign-out'
 import { cn } from '@/lib/utils'
 import { confirmDialog } from '@/lib/confirm'
 
@@ -156,7 +157,7 @@ export function Sidebar() {
                 {me?.email && <span className="truncate text-[11px] leading-tight text-muted-foreground">{me.email}</span>}
               </span>
             </Link>
-            <form action={logout} onSubmit={async e => { e.preventDefault(); if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await logout() }}>
+            <form action={logout} onSubmit={async e => { e.preventDefault(); if (await confirmDialog('確定要登出嗎？', { confirmText: '登出', danger: true })) await signOut() }}>
               <button
                 type="submit"
                 aria-label="登出"

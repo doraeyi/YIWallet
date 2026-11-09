@@ -328,6 +328,7 @@ export default function DashboardPage() {
     try { cashIds = new Set(JSON.parse(localStorage.getItem('yiwallet_cash_tx_ids') ?? '[]')) }
     catch { cashIds = new Set() }
     return allFiltered.filter(tx =>
+      !tx.pending && // 還沒送到伺服器，批次指定卡片的 API 認不得
       !tx.cardId &&
       !tx.isCash &&
       !/領現 \d{4}-\d{2}-\d{2}$/.test(tx.note) &&
